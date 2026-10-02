@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# 민감정보 — 절대 커밋 금지
+.env
+.env.*
+!.env.example
+
+# DB·백업 (대화 내용 포함)
+data/
+*.db
+*.db-journal
+*.sqlite3
+*.bak
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
