@@ -296,7 +296,7 @@ flowchart LR
 | ⬜ | EE-03 | A 송지윤 | 회원·세션·대화·턴 DB 모델 | 02 | | |
 | ⬜ | EE-04 | C 유민규 | 공통 웹 레이아웃·스타일 | 02 | | |
 | ⬜ | EE-05 | B 나현준 | AI provider 경계·가짜 AI 구현 | 02 | | |
-| 🟨 | EE-06 | L 이초롱 | CI·request_id·공통 오류·이벤트 로그 | 02 | [#3](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/3) | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
+| ✅ | EE-06 | L 이초롱 | CI·request_id·공통 오류·이벤트 로그 | 02 | [#3](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/3) | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
 | **M2 기능** | | | | | | |
 | ⬜ | EE-07 | A 송지윤 | 회원가입·비밀번호 해시 | 03 | | |
 | ⬜ | EE-08 | A 송지윤 | 로그인·세션·로그아웃·CSRF | 07 | | |
