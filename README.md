@@ -3,202 +3,250 @@
 > 모르는 개념을 물어보면 **설명 수준(아주 쉽게 / 입문자 / 전공자)** 에 맞춰 풀어 주고,
 > "더 쉽게", "예시 하나 더" 같은 후속 질문으로 이해를 넓혀 가는 AI 챗봇입니다.
 
-Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝트」** 의 4인 팀 결과물입니다.
+Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝트」** · 4인 팀
 
-> **현재 상태:** 개발 환경(Python·의존성 버전 고정)만 준비된 단계입니다. 앱 코드는 아직 없습니다.
-> 이 문서는 진행하면서 계속 채워 갑니다.
+> **현재 상태:** 앱 뼈대(서버 실행, `/health`, 공통 오류·로그)까지 준비. 실제 기능은 아직 `501` 을 반환합니다.
+
+<details>
+<summary><b>👥 팀원용 문서 안내 — 언제 무엇을 읽나요?</b></summary>
+
+| 언제 | 문서 | 내용 |
+|---|---|---|
+| ① 첫 회의 | [docs/team/1-kickoff.md](docs/team/1-kickoff.md) | 과제 소개, 역할 정하기, 커밋·API·DB 합의 |
+| ② 착수할 때 + 매번 | [CONTRIBUTING.md](CONTRIBUTING.md) | 처음 할 일·뼈대 둘러보기, **매번 하는 루틴 11단계**, 24개 작업 목록, 역할별 안내 |
+| 작업 중 수시로 | [docs/spec/api.md](docs/spec/api.md) · [docs/spec/db.md](docs/spec/db.md) | API 명세, DB 구조 (바꾸려면 PR 먼저) |
+| ③ 평가 전 | [docs/team/2-evaluation-example.md](docs/team/2-evaluation-example.md) | 예상 진행 대본, 내 코드 설명 준비 |
+| 읽지 않아도 됨 | `AGENTS.md`, `CLAUDE.md` | AI 코딩 도구가 읽는 규칙 (CONTRIBUTING 요약본) |
+
+</details>
 
 ---
 
-## 1. 이 미션은 무엇인가요?
+## 1. 과제 소개
 
-리눅스·웹·DB·AI API를 **하나의 서비스로 연결해 기획부터 배포까지** 해 보는 팀 프로젝트입니다.
-한 줄로 요약하면 다음 흐름을 직접 만드는 것입니다.
+**"AI 챗봇 웹사이트를 4명이 만들어서, 누구나 접속할 수 있게 인터넷에 올리는 것"** 입니다.
+AI 를 직접 만드는 게 아니라, 이미 있는 AI(Claude)를 **우리 서버가 대신 불러 주는 서비스**를 만듭니다.
 
 ```
-로그인한 사용자가 웹에서 질문 → FastAPI 서버가 AI API 호출 → 응답을 화면에 표시 → 질문·응답을 DB에 저장
+ 웹 화면 (브라우저)  ──질문──▶  우리 서버 (FastAPI)  ──질문 + 이전 대화──▶  AI API (Claude)
+                    ◀─답변──                       ◀────────답변────────
+                                       │
+                                       ▼ 질문·답변·시각 저장 / 조회
+                                   DB (SQLite)
 ```
 
-### 과제가 요구하는 것 (반드시 지켜야 함)
+| 부품 | 비유 | 하는 일 |
+|---|---|---|
+| 웹 화면 | 🍽️ 손님 테이블과 메뉴판 | 질문을 입력하고 답을 보는 곳 |
+| 우리 서버 (FastAPI) | 🧑‍💼 홀 직원 | 손님 확인(로그인), 주문을 요리사에게 전달, 기록, 문제 생기면 안내 |
+| AI API (Claude) | 👨‍🍳 요리사 | 실제 설명(요리)을 만듦. 손님은 주방에 직접 못 들어감 (🔑 키는 서버만 가짐) |
+| DB (SQLite) | 📒 주문 장부 | 누가 언제 무엇을 묻고 어떤 답을 받았는지 기록 |
+
+### 반드시 지켜야 할 요구사항
 
 | # | 요구사항 | 쉽게 말하면 |
 |---|---|---|
-| 1 | 웹 UI | 질문 입력창이 있고, 같은 화면에서 답을 볼 수 있어야 함 |
-| 2 | 인증·접근 제어 | 회원가입/로그인이 되고, **로그인한 사람만** 챗봇을 쓸 수 있음 |
-| 3 | AI 처리 | AI 호출은 **서버에서만** (키가 브라우저로 새면 안 됨) + **이전 대화 문맥 유지** |
-| 4 | 대화 로그 | 질문·응답·사용자·시각을 DB에 쌓고, **사용자 기준으로 조회** 가능 |
-| 5 | 운영 | 서버 로그(요청 수신 / AI 호출 / AI 성공·실패 / DB 저장 성공·실패), AI **타임아웃·실패 시 서버가 죽지 않고 오류 안내**, 입력 검증 |
-| 6 | 배포 | 평가 시점에 **외부 네트워크에서 접속 가능한 URL** |
-| 7 | 협업 | 브랜치 전략, **PR로 Merge**, **팀원 각자 의미 있는 커밋 10개 이상**, 문서의 역할 설명이 Git 기록과 일치 |
-
-- 개발 환경: **Python + FastAPI** (필수), SQLite (권장)
-- 제약: API 키 등 민감정보는 코드·문서에 쓰지 않고 `.env`로 관리, `.env`는 Git에 올리지 않음
-
-### 제출물
-GitHub 저장소 + README/기술 문서(개요, 구조, API 명세, DB 구조, 실행·배포 방법, 환경 변수,
-**팀 역할·개인별 작업 요약**, 민감정보 관리, DB 확인 방법) + 외부 접속 가능한 서비스 URL
+| ① | 웹 UI | 질문을 입력하고 같은 화면에서 답을 봄 |
+| ② | 인증 | 회원가입·로그인, **로그인한 사람만** 챗봇 사용 |
+| ③ | AI 처리 | AI 호출은 **서버에서만**, **이전 대화를 기억** |
+| ④ | 대화 기록 | 질문·답변·사용자·시각을 DB 에 쌓고 **사용자별로 조회** |
+| ⑤ | 안정성 | 서버 로그, AI 실패·지연에도 **서버가 안 죽고 안내**, 입력 검증 |
+| ⑥ | 배포 | 평가 때 **외부에서 접속 가능한 URL** |
+| ⑦ | 협업 | 브랜치·PR 머지, **1인당 의미 있는 커밋 10개 이상** |
 
 ---
 
-## 2. 팀 역할
+## 2. 폴더 구조
 
-| 역할 | 담당 | 주로 만지는 곳 |
-|---|---|---|
-| **L** 팀장 | 공통 뼈대, API 계약, CI, 통합 테스트, 배포 | `app/main.py`, `app/core/`, `tests/integration/`, `.github/` |
-| **A** 팀원1 | 회원가입·로그인·세션, DB, 내 기록 API | `app/db/`, `app/auth/`, `app/conversations/` |
-| **B** 팀원2 | AI 호출, 프롬프트, 문맥 유지, AI 오류 처리 | `app/chat/` |
-| **C** 팀원3 | 웹 화면, API 연결, 사용성 | `app/web/`, `app/templates/`, `app/static/` |
-
-> 자기 담당 폴더 위주로 작업합니다. 다른 사람 영역이나 공유 파일(`main.py`, `config.py`,
-> `pyproject.toml` 등)을 바꿔야 하면 먼저 이슈/단톡으로 알려 주세요. 충돌을 줄이기 위한 약속입니다.
-
----
-
-## 3. 기술 스택 — 각각 뭐 하는 도구인가요?
-
-| 도구 | 한 줄 설명 | 우리 프로젝트에서의 역할 |
-|---|---|---|
-| **uv** | 파이썬 버전 + 패키지 관리 도구 (pip + venv + pyenv를 합친 것, 매우 빠름) | 4명의 개발 환경을 똑같이 맞춤 |
-| **FastAPI** | 파이썬 웹 프레임워크 | 웹 페이지와 `/api/...` 요청을 처리하는 서버 |
-| **Uvicorn** | FastAPI 앱을 실제로 띄워 주는 서버 프로그램 | `uv run uvicorn app.main:app` |
-| **Jinja2** | HTML 템플릿 엔진 | 서버에서 HTML 화면 생성 (React 같은 별도 프런트 없음) |
-| **SQLite** | 파일 하나로 동작하는 DB | 회원·대화 기록 저장 |
-| **SQLModel** | 파이썬 클래스로 DB 테이블을 다루게 해 주는 라이브러리 | SQL을 직접 덜 쓰고 테이블 정의·조회 |
-| **pydantic-settings** | 환경변수(.env)를 읽어 설정 객체로 만들어 줌 | API 키·DB 경로 등 설정 관리 |
-| **pwdlib[argon2]** | 비밀번호 해시 라이브러리 | 비밀번호를 평문이 아닌 해시로 저장 |
-| **anthropic** | Anthropic(Claude) 공식 파이썬 SDK | 코디세이 AI 게이트웨이를 통해 Claude 호출 |
-| **pytest** | 테스트 실행 도구 | `uv run pytest` |
-| **httpx** | HTTP 클라이언트 | FastAPI 테스트(TestClient)에 필요 |
-| **ruff** | 코드 스타일 검사·정리 도구 | `uv run ruff check .` 로 실수·스타일 문제 확인 |
-
----
-
-## 4. 처음 시작하기
-
-### 4-1. uv가 뭔가요? 왜 쓰나요?
-
-파이썬 프로젝트를 여럿이 하면 이런 일이 자주 생깁니다.
-
-- A는 Python 3.8, B는 3.12 → 같은 코드가 한 명 컴퓨터에서만 에러
-- `pip install fastapi`를 각자 다른 날 실행 → 서로 다른 버전이 깔려서 "내 컴퓨터에선 되는데?"
-
-**uv는 이걸 막아 줍니다.** 이 저장소에는 아래 파일들이 있습니다.
-
-| 파일 | 의미 | 누가 수정? |
-|---|---|---|
-| `.python-version` | 이 프로젝트는 **Python 3.12**를 쓴다 | 거의 안 바꿈 |
-| `pyproject.toml` | 우리가 **쓰겠다고 선언한 패키지 목록** (예: `fastapi>=0.142`) | `uv add` 명령이 자동 수정 |
-| `uv.lock` | 실제로 설치할 **정확한 버전이 전부 잠긴 목록** (하위 의존성까지) | **직접 수정 금지**, uv가 자동 관리 |
-
-### 4-2. uv 설치 (한 번만)
-
-```bash
-# macOS
-brew install uv
-
-# Windows (PowerShell)
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+app/
+├─ main.py            # 앱 조립 (모든 부품 연결)
+├─ health.py          # 서버 상태 확인 GET /health
+├─ core/              # 설정 · 공통 오류 · 요청 ID · 서버 로그
+├─ db/                # DB 연결, 테이블 정의
+├─ auth/              # 회원가입·로그인 API, 로그인 확인
+├─ conversations/     # 대화 만들기·내 기록 API
+├─ chat/              # 채팅 API, AI 호출
+├─ web/               # 페이지 주소
+├─ templates/         # HTML
+└─ static/            # CSS · JS
+tests/                # 영역별 자동 테스트
+docs/                 # API 명세 · DB 구조 · 평가 대비 가이드
+scripts/              # DB 확인 SQL
+CONTRIBUTING.md       # 작업 길잡이 (환경 준비 → 매번 하는 루틴)
+AGENTS.md             # AI 코딩 도구용 규칙
 ```
 
-설치 확인: `uv --version`
+- API 요청·응답 예시와 오류 코드: [docs/spec/api.md](docs/spec/api.md)
+- DB 테이블·필드 설명: [docs/spec/db.md](docs/spec/db.md)
 
-### 4-3. 저장소 받고 `uv sync`
+---
+
+## 3. 주요 기능과 역할 분담
+
+### 팀
+
+| <img src="https://avatars.githubusercontent.com/u/132190391?v=4" width="100"> | <img src="https://avatars.githubusercontent.com/u/174287228?v=4" width="100"> | <img src="https://avatars.githubusercontent.com/u/25141255?v=4" width="100"> | <img src="https://avatars.githubusercontent.com/u/117568075?v=4" width="100"> |
+|:---:|:---:|:---:|:---:|
+| 이초롱<br>[@0802222](https://github.com/0802222) | 송지윤<br>[@js910](https://github.com/js910) | 나현준<br>[@vivleon](https://github.com/vivleon) | 유민규<br>[@Minkyu01](https://github.com/Minkyu01) |
+| **L 팀장**<br>공통 뼈대 · 오류·로그 · CI · 통합 · 배포 | **A 인증·DB**<br>회원·로그인 · 접근 제어 · DB · 내 기록 | **B AI·채팅**<br>AI 호출 · 설명 수준 · 문맥 유지 · AI 오류 | **C 화면**<br>웹 화면 · API 연결 · 사용성 |
+
+| 역할 | 이름 | 담당 |
+|---|---|---|
+| **L** 팀장 | 이초롱 | 공통 뼈대, 오류·로그, CI, 통합, 배포 |
+| **A** | 송지윤 | 회원·로그인·접근 제어, DB, 내 기록 (서버) |
+| **B** | 나현준 | AI 호출, 설명 수준, 문맥 유지, AI 오류 (서버) |
+| **C** | 유민규 | 웹 화면, API 연결, 사용성 (화면) |
+
+### 기능
+
+로그인한 사용자가 **설명 수준을 골라 개념을 질문하면, AI 가 이전 대화를 기억하며 쉽게 설명**해 주는 챗봇입니다.
+대화는 저장되어 나중에 다시 보고 이어서 질문할 수 있습니다. 자세한 기능과 담당은 아래 표를 참고하세요.
+
+**사용 흐름:** 로그인 → 설명 수준 선택 → "API가 뭐야?" 질문 → 답변 → [더 쉽게]·후속 질문 → 내 기록에서 이어 보기
+
+| 대분류 | 기능 | 설명 | 담당 | API · 화면 | 상태 | PR |
+|---|---|---|---|---|---|---|
+| **계정** | 회원가입 | 이메일·비밀번호, 비밀번호는 해시로 저장 | A 가입 API·DB<br>C 가입 화면 | `POST /api/auth/signup`<br>`/signup` | ⬜ | |
+| | 로그인·로그아웃 | 세션 쿠키 발급·삭제 | A 세션 처리<br>C 로그인 화면 | `POST /api/auth/login`<br>`POST /api/auth/logout`<br>`/login` | ⬜ | |
+| | 접근 제어 | 비로그인은 API 401, 페이지는 로그인으로 이동 | A | `GET /api/auth/me` | ⬜ | |
+| **채팅** | 질문·답변 | 같은 화면에 답 표시, 대기 중 버튼 잠금 | B 채팅 API·AI 호출<br>C 채팅 화면 | `POST /api/chat`<br>`/chat` | ⬜ | |
+| | 설명 수준 | 아주 쉽게 / 입문자 / 전공자 | B 수준별 프롬프트<br>C 수준 선택 UI | `POST /api/chat` 의 `level` | ⬜ | |
+| | 문맥 유지 | 같은 대화의 최근 5턴을 기억 | B | (서버 내부) | ⬜ | |
+| | 후속 버튼 | 더 쉽게 / 예시 하나 더 / 핵심만 | C | `/chat` | ⬜ | |
+| **대화 기록** | 대화 만들기 | 새 대화 시작 | A | `POST /api/conversations` | ⬜ | |
+| | 내 기록 조회 | 내 대화 목록·상세, 남의 대화는 볼 수 없음 | A 조회 API·권한<br>C 기록 화면 | `GET /api/me/conversations`<br>`GET /api/me/chats`<br>`/history` | ⬜ | |
+| | DB 확인 도구 | 사용자별 최근 대화 조회 SQL | A | `scripts/check_logs.sql` | ⬜ | |
+| **안정성** | 오류 안내 | AI 지연·실패·DB 오류에도 서버 유지, 공통 형식으로 안내 | L 공통 오류 형식<br>B AI 오류 처리<br>C 오류 메시지 표시 | 모든 API | 🟨 | |
+| | 입력 검증 | 빈 질문, 2,000자 초과, 잘못된 값 차단 | B 서버 검증<br>C 화면 입력 제한 | `POST /api/chat` | 🟨 | |
+| | 서버 로그 | 요청·AI 호출·DB 저장을 요청 ID 로 묶어 기록 | L 요청 로그<br>B AI 호출 로그<br>A DB 저장 로그 | 서버 로그 | 🟨 | |
+| | 상태 확인 | 서버·DB 정상 여부 | L | `GET /health` | ✅ | |
+| **배포·협업** | 외부 배포 | 공개 URL, 재시작해도 기록 유지 | L | 서비스 URL | ⬜ | |
+| | 자동 검사 (CI) | PR 마다 코드 검사·테스트 자동 실행 | L | GitHub Actions | 🟨 | |
+
+⬜ 미착수 · 🟨 일부 완료 · ✅ 완료 — 기능을 머지할 때 상태와 PR 번호를 함께 적습니다.
+
+### 비제공 기능
+
+과제의 핵심인 **로그인 → AI 질문 → 기록 저장 → 배포**를 안정적으로 완성하는 데 집중하기 위해,
+아래 기능은 제공하지 않습니다. 필수 기능이 끝나도 기능을 늘리기보다 안정화를 우선합니다.
+
+- PDF·파일 업로드
+- 웹 검색 (최신 정보 반영)
+- 음성·이미지 입력
+- 소셜 로그인 (카카오, 구글 등)
+- 결제
+- 실시간 스트리밍 응답 (답변이 한 글자씩 나오는 방식)
+- 의료·법률·투자 조언 — AI 설명은 틀릴 수 있어 학습용 개념 설명으로만 제공합니다
+
+---
+
+## 4. 기술 스택
+
+| 도구 | 무엇인가 | 왜 썼나 |
+|---|---|---|
+| **Python 3.12** | 프로그래밍 언어 | 과제 지정 |
+| **FastAPI** | 파이썬으로 웹 서버를 만드는 도구 | 과제 지정 (아래 설명) |
+| **Uvicorn** | FastAPI 서버를 실제로 켜 주는 프로그램 | FastAPI 표준 실행기 |
+| **Jinja2** | HTML 에 데이터를 끼워 넣는 템플릿 도구 | 별도 프런트 서버(React 등) 없이 화면 제공 |
+| **SQLite** | 파일 하나로 동작하는 DB | 과제 권장 (아래 설명) |
+| **SQLModel** | 파이썬 클래스로 DB 테이블을 다루는 도구 | SQL 을 덜 쓰고 실수 줄이기 |
+| **Claude (anthropic SDK)** | AI 모델과 공식 연결 도구 | 코디세이 AI 게이트웨이 제공 |
+| **Argon2 (pwdlib)** | 비밀번호를 안전하게 해시하는 방식 | 비밀번호 평문 저장 방지 |
+| **uv** | 파이썬 버전·패키지를 맞춰 주는 도구 | 4명의 개발 환경을 똑같이 |
+| **pytest · ruff** | 자동 테스트 · 코드 검사 | PR 마다 품질 확인 |
+
+### FastAPI 는 뭔가요?
+
+**"이 주소로 요청이 오면 이 함수를 실행해라"** 를 파이썬으로 쉽게 적게 해 주는 웹 서버 도구입니다.
+
+```python
+@router.get("/health")          # 누군가 /health 로 접속하면
+def health():
+    return {"status": "ok"}     # 이 결과를 JSON 으로 돌려준다
+```
+
+- **라우팅:** 주소(`/api/chat`)와 함수를 연결
+- **입력 검증:** "level 은 easy/beginner/advanced 중 하나" 같은 규칙을 적어 두면 틀린 요청을 자동으로 거절
+- **자동 문서:** 서버를 켜고 `/docs` 에 들어가면 모든 API 를 보고 직접 호출해 볼 수 있음
+
+### SQLite 와 MySQL 은 뭐가 다른가요?
+
+둘 다 SQL 로 쓰는 관계형 DB 지만, **동작 방식이 다릅니다.**
+
+| | SQLite | MySQL |
+|---|---|---|
+| 형태 | **파일 하나** (`easyexplain.db`) | 따로 설치해서 켜 두는 **DB 서버 프로그램** |
+| 설치·설정 | 없음 (파이썬에 내장) | 설치, 계정·비밀번호·포트 설정 필요 |
+| 접속 | 우리 서버가 파일을 직접 읽고 씀 | 네트워크로 DB 서버에 접속 |
+| 동시 쓰기 | 한 번에 하나씩 (작은 서비스엔 충분) | 많은 사용자가 동시에 써도 됨 |
+| 어울리는 곳 | 소규모 서비스, 학습, 앱 내장 | 사용자가 많은 서비스, 여러 서버가 같은 DB 사용 |
+
+**우리가 SQLite 를 고른 이유:** 과제 권장이고, 설정이 거의 없어 기능 개발에 집중할 수 있으며,
+평가 규모(수십 명)에는 충분합니다. 단, **DB 가 파일이므로 배포 서버에서 파일이 지워지지 않는 저장 공간**에 둬야 합니다.
+
+---
+
+## 5. 실행 방법
+
+EasyExplain **웹 서버를 내 컴퓨터에서 실행**하는 방법입니다. (Python 3.12 는 uv 가 자동으로 준비합니다)
 
 ```bash
+# 1) 패키지 관리 도구 uv 설치
+brew install uv                       # macOS (Windows: https://docs.astral.sh/uv/ 참고)
+
+# 2) 프로젝트 코드를 내려받고, 필요한 파이썬 패키지 설치
 git clone https://github.com/0802222/Codyssey-B7-1-Term-Project.git
 cd Codyssey-B7-1-Term-Project
 uv sync
+
+# 3) 서버 설정 파일(.env) 만들기 — 값을 비워 두면 가짜 AI 응답으로 동작
+cp .env.example .env
+
+# 4) 서버 실행 → 브라우저에서 http://localhost:8000/health (API 문서: /docs)
+uv run uvicorn app.main:app --reload
+
+# (선택) 자동 테스트 실행
+uv run pytest
 ```
 
-**`uv sync`는 무엇을 하나요?**
+### 서버 설정 값 (환경 변수)
 
-1. `.python-version`을 보고 **Python 3.12가 없으면 알아서 내려받습니다.** (따로 설치할 필요 없음)
-2. 프로젝트 폴더 안에 **`.venv`(가상환경)** 를 만듭니다. → 내 컴퓨터의 다른 파이썬 프로젝트와 섞이지 않습니다.
-3. `uv.lock`에 적힌 **정확히 같은 버전**의 패키지를 `.venv`에 설치합니다. → 4명 모두 완전히 같은 환경이 됩니다.
+API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니다. `.env` 는 Git 에 올라가지 않습니다.
+전체 목록과 기본값은 [.env.example](.env.example) 에 있습니다.
 
-**언제 다시 하나요?** `git pull` 후 `pyproject.toml`이나 `uv.lock`이 바뀌었을 때.
-헷갈리면 그냥 pull 할 때마다 `uv sync` 해도 됩니다. (바뀐 게 없으면 1초 안에 끝남)
-
-### 4-4. 실행할 때는 `uv run`
-
-```bash
-uv run pytest                 # 테스트
-uv run ruff check .           # 코드 검사
-uv run uvicorn app.main:app --reload   # 서버 실행 (앱 뼈대가 만들어진 뒤 사용 가능)
-```
-
-`uv run`을 앞에 붙이면 **이 프로젝트의 `.venv` 파이썬으로 실행**됩니다.
-가상환경을 직접 activate 할 필요가 없고, 실수로 다른 파이썬(예: 시스템 3.8, conda)으로 실행하는 일도 막아 줍니다.
-
-> VS Code를 쓴다면 `Cmd/Ctrl + Shift + P` → "Python: Select Interpreter" → `./.venv`를 선택하면
-> 자동완성·에러 표시도 같은 환경 기준으로 동작합니다.
-
-### 4-5. 패키지를 추가하고 싶으면?
-
-```bash
-uv add 패키지이름           # 서비스에 필요한 패키지
-uv add --dev 패키지이름     # 테스트/개발에만 필요한 패키지
-```
-
-`pip install`은 쓰지 마세요. `pyproject.toml`·`uv.lock`에 기록되지 않아 다른 팀원 환경에는 안 깔립니다.
-의존성 추가는 공유 파일 변경이므로 **팀장에게 먼저 알려 주고**, 바뀐 `pyproject.toml`과 `uv.lock`을 함께 커밋합니다.
-
----
-
-## 5. 환경 변수 (.env)
-
-API 키처럼 **공개되면 안 되는 값은 코드가 아니라 `.env` 파일**에 둡니다.
-`.env`는 `.gitignore`에 등록되어 있어서 Git에 올라가지 않습니다.
-
-- 앱 뼈대 작업 때 **`.env.example`(이름만 있고 값은 빈 파일)** 이 추가될 예정입니다.
-  이 파일을 복사해서 `.env`를 만들고 값만 채우면 됩니다: `cp .env.example .env`
-- AI 키는 코디세이에서 발급받은 **가상 키**를 사용합니다. Anthropic 규격의 코디세이 게이트웨이(`https://copa.codyssey.kr`)를 거칩니다.
-- **키 값을 단톡·이슈·PR·커밋·스크린샷에 절대 붙여 넣지 마세요.**
-
-예정된 주요 변수 이름 (확정 시 갱신):
-
-| 변수 | 용도 |
+| 이름 | 용도 |
 |---|---|
-| `APP_ENV` | development / test / production |
-| `DATABASE_URL` | SQLite 파일 위치 |
-| `AI_PROVIDER` | `fake`(키 없이 개발·테스트) 또는 `anthropic` |
+| `APP_ENV` | 실행 환경: development / test / production |
+| `DATABASE_URL` | DB 파일 위치 |
+| `AI_PROVIDER` | `fake`(키 없이 가짜 응답) 또는 `anthropic`(실제 AI) |
 | `ANTHROPIC_BASE_URL` | AI 게이트웨이 주소 |
-| `ANTHROPIC_API_KEY` | 발급받은 가상 키 (**비밀**) |
-| `AI_MODEL` | 사용할 모델 ID (예: `claude-sonnet-4`) |
-| `AI_TIMEOUT_SECONDS` | AI 응답 최대 대기 시간 |
+| `ANTHROPIC_API_KEY` | AI 키 (**비밀**) |
+| `AI_MODEL` | 사용할 AI 모델 |
+| `AI_TIMEOUT_SECONDS` | AI 응답 최대 대기 시간 (기본 30초) |
 
-> 실제 키가 없어도 개발할 수 있도록 **Fake AI provider**(가짜 응답기)를 둘 예정입니다.
-> 자동 테스트도 Fake로 돌기 때문에 키를 공유할 필요가 없습니다.
-
----
-
-## 6. 협업 규칙 (요약)
-
-**작업 흐름**
-
-```
-이슈 고르기 → main 최신화(git pull) → 기능 브랜치 생성 → 구현 → 테스트 → 커밋 → PR → 다른 팀원 리뷰 → Merge
-```
-
-- **main에 직접 push 금지.** 모든 변경은 PR로 들어갑니다.
-- 브랜치 이름: `feat/ee-08-auth-session`, `fix/ee-18-integration`, `chore/ee-02-bootstrap` 처럼 `종류/이슈코드-짧은설명`
-- PR 병합 방식: **"Create a merge commit"** 사용 (**Squash 금지**)
-  → Squash는 여러 커밋을 하나로 합쳐 버려서, 과제의 "개인별 커밋 10회 이상" 증빙이 사라집니다.
-- 커밋은 **의미 있는 단위**로 (기능 하나, 테스트 추가, 버그 수정 등). 공백 수정·빈 커밋으로 개수 채우기 X
-- 커밋 작성자는 **본인 GitHub 계정**이어야 합니다. 처음 한 번 설정:
-  ```bash
-  git config --local user.name "본인 이름"
-  git config --local user.email "본인 GitHub에 연결된 이메일"
-  ```
-- AI 코딩 도구(Codex, Claude Code 등)를 써도 되지만, **코드는 본인이 이해하고 설명할 수 있어야** 합니다. 발표·평가 때 각자 설명해야 합니다.
+서버 배포 방법과 서비스 URL 은 배포 후 추가합니다.
 
 ---
 
-## 7. 앞으로 채워질 내용
+## 6. 제출 체크리스트
 
-- [ ] 시스템 구조도, 폴더 구조
-- [ ] API 명세 (요청/응답 예시)
-- [ ] DB 구조 (테이블·필드 설명)
-- [ ] 실행·배포 방법, 서비스 URL
-- [ ] DB 확인 가이드 (`scripts/check_logs.sql` 등)
-- [ ] 팀원별 작업 요약
+**제출물**
+- [ ] GitHub 저장소 링크
+- [ ] 외부 네트워크에서 접속되는 서비스 URL
+- [ ] DB 확인 방법 (내 기록 API 또는 `scripts/check_logs.sql`)
+
+**README / 기술 문서에 들어갈 것**
+- [x] 프로젝트 개요 — 문제 정의, 대상 사용자, 핵심 시나리오 (1·3장)
+- [ ] 시스템 구조 — 아키텍처, 주요 컴포넌트 역할 (1·2장, 구조도 보강 예정)
+- [x] API 명세 — 요청·응답 예시 ([docs/spec/api.md](docs/spec/api.md), 구현하며 갱신)
+- [x] DB 구조 — 테이블·필드 설명 ([docs/spec/db.md](docs/spec/db.md), 구현하며 갱신)
+- [ ] 배포·실행 방법, 환경 변수 설정 (5장, 배포 방법 추가 예정)
+- [ ] 팀 역할과 개인별 작업 (3장 — 역할 배정, 기능 표의 담당·PR 칸)
+- [x] 민감정보 관리 — `.env.example` 제공, `.gitignore` 적용
+
+**평가 전 확인**
+- [ ] 1인당 의미 있는 커밋 10개 이상: `git shortlog -sne --no-merges origin/main`
+- [ ] 모든 기능이 PR 로 머지됨 (3장 기능 표의 PR 칸)
+- [ ] 각자 맡은 코드를 설명할 수 있음 → [docs/team/2-evaluation-example.md](docs/team/2-evaluation-example.md)
+- [ ] 서버 재시작 후에도 대화 기록 유지
