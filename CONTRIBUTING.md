@@ -14,7 +14,7 @@ GitHub 저장소 초대를 수락한 뒤 아래를 순서대로 실행합니다.
 
 ```bash
 brew install uv                                       # uv 설치 (Windows: https://docs.astral.sh/uv/)
-git clone https://github.com/0802222/Codyssey-B7-1-Term-Project.git
+git clone https://github.com/easy-explain/Codyssey-B7-1-Term-Project.git
 cd Codyssey-B7-1-Term-Project
 git config --local user.name "본인 이름"                # 커밋 작성자 = 본인
 git config --local user.email "본인 GitHub 이메일"
@@ -30,6 +30,13 @@ uv run pytest                                         # ✅ 전부 통과하면 
 | VS Code | `Cmd/Ctrl + Shift + P` → Python: Select Interpreter → `./.venv` |
 | 실제 AI 써 보기 | `.env` 에 `AI_PROVIDER=anthropic` + **본인 키**. 키는 공유 금지 |
 | AI 코딩 도구 | 저장소의 `AGENTS.md` 를 읽게 한다 (Codex 는 자동, Claude Code 는 `CLAUDE.md` 를 통해 읽음) |
+
+기존 복제본은 아래 명령으로 저장소 주소만 바꿉니다. 기존 브랜치와 커밋은 유지됩니다.
+
+```bash
+git remote set-url origin https://github.com/easy-explain/Codyssey-B7-1-Term-Project.git
+git remote -v
+```
 
 준비가 끝나면 이 순서로 읽습니다: 아래 [뼈대 둘러보기](#뼈대-둘러보기) → [역할별 안내](#역할별-안내)의 내 역할 →
 [API 명세](docs/spec/api.md)의 내 담당 API → [평가 대비](docs/team/2-evaluation-example.md)의 내 역할 섹션
@@ -223,8 +230,12 @@ flowchart LR
   | base ← compare | `main` ← `feat/ee-07-signup` |
   | 제목 | `[EE-07] 회원가입 API 구현` |
   | 본문 | 템플릿 빈칸 + `Closes #12` |
-  | Reviewers | L 이초롱 → A 송지윤 또는 B 나현준 · A 송지윤 → B 나현준 · B 나현준 → A 송지윤 · C 유민규 → L 이초롱 또는 A 송지윤 |
+  | Reviewers | 팀장 L 이초롱 (`0802222`) 필수 + 변경 영역의 관련 담당자. L 작성 PR은 A 또는 B |
   | Assignees | 본인 |
+
+`.github/CODEOWNERS` 가 `main` 에 반영되면 모든 파일의 PR에 팀장 리뷰가 자동 요청됩니다.
+Draft PR은 **Ready for review**로 전환할 때 요청됩니다. 관련 담당자는 작성자가 추가합니다.
+팀장이 작성한 PR은 본인을 리뷰어로 요청할 수 없으므로 A 또는 B가 리뷰합니다.
 - **주의**: 생긴 PR 번호(`#13`)를 8단계 작업 목록에 적는다. 실행 못 한 테스트는 "미실행"이라고 쓴다. 만든 뒤 **CI ✅** 확인 (❌ 이면 Details → 고쳐서 푸시). 단톡에 PR 링크 공유
 
 ### 8. 문서 갱신
@@ -256,12 +267,12 @@ flowchart LR
 
 ### 10. main 머지
 
-- **할 일**: 승인된 PR 을 main 에 합치고 내 컴퓨터를 정리한다
+- **할 일**: 팀장이 승인된 PR 을 main 에 합치고, 작성자는 내 컴퓨터를 정리한다
 - **어디서**: GitHub
 - **방법**:
-  1. **승인 1명 + CI ✅ + 대화 모두 해결** 확인
-  2. **작성자가** [Merge pull request] → [Confirm merge]
-  3. 내 컴퓨터 정리
+  1. **최신 변경의 승인 1명 이상 + CI `test` ✅ + 리뷰 대화 모두 해결** 확인
+  2. **팀장 이초롱 (`0802222`)이** [Merge pull request] → [Confirm merge]
+  3. 병합 완료 후 작성자가 내 컴퓨터 정리
      ```bash
      git switch main
      git pull origin main
@@ -269,6 +280,23 @@ flowchart LR
      git branch -d feat/ee-07-signup         # 내 컴퓨터 브랜치만 삭제 (GitHub 브랜치는 남김)
      ```
 - **주의**: 새 커밋을 올리면 승인이 취소되니 재요청한다. 머지 방식은 Create a merge commit 만 허용
+
+#### 팀장: GitHub 보호 설정 확인
+
+문서와 CODEOWNERS는 리뷰 요청·작업 절차를 정합니다. 승인·CI 조건과 병합 권한을 GitHub가
+강제하려면 관리자 팀장이 [Settings → Branches](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/settings/branches)에서
+기존 `main` 보호 규칙을 편집합니다. 기존의 더 엄격한 조건은 유지합니다.
+
+- **Require a pull request before merging**: 승인 최소 1명, 새 변경 시 이전 승인 취소
+- **Require status checks to pass before merging**: 기존 `test` (GitHub Actions) 유지
+- **Require conversation resolution before merging**: 리뷰 대화 모두 해결
+- **Do not allow bypassing the above settings**: 관리자도 승인·CI 조건 적용
+- **Restrict who can push to matching branches**: 허용 사용자 `0802222` (PR 병합에도 적용)
+- **Allow force pushes / Allow deletions**: 허용하지 않음
+- 저장소 병합 방식은 **Create a merge commit** 유지
+
+CODEOWNERS만 추가해도 병합 권한이 제한되는 것은 아닙니다. 작성자는 승인·CI가 통과하면
+팀장에게 최종 병합을 맡깁니다. 자동 리뷰 요청은 이 설정 PR이 `main`에 반영된 뒤 적용됩니다.
 
 ### 11. 다른 사람 PR 리뷰
 

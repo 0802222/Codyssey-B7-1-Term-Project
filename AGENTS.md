@@ -46,6 +46,14 @@ uv run uvicorn app.main:app --reload
   로그인이 필요한 API 는 `logged_in_client` fixture 를 쓴다.
   실제 AI 키가 필요한 테스트를 기본 테스트에 넣지 않는다.
 
+## PR 리뷰·병합
+- 모든 PR에 팀장 `0802222`를 리뷰어로 포함하고, 변경 영역의 관련 담당자도 추가한다.
+  `.github/CODEOWNERS`가 main에 반영되면 팀장 리뷰가 자동 요청된다. Draft는 Ready 전환 후 적용된다.
+- 팀장 본인이 작성한 PR은 A 또는 B가 리뷰한다. 본인을 리뷰어로 요청할 수 없다.
+- 최신 변경의 승인 1명 이상, CI `test` 통과, 리뷰 대화 해결 후 **팀장만** Merge commit으로 병합한다.
+  작성자의 작업은 PR·검증·리뷰 반영까지이며, 최종 병합은 팀장에게 맡긴다.
+- 관리자 보호 설정과 자세한 절차는 `CONTRIBUTING.md`의 "10. main 머지"를 따른다.
+
 ## 커밋 메시지
 - 형식: `<type>(<scope>): <한국어 요약>` (CONTRIBUTING.md "커밋 메시지 규칙" 참고)
 - type: `feat` `fix` `test` `refactor` `docs` `style` `chore` `ci`
