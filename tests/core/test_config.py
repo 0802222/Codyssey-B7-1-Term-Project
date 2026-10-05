@@ -45,3 +45,28 @@ def test_api_key_is_hidden_in_repr():
     settings = Settings(_env_file=None, ai_provider="anthropic", anthropic_api_key="test-key")
 
     assert "test-key" not in repr(settings)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("ai_timeout_seconds", 0),
+        ("ai_max_output_tokens", 0),
+        ("context_turns", -1),
+        ("context_max_chars", -1),
+        ("session_ttl_seconds", 0),
+        ("user_requests_per_minute", 0),
+        ("daily_request_limit", 0),
+    ],
+)
+def test_numeric_settings_out_of_range_are_rejected_at_startup(field, value):
+    # 잘못된 값으로 서버가 켜진 뒤 요청마다 실패하지 않도록, 시작할 때 막는다.
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, **{field: value})
+
+
+def test_zero_context_is_allowed_to_disable_history():
+    settings = Settings(_env_file=None, context_turns=0, context_max_chars=0)
+
+    assert settings.context_turns == 0
+    assert settings.context_max_chars == 0

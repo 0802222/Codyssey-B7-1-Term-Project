@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import SecretStr, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,18 +21,19 @@ class Settings(BaseSettings):
     anthropic_base_url: str = "https://copa.codyssey.kr"
     anthropic_api_key: SecretStr | None = None
     ai_model: str = "claude-sonnet-4"
-    ai_timeout_seconds: float = 30.0
-    ai_max_output_tokens: int = 800
-    context_turns: int = 5
-    context_max_chars: int = 12_000
+    ai_timeout_seconds: float = Field(default=30.0, gt=0)
+    ai_max_output_tokens: int = Field(default=800, gt=0)
+    # 0 이면 과거 대화 없이 현재 질문만 보낸다.
+    context_turns: int = Field(default=5, ge=0)
+    context_max_chars: int = Field(default=12_000, ge=0)
 
     # 인증
-    session_ttl_seconds: int = 7_200
+    session_ttl_seconds: int = Field(default=7_200, gt=0)
     cookie_secure: bool = False
 
     # 요청 한도
-    user_requests_per_minute: int = 10
-    daily_request_limit: int = 200
+    user_requests_per_minute: int = Field(default=10, gt=0)
+    daily_request_limit: int = Field(default=200, gt=0)
 
     @model_validator(mode="after")
     def _check_consistency(self) -> "Settings":
