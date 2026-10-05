@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _check_consistency(self) -> "Settings":
-        if self.ai_provider == "anthropic" and self.anthropic_api_key is None:
+        if self.ai_provider == "anthropic" and not self._has_api_key():
             raise ValueError("AI_PROVIDER=anthropic 이면 ANTHROPIC_API_KEY 가 필요합니다.")
         if self.app_env == "production":
             if self.ai_provider == "fake":
@@ -44,6 +44,12 @@ class Settings(BaseSettings):
             if not self.cookie_secure:
                 raise ValueError("production 에서는 COOKIE_SECURE=true 가 필요합니다.")
         return self
+
+    def _has_api_key(self) -> bool:
+        # .env.example 을 그대로 복사하면 ANTHROPIC_API_KEY= (빈 값)이 들어온다.
+        # 빈 값·공백도 키가 없는 것으로 본다.
+        key = self.anthropic_api_key
+        return key is not None and key.get_secret_value().strip() != ""
 
 
 @lru_cache
