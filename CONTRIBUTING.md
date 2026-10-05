@@ -290,12 +290,12 @@ flowchart LR
 | 상태 | 코드 | 담당 | 작업 | 선행 | 이슈 | PR |
 |:---:|:---:|:---:|---|---|:---:|:---:|
 | **M1 기반** | | | | | | |
-| 🟨 | EE-01 | L 이초롱 | 저장소 협업 규칙·역할·작업 보드 | — | [#1](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/1) | |
-| 🟨 | EE-02 | L 이초롱 | FastAPI 실행 뼈대·API/DB 명세 v1 | 01 | [#2](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/2) | |
+| 🟨 | EE-01 | L 이초롱 | 저장소 협업 규칙·역할·작업 보드 | — | [#1](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/1) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
+| ✅ | EE-02 | L 이초롱 | FastAPI 실행 뼈대·API/DB 명세 v1 | 01 | [#2](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/2) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
 | ⬜ | EE-03 | A 송지윤 | 회원·세션·대화·턴 DB 모델 | 02 | | |
 | ⬜ | EE-04 | C 유민규 | 공통 웹 레이아웃·스타일 | 02 | | |
 | ⬜ | EE-05 | B 나현준 | AI provider 경계·가짜 AI 구현 | 02 | | |
-| 🟨 | EE-06 | L 이초롱 | CI·request_id·공통 오류·이벤트 로그 | 02 | [#3](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/3) | |
+| 🟨 | EE-06 | L 이초롱 | CI·request_id·공통 오류·이벤트 로그 | 02 | [#3](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/3) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
 | **M2 기능** | | | | | | |
 | ⬜ | EE-07 | A 송지윤 | 회원가입·비밀번호 해시 | 03 | | |
 | ⬜ | EE-08 | A 송지윤 | 로그인·세션·로그아웃·CSRF | 07 | | |
