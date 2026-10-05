@@ -14,7 +14,7 @@ GitHub 저장소 초대를 수락한 뒤 아래를 순서대로 실행합니다.
 
 ```bash
 brew install uv                                       # uv 설치 (Windows: https://docs.astral.sh/uv/)
-git clone https://github.com/0802222/Codyssey-B7-1-Term-Project.git
+git clone https://github.com/easy-explain/Codyssey-B7-1-Term-Project.git
 cd Codyssey-B7-1-Term-Project
 git config --local user.name "본인 이름"                # 커밋 작성자 = 본인
 git config --local user.email "본인 GitHub 이메일"
@@ -134,7 +134,7 @@ flowchart LR
   S4 --> S5["5. 커밋<br/>feat(auth): 회원가입 API 구현"] --> S6["6. 푸시"]
   S6 -->|"더 할 일"| S4
   S6 -->|"완성"| S7["7. PR 생성<br/>#13 · Closes #12"] --> S8["8. 문서 갱신"] --> S9["9. 리뷰 반영"]
-  S9 -->|"승인 + CI ✅"| S10["10. main 머지"]
+  S9 -->|"승인 + CI ✅"| S10["10. 팀장이 main 머지"]
   X["11. 다른 사람 PR 리뷰<br/>요청 오면 언제든"]
 ```
 
@@ -223,7 +223,7 @@ flowchart LR
   | base ← compare | `main` ← `feat/ee-07-signup` |
   | 제목 | `[EE-07] 회원가입 API 구현` |
   | 본문 | 템플릿 빈칸 + `Closes #12` |
-  | Reviewers | L 이초롱 → A 송지윤 또는 B 나현준 · A 송지윤 → B 나현준 · B 나현준 → A 송지윤 · C 유민규 → L 이초롱 또는 A 송지윤 |
+  | Reviewers | 리뷰 짝: L 이초롱 → A 송지윤 또는 B 나현준 · A 송지윤 → B 나현준 · B 나현준 → A 송지윤 · C 유민규 → L 이초롱 또는 A 송지윤<br>팀장 이초롱은 `.github/CODEOWNERS` 로 **자동 지정**된다 |
   | Assignees | 본인 |
 - **주의**: 생긴 PR 번호(`#13`)를 8단계 작업 목록에 적는다. 실행 못 한 테스트는 "미실행"이라고 쓴다. 만든 뒤 **CI ✅** 확인 (❌ 이면 Details → 고쳐서 푸시). 단톡에 PR 링크 공유
 
@@ -256,19 +256,20 @@ flowchart LR
 
 ### 10. main 머지
 
-- **할 일**: 승인된 PR 을 main 에 합치고 내 컴퓨터를 정리한다
+- **할 일**: 승인된 PR 을 **팀장이** main 에 합치고, 작성자는 내 컴퓨터를 정리한다
 - **어디서**: GitHub
 - **방법**:
-  1. **승인 1명 + CI ✅ + 대화 모두 해결** 확인
-  2. **작성자가** [Merge pull request] → [Confirm merge]
-  3. 내 컴퓨터 정리
+  1. 작성자: **승인 1명 + CI ✅ + 대화 모두 해결** 확인 → 단톡에 "머지 부탁드려요 + PR 링크"
+  2. **팀장 이초롱이** [Merge pull request] → [Confirm merge]. 팀장의 PR 도 팀원 1명이 승인한 뒤 팀장이 머지한다
+  3. 작성자: 머지되면 내 컴퓨터 정리
      ```bash
      git switch main
      git pull origin main
      uv sync
      git branch -d feat/ee-07-signup         # 내 컴퓨터 브랜치만 삭제 (GitHub 브랜치는 남김)
      ```
-- **주의**: 새 커밋을 올리면 승인이 취소되니 재요청한다. 머지 방식은 Create a merge commit 만 허용
+- **주의**: 새 커밋을 올리면 승인이 취소되니 재요청한다. 머지 방식은 Create a merge commit 만 허용.
+  main 반영은 GitHub 설정으로 **팀장만** 가능하다 (코드 일관성·보안을 위해 마지막 확인을 한 사람이 맡는다)
 
 ### 11. 다른 사람 PR 리뷰
 
@@ -290,12 +291,12 @@ flowchart LR
 | 상태 | 코드 | 담당 | 작업 | 선행 | 이슈 | PR |
 |:---:|:---:|:---:|---|---|:---:|:---:|
 | **M1 기반** | | | | | | |
-| 🟨 | EE-01 | L 이초롱 | 저장소 협업 규칙·역할·작업 보드 | — | [#1](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/1) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
-| ✅ | EE-02 | L 이초롱 | FastAPI 실행 뼈대·API/DB 명세 v1 | 01 | [#2](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/2) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
+| 🟨 | EE-01 | L 이초롱 | 저장소 협업 규칙·역할·작업 보드 | — | [#1](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/1) | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
+| ✅ | EE-02 | L 이초롱 | FastAPI 실행 뼈대·API/DB 명세 v1 | 01 | [#2](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/2) | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
 | ⬜ | EE-03 | A 송지윤 | 회원·세션·대화·턴 DB 모델 | 02 | | |
 | ⬜ | EE-04 | C 유민규 | 공통 웹 레이아웃·스타일 | 02 | | |
 | ⬜ | EE-05 | B 나현준 | AI provider 경계·가짜 AI 구현 | 02 | | |
-| 🟨 | EE-06 | L 이초롱 | CI·request_id·공통 오류·이벤트 로그 | 02 | [#3](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/3) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
+| 🟨 | EE-06 | L 이초롱 | CI·request_id·공통 오류·이벤트 로그 | 02 | [#3](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/3) | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
 | **M2 기능** | | | | | | |
 | ⬜ | EE-07 | A 송지윤 | 회원가입·비밀번호 해시 | 03 | | |
 | ⬜ | EE-08 | A 송지윤 | 로그인·세션·로그아웃·CSRF | 07 | | |

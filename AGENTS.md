@@ -58,3 +58,4 @@ uv run uvicorn app.main:app --reload
 - `git push --force`, `git reset --hard`, 테스트 삭제·skip 으로 실패 숨기기
 - 프로젝트 전체 재생성, 묻지 않은 대규모 리팩터링, 의존성 임의 추가·업그레이드
 - main 브랜치에 직접 커밋. 작업은 `feat/ee-XX-설명` 같은 기능 브랜치에서 한다
+- PR 머지. 머지는 팀장(L)만 한다 (main 보호 규칙의 push 제한)
