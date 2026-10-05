@@ -8,15 +8,20 @@
 """
 
 import logging
+import traceback
 from enum import StrEnum
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.core.logging import log_event
-from app.core.middleware import REQUEST_ID_HEADER
+from app.core.logging import REQUEST_ID_HEADER, log_event, request_id_var
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# 오류를 잡아서 기록하는 쪽이라 "오류가 난 위치"에서 뺀다.
+_CATCHER = PROJECT_ROOT / "app" / "core" / "middleware.py"
 
 
 class ErrorCode(StrEnum):
@@ -52,16 +57,48 @@ def not_implemented(issue: str) -> AppError:
     return AppError(501, ErrorCode.NOT_IMPLEMENTED, f"아직 구현되지 않은 기능입니다. ({issue})")
 
 
-def error_response(
-    request: Request, status_code: int, code: ErrorCode, message: str
+def _json_error(
+    status_code: int, code: ErrorCode, message: str, request_id: str | None
 ) -> JSONResponse:
-    # 500 응답은 RequestIdMiddleware 바깥에서 나가므로 헤더를 여기서도 붙인다.
-    request_id = getattr(request.state, "request_id", None)
     headers = {REQUEST_ID_HEADER: request_id} if request_id else None
     return JSONResponse(
         status_code=status_code,
         content={"error": {"code": code, "message": message, "request_id": request_id}},
         headers=headers,
+    )
+
+
+def error_response(
+    request: Request, status_code: int, code: ErrorCode, message: str
+) -> JSONResponse:
+    return _json_error(status_code, code, message, getattr(request.state, "request_id", None))
+
+
+def internal_error_response(request_id: str | None) -> JSONResponse:
+    message = "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요."
+    return _json_error(500, ErrorCode.INTERNAL_ERROR, message, request_id)
+
+
+def _error_location(exc: Exception) -> str:
+    """우리 코드 중 예외가 난 가장 안쪽 위치. 예: app/chat/service.py:42"""
+    for frame in reversed(traceback.extract_tb(exc.__traceback__)):
+        path = Path(frame.filename).resolve()
+        if path.is_relative_to(PROJECT_ROOT) and ".venv" not in path.parts and path != _CATCHER:
+            return f"{path.relative_to(PROJECT_ROOT)}:{frame.lineno}"
+    return "-"
+
+
+def log_unexpected_error(exc: Exception) -> None:
+    """예상하지 못한 오류를 기록한다.
+
+    예외 메시지·스택 원문에는 입력값이나 비밀 값이 섞일 수 있으므로 남기지 않고,
+    오류 종류와 발생 위치만 남긴다.
+    """
+    log_event(
+        "unhandled_error",
+        level=logging.ERROR,
+        error_type=type(exc).__name__,
+        location=_error_location(exc),
     )
 
 
@@ -89,11 +126,14 @@ async def _handle_http_exception(request: Request, exc: StarletteHTTPException) 
 
 
 async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
-    # 스택 트레이스는 서버 로그에만 남기고 사용자에게는 보내지 않는다.
-    log_event("unhandled_error", level=logging.ERROR, error_type=type(exc).__name__)
-    logging.getLogger("easyexplain").exception("unhandled exception")
-    message = "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요."
-    return error_response(request, 500, ErrorCode.INTERNAL_ERROR, message)
+    # 대부분은 RequestIdMiddleware 가 먼저 처리한다. 미들웨어 바깥에서 난 오류만 여기로 온다.
+    request_id = getattr(request.state, "request_id", None)
+    token = request_id_var.set(request_id)
+    try:
+        log_unexpected_error(exc)
+    finally:
+        request_id_var.reset(token)
+    return internal_error_response(request_id)
 
 
 def register_exception_handlers(app: FastAPI) -> None:
