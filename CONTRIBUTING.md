@@ -31,6 +31,13 @@ uv run pytest                                         # ✅ 전부 통과하면 
 | 실제 AI 써 보기 | `.env` 에 `AI_PROVIDER=anthropic` + **본인 키**. 키는 공유 금지 |
 | AI 코딩 도구 | 저장소의 `AGENTS.md` 를 읽게 한다 (Codex 는 자동, Claude Code 는 `CLAUDE.md` 를 통해 읽음) |
 
+저장소가 `easy-explain` Organization 으로 옮겨졌습니다. 이미 clone 했다면 주소만 바꿉니다. (브랜치·커밋은 그대로)
+
+```bash
+git remote set-url origin https://github.com/easy-explain/Codyssey-B7-1-Term-Project.git
+git remote -v                          # 새 주소가 나오면 완료
+```
+
 준비가 끝나면 이 순서로 읽습니다: 아래 [뼈대 둘러보기](#뼈대-둘러보기) → [역할별 안내](#역할별-안내)의 내 역할 →
 [API 명세](docs/spec/api.md)의 내 담당 API → [평가 대비](docs/team/2-evaluation-example.md)의 내 역할 섹션
 
