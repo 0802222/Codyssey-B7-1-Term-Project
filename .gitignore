@@ -1,23 +1,31 @@
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-.pytest_cache/
-.ruff_cache/
-
-# 민감정보 — 절대 커밋 금지
+# ── 민감정보: 절대 커밋 금지 ─────────────────────
 .env
 .env.*
 !.env.example
 
-# DB·백업 (대화 내용 포함)
+# ── DB·백업: 실제 대화 내용이 들어 있음 ───────────
 data/
+backups/
 *.db
-*.db-journal
+*.db-*
+*.sqlite
 *.sqlite3
+*.sqlite3-*
 *.bak
 
-# OS / IDE
+# ── Python 실행·도구가 만드는 파일 ───────────────
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log
+
+# ── 개인 환경 (OS·에디터·AI 도구 개인 설정) ────────
 .DS_Store
 .idea/
 .vscode/
+*.swp
+.claude/settings.local.json
