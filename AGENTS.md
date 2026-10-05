@@ -46,6 +46,10 @@ uv run uvicorn app.main:app --reload
   로그인이 필요한 API 는 `logged_in_client` fixture 를 쓴다.
   실제 AI 키가 필요한 테스트를 기본 테스트에 넣지 않는다.
 
+## 이슈
+- EE-01~24 작업 이슈는 [작업 보드](https://github.com/orgs/easy-explain/projects/1)에 이미 있다. 새로 만들지 말고 그 이슈 번호를 쓴다.
+  보드에 없는 일(버그 등)만 `.github/ISSUE_TEMPLATE/task.md` 형식으로 만들고 작업 보드에 추가한다.
+
 ## PR 리뷰·병합
 - 리뷰어는 CONTRIBUTING.md 7단계의 리뷰 짝을 지정한다. 팀장 `0802222` 는 `.github/CODEOWNERS` 로
   자동 요청된다. Draft PR 은 Ready for review 로 바꿀 때 요청된다.
