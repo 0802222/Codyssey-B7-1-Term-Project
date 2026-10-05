@@ -8,9 +8,6 @@ from uuid import UUID
 
 from app.chat.provider import ChatMessage
 
-MAX_HISTORY_TURNS = 5
-MAX_HISTORY_CHARACTERS = 12_000
-
 
 @dataclass(frozen=True)
 class HistoryTurn:
@@ -31,13 +28,22 @@ def build_messages(
     user_id: int,
     conversation_id: UUID,
     question: str,
+    max_turns: int,
+    max_chars: int,
 ) -> list[ChatMessage]:
     """과거 Q/A와 현재 질문을 반환한다. 입력 자료를 바꾸거나 보관하지 않는다.
 
     user_id는 서버 인증 결과, conversation_id는 소유권 확인을 마친 대화 ID여야 한다.
     현재 질문의 공백 제거·길이 검증과 DB 조회·소유권 검사는 호출하는 서비스가 맡는다.
+    max_turns와 max_chars는 서비스가 Settings에서 읽어 전달한다.
     """
-    # 1. 범위와 완료 여부부터 확인해야 다른 사람·실패 턴이 최근 5턴을 차지하지 않는다.
+    if max_turns < 0 or max_chars < 0:
+        raise ValueError("문맥 턴 수와 문자 예산은 0 이상이어야 합니다.")
+    # 0은 과거 문맥을 사용하지 않는 설정이다. 현재 질문은 그대로 전달한다.
+    if max_turns == 0 or max_chars == 0:
+        return [ChatMessage(role="user", content=question)]
+
+    # 1. 범위와 완료 여부부터 확인해야 다른 사람·실패 턴이 문맥 턴 수를 차지하지 않는다.
     completed_turns = []
     for turn in history:
         if (
@@ -50,15 +56,15 @@ def build_messages(
         ):
             completed_turns.append(turn)
 
-    # 2. 같은 시각이면 ID로 순서를 정하고, 가장 최근 5턴을 과거순으로 사용한다.
+    # 2. 같은 시각이면 ID로 순서를 정하고, 지정한 수만큼 최근 턴을 과거순으로 사용한다.
     completed_turns.sort(key=lambda turn: (turn.created_at, turn.id))
     messages = []
-    for turn in completed_turns[-MAX_HISTORY_TURNS:]:
+    for turn in completed_turns[-max_turns:]:
         messages.append(ChatMessage(role="user", content=turn.question))
         messages.append(ChatMessage(role="assistant", content=turn.answer or ""))
 
     # 3. 예산은 과거 대화의 문자 수다. 질문·답변을 한 쌍씩 제거해 대화 순서를 지킨다.
-    while sum(len(message.content) for message in messages) > MAX_HISTORY_CHARACTERS:
+    while sum(len(message.content) for message in messages) > max_chars:
         del messages[:2]
 
     # 현재 질문은 과거 문맥 예산 때문에 제거하지 않는다. system 지침은 별도 인자다.

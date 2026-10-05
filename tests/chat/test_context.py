@@ -6,6 +6,7 @@ import pytest
 
 from app.chat.context import HistoryTurn, build_messages
 from app.chat.provider import ChatMessage
+from app.core.config import Settings
 
 CONVERSATION_ID = UUID("00000000-0000-0000-0000-000000000001")
 OTHER_CONVERSATION_ID = UUID("00000000-0000-0000-0000-000000000002")
@@ -34,7 +35,11 @@ def make_turn(
 
 
 def test_new_conversation_has_only_the_current_user_message():
-    messages = build_messages((), user_id=1, conversation_id=CONVERSATION_ID, question="첫 질문")
+    messages = build_messages(
+        (), user_id=1, conversation_id=CONVERSATION_ID, question="첫 질문",
+        max_turns=5,
+        max_chars=12_000,
+    )
 
     assert messages == [ChatMessage(role="user", content="첫 질문")]
 
@@ -43,7 +48,9 @@ def test_completed_turn_becomes_a_whole_question_answer_pair():
     history = [make_turn(1, "  이전 질문\n", "이전 답변\t ")]
 
     messages = build_messages(
-        history, user_id=1, conversation_id=CONVERSATION_ID, question="더 쉽게"
+        history, user_id=1, conversation_id=CONVERSATION_ID, question="더 쉽게",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert messages == [
@@ -63,6 +70,8 @@ def test_history_is_sorted_by_time_before_id():
         user_id=1,
         conversation_id=CONVERSATION_ID,
         question="현재 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert [message.content for message in messages] == [
@@ -78,7 +87,9 @@ def test_equal_timestamps_are_sorted_by_turn_id():
     ]
 
     messages = build_messages(
-        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문"
+        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert [message.content for message in messages] == [
@@ -93,7 +104,9 @@ def test_only_the_five_latest_completed_turns_are_kept():
     ]
 
     messages = build_messages(
-        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문"
+        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert [message.content for message in messages] == [
@@ -115,7 +128,9 @@ def test_other_owners_and_unfinished_turns_do_not_use_the_five_turn_budget():
     ]
 
     messages = build_messages(
-        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문"
+        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert [message.content for message in messages] == [
@@ -130,7 +145,9 @@ def test_other_owners_and_unfinished_turns_do_not_use_the_five_turn_budget():
 )
 def test_a_different_user_or_conversation_cannot_reuse_the_history(user_id, conversation_id):
     messages = build_messages(
-        [make_turn(1)], user_id=user_id, conversation_id=conversation_id, question="새 질문"
+        [make_turn(1)], user_id=user_id, conversation_id=conversation_id, question="새 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert messages == [ChatMessage(role="user", content="새 질문")]
@@ -150,7 +167,9 @@ def test_missing_or_blank_history_content_is_excluded(question, answer):
     history = [make_turn(1, question, answer), make_turn(2, "유효 질문", "유효 답변")]
 
     messages = build_messages(
-        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문"
+        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert messages == [
@@ -170,6 +189,8 @@ def test_exactly_12000_history_characters_are_kept_without_counting_the_current_
         user_id=1,
         conversation_id=CONVERSATION_ID,
         question=current_question,
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert messages == [
@@ -183,7 +204,9 @@ def test_one_character_over_budget_drops_the_oldest_whole_pair():
     history = [make_turn(1, "가" * 5999, "나" * 6000), make_turn(2, "Q", "A")]
 
     messages = build_messages(
-        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문"
+        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert messages == [
@@ -202,7 +225,9 @@ def test_budget_keeps_the_newest_whole_pairs():
     ]
 
     messages = build_messages(
-        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문"
+        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert messages == [
@@ -218,7 +243,9 @@ def test_an_oversized_latest_pair_leaves_only_the_current_question():
     history = [make_turn(1), make_turn(2, "가" * 6001, "나" * 6000)]
 
     messages = build_messages(
-        history, user_id=1, conversation_id=CONVERSATION_ID, question="핵심만"
+        history, user_id=1, conversation_id=CONVERSATION_ID, question="핵심만",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert messages == [ChatMessage(role="user", content="핵심만")]
@@ -228,7 +255,9 @@ def test_other_users_large_content_does_not_use_the_character_budget():
     history = [make_turn(1), make_turn(2, "가" * 12000, "나" * 12000, user_id=2)]
 
     messages = build_messages(
-        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문"
+        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert messages == [
@@ -240,7 +269,11 @@ def test_other_users_large_content_does_not_use_the_character_budget():
 
 @pytest.mark.parametrize("question", [" \n더 쉽게\t ", "긴 질문" * 4000])
 def test_current_question_is_preserved_without_trimming_or_truncation(question):
-    messages = build_messages((), user_id=1, conversation_id=CONVERSATION_ID, question=question)
+    messages = build_messages(
+        (), user_id=1, conversation_id=CONVERSATION_ID, question=question,
+        max_turns=5,
+        max_chars=12_000,
+    )
 
     assert messages == [ChatMessage(role="user", content=question)]
 
@@ -249,7 +282,11 @@ def test_building_messages_does_not_change_the_input_order_or_turns():
     history = [make_turn(2), make_turn(1)]
     original = list(history)
 
-    build_messages(history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문")
+    build_messages(
+        history, user_id=1, conversation_id=CONVERSATION_ID, question="현재 질문",
+        max_turns=5,
+        max_chars=12_000,
+    )
 
     assert history == original
     assert [turn.id for turn in history] == [2, 1]
@@ -259,15 +296,21 @@ def test_building_messages_does_not_change_the_input_order_or_turns():
 
 def test_sequential_calls_do_not_share_a_message_list():
     first = build_messages(
-        [make_turn(1)], user_id=1, conversation_id=CONVERSATION_ID, question="첫 사용자 질문"
+        [make_turn(1)], user_id=1, conversation_id=CONVERSATION_ID, question="첫 사용자 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
     first.append(ChatMessage(role="assistant", content="호출 이후 덧붙인 답변"))
 
     second = build_messages(
-        (), user_id=2, conversation_id=OTHER_CONVERSATION_ID, question="다른 사용자 질문"
+        (), user_id=2, conversation_id=OTHER_CONVERSATION_ID, question="다른 사용자 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
     third = build_messages(
-        [make_turn(1)], user_id=1, conversation_id=CONVERSATION_ID, question="다음 질문"
+        [make_turn(1)], user_id=1, conversation_id=CONVERSATION_ID, question="다음 질문",
+        max_turns=5,
+        max_chars=12_000,
     )
 
     assert second == [ChatMessage(role="user", content="다른 사용자 질문")]
@@ -278,3 +321,122 @@ def test_sequential_calls_do_not_share_a_message_list():
     ]
     assert first is not second
     assert first is not third
+
+
+@pytest.mark.parametrize(
+    ("max_turns", "expected_turn_ids"),
+    [(1, [6]), (2, [5, 6]), (6, [1, 2, 3, 4, 5, 6])],
+)
+def test_the_requested_turn_limit_can_be_smaller_or_larger_than_five(
+    max_turns, expected_turn_ids
+):
+    history = [make_turn(i, f"질문 {i}", f"답변 {i}") for i in range(1, 7)]
+
+    messages = build_messages(
+        history,
+        user_id=1,
+        conversation_id=CONVERSATION_ID,
+        question="현재 질문",
+        max_turns=max_turns,
+        max_chars=12_000,
+    )
+
+    expected = []
+    for turn_id in expected_turn_ids:
+        expected.append(ChatMessage(role="user", content=f"질문 {turn_id}"))
+        expected.append(ChatMessage(role="assistant", content=f"답변 {turn_id}"))
+    expected.append(ChatMessage(role="user", content="현재 질문"))
+    assert messages == expected
+
+
+@pytest.mark.parametrize(
+    ("max_chars", "expected_content"),
+    [
+        (6, ["가", "나", "다다", "라라", "현재 질문"]),
+        (5, ["다다", "라라", "현재 질문"]),
+        (4, ["다다", "라라", "현재 질문"]),
+        (3, ["현재 질문"]),
+    ],
+)
+def test_the_requested_character_budget_keeps_complete_pairs_at_its_boundary(
+    max_chars, expected_content
+):
+    history = [make_turn(1, "가", "나"), make_turn(2, "다다", "라라")]
+
+    messages = build_messages(
+        history,
+        user_id=1,
+        conversation_id=CONVERSATION_ID,
+        question="현재 질문",
+        max_turns=5,
+        max_chars=max_chars,
+    )
+
+    assert [message.content for message in messages] == expected_content
+    assert [message.role for message in messages] == (
+        ["user", "assistant"] * ((len(expected_content) - 1) // 2) + ["user"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("max_turns", "max_chars"),
+    [(0, 12_000), (5, 0), (0, 0)],
+)
+def test_zero_turns_or_character_budget_keeps_only_the_current_question(max_turns, max_chars):
+    question = " \n현재 질문\t "
+
+    messages = build_messages(
+        [make_turn(1), make_turn(2)],
+        user_id=1,
+        conversation_id=CONVERSATION_ID,
+        question=question,
+        max_turns=max_turns,
+        max_chars=max_chars,
+    )
+
+    assert messages == [ChatMessage(role="user", content=question)]
+
+
+@pytest.mark.parametrize(
+    ("max_turns", "max_chars"),
+    [(-1, 12_000), (5, -1), (0, -1), (-1, 0)],
+)
+def test_negative_limits_are_rejected_even_if_the_other_limit_is_zero(max_turns, max_chars):
+    with pytest.raises(ValueError):
+        build_messages(
+            (),
+            user_id=1,
+            conversation_id=CONVERSATION_ID,
+            question="현재 질문",
+            max_turns=max_turns,
+            max_chars=max_chars,
+        )
+
+
+@pytest.mark.parametrize(
+    ("context_turns", "context_max_chars", "expected_content"),
+    [
+        (1, 100, ["Q3", "A3", "현재 질문"]),
+        (3, 8, ["Q2", "A2", "Q3", "A3", "현재 질문"]),
+    ],
+)
+def test_environment_settings_change_selection_when_the_caller_passes_them(
+    monkeypatch, context_turns, context_max_chars, expected_content
+):
+    monkeypatch.setenv("CONTEXT_TURNS", str(context_turns))
+    monkeypatch.setenv("CONTEXT_MAX_CHARS", str(context_max_chars))
+    settings = Settings(_env_file=None, app_env="test", ai_provider="fake")
+    history = [make_turn(i, f"Q{i}", f"A{i}") for i in range(1, 4)]
+
+    messages = build_messages(
+        history,
+        user_id=1,
+        conversation_id=CONVERSATION_ID,
+        question="현재 질문",
+        max_turns=settings.context_turns,
+        max_chars=settings.context_max_chars,
+    )
+
+    assert settings.context_turns == context_turns
+    assert settings.context_max_chars == context_max_chars
+    assert [message.content for message in messages] == expected_content
