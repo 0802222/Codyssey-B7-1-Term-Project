@@ -292,7 +292,7 @@ flowchart LR
 | **M1 기반** | | | | | | |
 | 🟨 | EE-01 | L 이초롱 | 저장소 협업 규칙·역할·작업 보드 | — | [#1](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/1) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
 | ✅ | EE-02 | L 이초롱 | FastAPI 실행 뼈대·API/DB 명세 v1 | 01 | [#2](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/2) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
-| ✅ | EE-03 | A 송지윤 | 회원·세션·대화·턴 DB 모델 | 02 | [#13](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/13) | [#32](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/32) |
+| ✅ | EE-03 | A 송지윤 | 회원·세션·대화·턴 DB 모델 | 02 | [#13](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/13) | [#33](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/33) |
 | ⬜ | EE-04 | C 유민규 | 공통 웹 레이아웃·스타일 | 02 | | |
 | ✅ | EE-05 | B 나현준 | AI provider 경계·가짜 AI 구현 | 02 | [#5](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/5) | [#6](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/6) |
 | 🟨 | EE-06 | L 이초롱 | CI·request_id·공통 오류·이벤트 로그 | 02 | [#3](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/3) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
