@@ -84,7 +84,8 @@ def _error_location(exc: Exception) -> str:
     for frame in reversed(traceback.extract_tb(exc.__traceback__)):
         path = Path(frame.filename).resolve()
         if path.is_relative_to(PROJECT_ROOT) and ".venv" not in path.parts and path != _CATCHER:
-            return f"{path.relative_to(PROJECT_ROOT)}:{frame.lineno}"
+            # Windows 에서도 같은 로그가 되도록 경로 구분자를 / 로 통일한다.
+            return f"{path.relative_to(PROJECT_ROOT).as_posix()}:{frame.lineno}"
     return "-"
 
 
