@@ -359,3 +359,63 @@ img {
   color: var(--text-muted);
   font-size: 0.875rem;
 }
+
+/* ===== 8. 모바일 (화면 폭 520px 이하) ===== */
+/* 메뉴가 3개뿐이라 햄버거 없이 375px 에서도 로고와 한 줄에 들어간다 */
+@media (max-width: 520px) {
+  :root {
+    --gutter: 16px;
+  }
+
+  .site-header .container {
+    padding-block: 12px;
+  }
+
+  .logo {
+    font-size: 1.125rem;
+  }
+
+  .logo img {
+    width: 28px;
+    height: 28px;
+  }
+
+  .site-nav {
+    gap: 0;
+  }
+
+  .site-nav a {
+    padding: 8px 10px;
+    font-size: 0.875rem;
+  }
+
+  .hero {
+    padding-block: 32px 28px;
+  }
+
+  .hero-mascot {
+    width: 72px;
+    height: 72px;
+  }
+
+  .hero h1 {
+    font-size: 1.875rem;
+  }
+
+  .lead {
+    font-size: 1rem;
+  }
+
+  .levels {
+    padding-block: 8px 28px;
+  }
+
+  .level-cards,
+  .feature-list {
+    grid-template-columns: 1fr;
+  }
+
+  .features {
+    padding-block: 0 36px;
+  }
+}
