@@ -5,7 +5,7 @@
 """
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, TypeAlias
 
 from fastapi import Depends, Request
 from sqlalchemy import Engine, event
@@ -41,4 +41,4 @@ def get_session(request: Request):
         yield session
 
 
-SessionDep = Annotated[Session, Depends(get_session)]
+SessionDep: TypeAlias = Annotated[Session, Depends(get_session)]

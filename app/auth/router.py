@@ -2,14 +2,12 @@
 
 from fastapi import APIRouter
 
+from app.auth.signup import router as signup_router
 from app.core.errors import not_implemented
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-
-@router.post("/signup", status_code=201)
-def signup():
-    raise not_implemented("EE-07")
+router.include_router(signup_router)
 
 
 @router.post("/login")
