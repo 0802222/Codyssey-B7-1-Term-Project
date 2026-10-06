@@ -41,4 +41,4 @@ def get_session(request: Request):
         yield session
 
 
-type SessionDep = Annotated[Session, Depends(get_session)]
+SessionDep = Annotated[Session, Depends(get_session)]
