@@ -73,3 +73,4 @@ class ChatTurn(SQLModel, table=True):
     error_code: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
     completed_at: datetime | None = None
+    

@@ -3,7 +3,7 @@
 | 언제 | 보는 곳 |
 |---|---|
 | 프로젝트에 처음 참여할 때 **한 번** | [1. 처음 할 일](#1-처음-할-일) — 환경 준비 · 뼈대 둘러보기 |
-| 기능 하나를 만들 때마다 **매번** | [2. 매번 하는 루틴](#2-매번-하는-루틴) → [작업 목록](#작업-목록)에서 내 할 일 확인 |
+| 기능 하나를 만들 때마다 **매번** | [2. 매번 하는 루틴](#2-매번-하는-루틴) → [작업 보드](https://github.com/orgs/easy-explain/projects/1)에서 내 이슈 확인 |
 | 규칙이 헷갈릴 때 | [3. 참고](#3-참고) — 커밋 메시지 · 코드 규칙 · **역할별 안내** · 문제 해결 |
 
 ---
@@ -14,7 +14,7 @@ GitHub 저장소 초대를 수락한 뒤 아래를 순서대로 실행합니다.
 
 ```bash
 brew install uv                                       # uv 설치 (Windows: https://docs.astral.sh/uv/)
-git clone https://github.com/0802222/Codyssey-B7-1-Term-Project.git
+git clone https://github.com/easy-explain/Codyssey-B7-1-Term-Project.git
 cd Codyssey-B7-1-Term-Project
 git config --local user.name "본인 이름"                # 커밋 작성자 = 본인
 git config --local user.email "본인 GitHub 이메일"
@@ -30,6 +30,13 @@ uv run pytest                                         # ✅ 전부 통과하면 
 | VS Code | `Cmd/Ctrl + Shift + P` → Python: Select Interpreter → `./.venv` |
 | 실제 AI 써 보기 | `.env` 에 `AI_PROVIDER=anthropic` + **본인 키**. 키는 공유 금지 |
 | AI 코딩 도구 | 저장소의 `AGENTS.md` 를 읽게 한다 (Codex 는 자동, Claude Code 는 `CLAUDE.md` 를 통해 읽음) |
+
+저장소가 `easy-explain` Organization 으로 옮겨졌습니다. 이미 clone 했다면 주소만 바꿉니다. (브랜치·커밋은 그대로)
+
+```bash
+git remote set-url origin https://github.com/easy-explain/Codyssey-B7-1-Term-Project.git
+git remote -v                          # 새 주소가 나오면 완료
+```
 
 준비가 끝나면 이 순서로 읽습니다: 아래 [뼈대 둘러보기](#뼈대-둘러보기) → [역할별 안내](#역할별-안내)의 내 역할 →
 [API 명세](docs/spec/api.md)의 내 담당 API → [평가 대비](docs/team/2-evaluation-example.md)의 내 역할 섹션
@@ -130,23 +137,24 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  S1["1. 작업 목록 확인<br/>EE-07: 회원가입"] --> S2["2. 브랜치 생성<br/>feat/ee-07-signup"] --> S3["3. 이슈 생성<br/>#12"] --> S4["4. 코딩"]
+  S1["1. 작업 보드에서<br/>내 이슈 고르기<br/>#15 EE-07"] --> S2["2. 브랜치 생성<br/>feat/ee-07-signup"] --> S3["3. 이슈를<br/>In Progress 로"] --> S4["4. 코딩"]
   S4 --> S5["5. 커밋<br/>feat(auth): 회원가입 API 구현"] --> S6["6. 푸시"]
   S6 -->|"더 할 일"| S4
-  S6 -->|"완성"| S7["7. PR 생성<br/>#13 · Closes #12"] --> S8["8. 문서 갱신"] --> S9["9. 리뷰 반영"]
-  S9 -->|"승인 + CI ✅"| S10["10. main 머지"]
+  S6 -->|"완성"| S7["7. PR 생성<br/>#40 · Closes #15"] --> S8["8. 문서 갱신"] --> S9["9. 리뷰 반영"]
+  S9 -->|"승인 + CI ✅"| S10["10. 팀장이 main 머지"]
   X["11. 다른 사람 PR 리뷰<br/>요청 오면 언제든"]
 ```
 
 끝나면 1번으로 돌아갑니다. **한 번에 진행하는 작업은 1개**입니다.
-예시는 A 가 `EE-07 회원가입` 을 하고, 이슈 번호가 `#12`, PR 번호가 `#13` 인 경우입니다.
+예시는 A 가 `EE-07 회원가입`(이슈 `#15`)을 하고, 만든 PR 번호가 `#40` 인 경우입니다.
 
-### 1. 작업 목록 확인
+### 1. 작업 보드에서 내 이슈 고르기
 
-- **할 일**: 내 역할의 ⬜ 작업 중 가장 앞 번호를 고른다
-- **어디서**: 이 문서 [작업 목록](#작업-목록)
-- **방법**: `담당` 열에서 내 역할·이름을 찾고 → `선행` 열의 작업이 모두 ✅ 인지 확인
-- **주의**: 선행 작업이 안 끝났으면 시작하지 말고 담당자에게 진행 상황을 묻는다
+- **할 일**: 나에게 배정된 `Todo` 이슈 중 가장 앞 번호를 고른다
+- **어디서**: [작업 보드](https://github.com/orgs/easy-explain/projects/1) (보는 법은 [작업 보드](#작업-보드))
+- **방법**: Assignees 가 나인 이슈 → 이슈 본문 `선행:` 의 이슈가 모두 닫혔는지(Done) 확인
+- **주의**: 24개 작업의 이슈는 **이미 만들어져 있다.** 새로 만들지 않는다.
+  선행 이슈가 안 끝났으면 시작하지 말고 담당자에게 진행 상황을 묻는다
 
 ### 2. 브랜치 생성
 
@@ -161,16 +169,13 @@ flowchart LR
   종류: `feat` 기능 · `fix` 버그 · `test` 테스트 · `docs` 문서 · `chore` 설정
 - **주의**: main 에서 바로 코딩하지 않는다. 이어서 작업할 때는 `git switch feat/ee-07-signup`
 
-### 3. 이슈 생성
+### 3. 이슈를 In Progress 로
 
-- **할 일**: 이번 작업의 이슈를 만들고 번호를 확인한다
-- **어디서**: GitHub
-- **방법**:
-  1. 저장소 → **Issues** → **New issue** → **작업** 템플릿 선택
-  2. 제목 `[EE-07] 회원가입·비밀번호 해시` (작업 목록의 코드·작업명 그대로)
-  3. 본문에 목표 · 할 일 · 완료 조건 채우기
-  4. 오른쪽 **Assignees** → 본인 → **Submit new issue**
-- **주의**: 생긴 번호(`#12`)를 기억한다. 커밋 `Refs #12`, PR `Closes #12` 에 쓴다
+- **할 일**: 시작한다고 표시한다
+- **어디서**: 이슈 화면 오른쪽 **Projects** → Status, 또는 작업 보드에서 카드를 옮긴다
+- **방법**: Status 를 `Todo` → `In Progress`
+- **주의**: 이슈 번호(`#15`)를 커밋 `Refs #15`, PR `Closes #15` 에 쓴다.
+  보드에 없는 일(버그 등)만 **New issue** → **작업** 템플릿으로 새로 만들고, 오른쪽 **Projects** 에서 작업 보드를 고른다
 
 ### 4. 코딩
 
@@ -192,7 +197,7 @@ flowchart LR
   git status                              # 바뀐 파일 확인
   git add app/auth/router.py tests/auth/test_signup.py     # 이번 커밋에 넣을 파일만
   git status                              # .env · .db 가 담기지 않았는지 확인
-  git commit -m "feat(auth): 회원가입 API 구현" -m "Refs #12"
+  git commit -m "feat(auth): 회원가입 API 구현" -m "Refs #15"
   ```
 - **메시지 형식**: `종류(영역): 무엇을 했는지 한국어로` + 빈 줄 + `Refs #이슈번호` — 종류·영역 표와 예시는 [커밋 메시지 규칙](#커밋-메시지-규칙)
 - **주의**:
@@ -222,27 +227,26 @@ flowchart LR
   |---|---|
   | base ← compare | `main` ← `feat/ee-07-signup` |
   | 제목 | `[EE-07] 회원가입 API 구현` |
-  | 본문 | 템플릿 빈칸 + `Closes #12` |
-  | Reviewers | L 이초롱 → A 송지윤 또는 B 나현준 · A 송지윤 → B 나현준 · B 나현준 → A 송지윤 · C 유민규 → L 이초롱 또는 A 송지윤 |
+  | 본문 | 템플릿 빈칸 + `Closes #15` |
+  | Reviewers | 리뷰 짝: L 이초롱 → A 송지윤 또는 B 나현준 · A 송지윤 → B 나현준 · B 나현준 → A 송지윤 · C 유민규 → L 이초롱 또는 A 송지윤<br>팀장 이초롱은 `.github/CODEOWNERS` 로 **자동 지정**된다 |
   | Assignees | 본인 |
-- **주의**: 생긴 PR 번호(`#13`)를 8단계 작업 목록에 적는다. 실행 못 한 테스트는 "미실행"이라고 쓴다. 만든 뒤 **CI ✅** 확인 (❌ 이면 Details → 고쳐서 푸시). 단톡에 PR 링크 공유
+- **주의**: 본문의 `Closes #15` 로 이슈와 PR 이 연결되고, 머지되면 이슈가 닫히며 보드에서 Done 이 된다. 실행 못 한 테스트는 "미실행"이라고 쓴다. 만든 뒤 **CI ✅** 확인 (❌ 이면 Details → 고쳐서 푸시). 단톡에 PR 링크 공유
 
 ### 8. 문서 갱신
 
-- **할 일**: 작업 결과를 문서에 반영해 같은 PR 에 올린다
-- **어디서**: [이 문서](#작업-목록) · [README](README.md) · [docs/spec](docs/spec/)
+- **할 일**: 작업 결과를 문서에 반영해 같은 PR 에 올린다. 작업 보드 상태는 자동으로 바뀌니 고치지 않는다
+- **어디서**: [README](README.md) · [docs/spec](docs/spec/)
 - **방법**:
 
   | 언제 | 고칠 곳 |
   |---|---|
-  | **항상** | 이 문서 [작업 목록](#작업-목록) — 내 줄 ⬜ → ✅, 이슈 · PR 번호 |
   | 기능이 완성됐으면 | [README](README.md) 3장 기능 표 — 상태 · PR |
   | API 가 바뀌었으면 | [docs/spec/api.md](docs/spec/api.md) |
   | DB 가 바뀌었으면 | [docs/spec/db.md](docs/spec/db.md) |
 
   ```bash
-  git add CONTRIBUTING.md README.md
-  git commit -m "docs: EE-07 완료 표시"
+  git add README.md
+  git commit -m "docs: EE-07 회원가입 기능 표 갱신"
   git push                                # 같은 PR 에 자동으로 추가됨
   ```
 - **주의**: API 를 바꿨으면 화면 담당 C 에게 꼭 알린다
@@ -256,19 +260,20 @@ flowchart LR
 
 ### 10. main 머지
 
-- **할 일**: 승인된 PR 을 main 에 합치고 내 컴퓨터를 정리한다
+- **할 일**: 승인된 PR 을 **팀장이** main 에 합치고, 작성자는 내 컴퓨터를 정리한다
 - **어디서**: GitHub
 - **방법**:
-  1. **승인 1명 + CI ✅ + 대화 모두 해결** 확인
-  2. **작성자가** [Merge pull request] → [Confirm merge]
-  3. 내 컴퓨터 정리
+  1. 작성자: **승인 1명 + CI ✅ + 대화 모두 해결** 확인 → 단톡에 "머지 부탁드려요 + PR 링크"
+  2. **팀장 이초롱이** [Merge pull request] → [Confirm merge]. 팀장의 PR 도 팀원 1명이 승인한 뒤 팀장이 머지한다
+  3. 작성자: 머지되면 내 컴퓨터 정리
      ```bash
      git switch main
      git pull origin main
      uv sync
      git branch -d feat/ee-07-signup         # 내 컴퓨터 브랜치만 삭제 (GitHub 브랜치는 남김)
      ```
-- **주의**: 새 커밋을 올리면 승인이 취소되니 재요청한다. 머지 방식은 Create a merge commit 만 허용
+- **주의**: 새 커밋을 올리면 승인이 취소되니 재요청한다. 머지 방식은 Create a merge commit 만 허용.
+  main 반영은 GitHub 설정으로 **팀장만** 가능하다 (코드 일관성·보안을 위해 마지막 확인을 한 사람이 맡는다)
 
 ### 11. 다른 사람 PR 리뷰
 
@@ -280,44 +285,24 @@ flowchart LR
   - [ ] 테스트가 있는가
   - [ ] 키 · 비밀번호 · `.env` · DB 파일이 없는가
   - [ ] 담당 폴더 밖을 말없이 고치지 않았는가
-  - [ ] 작업 목록이 갱신되었는가
+  - [ ] PR 본문에 `Closes #이슈번호` 가 있는가
 - **주의**: 코멘트에는 "왜"를 함께 쓴다. 사소한 건 `nit:` 을 붙인다
 
-## 작업 목록
+## 작업 보드
 
-⬜ 시작 전 · 🟨 일부 완료 · ✅ 완료 — 8단계(문서 갱신)에서 내 줄을 고칩니다.
+24개 작업은 모두 이슈로 만들어져 [**작업 보드**](https://github.com/orgs/easy-explain/projects/1)에서 관리합니다. 순서는 위 [작업 순서 그림](#작업-순서-한눈에-보기)과 같습니다.
 
-| 상태 | 코드 | 담당 | 작업 | 선행 | 이슈 | PR |
-|:---:|:---:|:---:|---|---|:---:|:---:|
-| **M1 기반** | | | | | | |
-| 🟨 | EE-01 | L 이초롱 | 저장소 협업 규칙·역할·작업 보드 | — | [#1](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/1) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
-| ✅ | EE-02 | L 이초롱 | FastAPI 실행 뼈대·API/DB 명세 v1 | 01 | [#2](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/2) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
-| ✅ | EE-03 | A 송지윤 | 회원·세션·대화·턴 DB 모델 | 02 | [#13](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/13) | [#33](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/33) |
-| ⬜ | EE-04 | C 유민규 | 공통 웹 레이아웃·스타일 | 02 | | |
-| ✅ | EE-05 | B 나현준 | AI provider 경계·가짜 AI 구현 | 02 | [#5](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/5) | [#6](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/6) |
-| 🟨 | EE-06 | L 이초롱 | CI·request_id·공통 오류·이벤트 로그 | 02 | [#3](https://github.com/0802222/Codyssey-B7-1-Term-Project/issues/3) | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
-| **M2 기능** | | | | | | |
-| ⬜ | EE-07 | A 송지윤 | 회원가입·비밀번호 해시 | 03 | | |
-| ⬜ | EE-08 | A 송지윤 | 로그인·세션·로그아웃·CSRF | 07 | | |
-| ⬜ | EE-09 | C 유민규 | 회원가입·로그인 화면 | 04 | | |
-| ⬜ | EE-10 | B 나현준 | 설명 수준 프롬프트·최근 문맥 구성 | 05 | | |
-| ⬜ | EE-11 | A 송지윤 | 대화 저장소·본인 기록 API | 08 | | |
-| ⬜ | EE-12 | C 유민규 | 챗 입력·수준 선택·안전한 응답 표시 | 04 | | |
-| **M3 통합** | | | | | | |
-| ⬜ | EE-13 | B 나현준 | 실제 AI 연결·채팅 API 처리 순서 | 06·08·10·11 | | |
-| ⬜ | EE-14 | C 유민규 | 화면 API 통합·로딩·오류·재시도 | 09·12·13 | | |
-| ⬜ | EE-15 | A 송지윤 | 권한·DB 실패·중복 요청 회귀 검증 | 11·13 | | |
-| ⬜ | EE-16 | B 나현준 | AI 오류 매핑·중복/질문 횟수 제한 | 13 | | |
-| ⬜ | EE-17 | C 유민규 | 내 기록 화면·모바일·대화 이어가기 | 11·14 | | |
-| ⬜ | EE-18 | L 이초롱 | 전체 통합·보안·실패 경로 회귀 검증 | 14·15·16·17 | | |
-| **M4 안정화** | | | | | | |
-| ⬜ | EE-19 | B 나현준 | AI 테스트·설명 품질 샘플 증빙 | 16 | | |
-| ⬜ | EE-20 | A 송지윤 | DB 확인·백업/복구·기여 문서 | 15 | | |
-| ⬜ | EE-21 | C 유민규 | 접근성·화면 검증·사용 가이드 | 17 | | |
-| ⬜ | EE-22 | L 이초롱 | 외부 배포·영속 DB·재시작 검증 | 18 | | |
-| ⬜ | EE-23 | B 나현준 | 배포 환경 실제 AI·시간 초과 검증 기록 | 19·22 | | |
-| **M5 제출** | | | | | | |
-| ⬜ | EE-24 | L 이초롱 | 제출 요구사항·4인 기여·릴리스 점검 | 20·21·22·23 | | |
+| 보는 법 | |
+|---|---|
+| 내 작업만 | 보드 위 검색창에 `assignee:@me` |
+| 마일스톤별 | 이슈마다 M1 기반 ~ M5 제출 마일스톤이 있다 |
+| 시작해도 되나 | 이슈 본문의 `선행:` 이슈가 모두 Done |
+
+| Status | 바뀌는 때 |
+|---|---|
+| `Todo` | 시작 전 |
+| `In Progress` | 3단계에서 **직접** 바꾼다 |
+| `Done` | **자동**: 이슈가 닫히거나 `Closes #번호` PR 이 머지되면 |
 
 ---
 
@@ -357,7 +342,7 @@ Refs #이슈번호
 
 ## 역할별 안내
 
-네 명이 **동시에** 시작합니다. 첫 작업은 [작업 목록](#작업-목록)에서 내 역할의 가장 앞 번호입니다.
+네 명이 **동시에** 시작합니다. 첫 작업은 [작업 보드](https://github.com/orgs/easy-explain/projects/1)에서 나에게 배정된 이슈 중 가장 앞 번호입니다.
 **내 폴더** 밖의 파일은 고치지 않습니다. 필요하면 담당자와 먼저 이야기합니다.
 
 ### 👑 L 이초롱 — 팀장 · 공통 뼈대, 오류·로그, CI, 통합, 배포

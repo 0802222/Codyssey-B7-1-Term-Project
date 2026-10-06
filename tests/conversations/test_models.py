@@ -98,3 +98,4 @@ def test_chat_turn_client_request_id_must_be_unique_per_user(engine):
 
         with pytest.raises(IntegrityError):
             session.commit()
+            
