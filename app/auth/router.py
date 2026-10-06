@@ -2,12 +2,13 @@
 
 import re
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pwdlib import PasswordHash
 from pydantic import BaseModel, Field
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlmodel import select
 
+from app.core.deps import SettingsDep
 from app.core.errors import AppError, ErrorCode, not_implemented
 from app.db.models import User
 from app.db.session import SessionDep
@@ -25,8 +26,19 @@ class SignupRequest(BaseModel):
 @router.post("/signup", status_code=201)
 def signup(
     request: SignupRequest,
+    http_request: Request,
     session: SessionDep,
+    settings: SettingsDep,
 ):
+    origin = http_request.headers.get("origin")
+
+    if origin != settings.site_origin:
+        raise AppError(
+            status_code=403,
+            code=ErrorCode.CSRF_REJECTED,
+            message="허용되지 않은 요청입니다.",
+        )
+
     email = request.email.strip().lower()
 
     if not email:
@@ -36,16 +48,24 @@ def signup(
             message="이메일을 입력해 주세요.",
         )
 
-    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+    if not re.fullmatch(r"[^@\s]+@(?:[^@\s.]+\.)+[^@\s.]+", email):
         raise AppError(
             status_code=422,
             code=ErrorCode.VALIDATION_ERROR,
             message="올바른 이메일 형식을 입력해 주세요.",
         )
 
-    existing_user = session.exec(
-        select(User).where(User.email == email)
-    ).first()
+    try:
+        existing_user = session.exec(
+            select(User).where(User.email == email)
+        ).first()
+    except SQLAlchemyError:
+        session.rollback()
+        raise AppError(
+            status_code=503,
+            code=ErrorCode.DB_ERROR,
+            message="데이터베이스 오류가 발생했어요. 잠시 후 다시 시도해 주세요.",
+        ) from None
 
     if existing_user is not None:
         raise AppError(
@@ -72,8 +92,23 @@ def signup(
             code=ErrorCode.ACCOUNT_EXISTS,
             message="이미 가입된 이메일이에요.",
         ) from None
+    except SQLAlchemyError:
+        session.rollback()
+        raise AppError(
+            status_code=503,
+            code=ErrorCode.DB_ERROR,
+            message="데이터베이스 오류가 발생했어요. 잠시 후 다시 시도해 주세요.",
+        ) from None
 
-    session.refresh(user)
+    try:
+        session.refresh(user)
+    except SQLAlchemyError:
+        session.rollback()
+        raise AppError(
+            status_code=503,
+            code=ErrorCode.DB_ERROR,
+            message="데이터베이스 오류가 발생했어요. 잠시 후 다시 시도해 주세요.",
+        ) from None
 
     return {
         "id": user.id,

@@ -1,8 +1,15 @@
+import sqlite3
 from pathlib import Path
+from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
+from pwdlib import PasswordHash
+from sqlalchemy.exc import SQLAlchemyError
+from sqlmodel import Session, create_engine, select
 
 from app.core.config import Settings
+from app.db.models import User
+from app.db.session import get_session
 from app.main import create_app
 
 
@@ -22,6 +29,7 @@ def test_signup_success(tmp_path):
     with TestClient(app) as client:
         response = client.post(
             "/api/auth/signup",
+            headers={"Origin": "http://localhost:8000"},
             json={
                 "email": "test@example.com",
                 "password": "1234567890",
@@ -42,9 +50,18 @@ def test_signup_duplicate_email(tmp_path):
             "email": "test@example.com",
             "password": "1234567890",
         }
+        headers = {"Origin": "http://localhost:8000"}
 
-        first_response = client.post("/api/auth/signup", json=data)
-        second_response = client.post("/api/auth/signup", json=data)
+        first_response = client.post(
+            "/api/auth/signup",
+            headers=headers,
+            json=data,
+        )
+        second_response = client.post(
+            "/api/auth/signup",
+            headers=headers,
+            json=data,
+        )
 
     assert first_response.status_code == 201
     assert second_response.status_code == 409
@@ -57,6 +74,7 @@ def test_signup_invalid_email(tmp_path):
     with TestClient(app) as client:
         response = client.post(
             "/api/auth/signup",
+            headers={"Origin": "http://localhost:8000"},
             json={
                 "email": "invalid-email",
                 "password": "1234567890",
@@ -66,12 +84,67 @@ def test_signup_invalid_email(tmp_path):
     assert response.status_code == 422
 
 
+def test_signup_email_with_empty_domain_section(tmp_path):
+    app = create_test_app(tmp_path)
+    database_url = f"sqlite:///{tmp_path / 'test.db'}"
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/auth/signup",
+            headers={"Origin": "http://localhost:8000"},
+            json={
+                "email": "user@example..com",
+                "password": "1234567890",
+            },
+        )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+    engine = create_engine(database_url)
+
+    with Session(engine) as session:
+        user = session.exec(
+            select(User).where(User.email == "user@example..com")
+        ).first()
+
+    assert user is None
+
+
+def test_signup_rejects_other_origin(tmp_path):
+    app = create_test_app(tmp_path)
+    database_url = f"sqlite:///{tmp_path / 'test.db'}"
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/auth/signup",
+            headers={"Origin": "https://attacker.invalid"},
+            json={
+                "email": "attacker@example.com",
+                "password": "1234567890",
+            },
+        )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "CSRF_REJECTED"
+
+    engine = create_engine(database_url)
+
+    with Session(engine) as session:
+        user = session.exec(
+            select(User).where(User.email == "attacker@example.com")
+        ).first()
+
+    assert user is None
+
+
 def test_signup_password_too_short(tmp_path):
     app = create_test_app(tmp_path)
 
     with TestClient(app) as client:
         response = client.post(
             "/api/auth/signup",
+            headers={"Origin": "http://localhost:8000"},
             json={
                 "email": "test@example.com",
                 "password": "123456789",
@@ -87,6 +160,7 @@ def test_signup_password_too_long(tmp_path):
     with TestClient(app) as client:
         response = client.post(
             "/api/auth/signup",
+            headers={"Origin": "http://localhost:8000"},
             json={
                 "email": "test@example.com",
                 "password": "a" * 129,
@@ -102,6 +176,7 @@ def test_signup_email_is_normalized(tmp_path):
     with TestClient(app) as client:
         response = client.post(
             "/api/auth/signup",
+            headers={"Origin": "http://localhost:8000"},
             json={
                 "email": "  TEST@EXAMPLE.COM  ",
                 "password": "1234567890",
@@ -110,4 +185,138 @@ def test_signup_email_is_normalized(tmp_path):
 
     assert response.status_code == 201
     assert response.json()["email"] == "test@example.com"
-    
+
+
+def test_signup_password_is_stored_as_argon2_hash(tmp_path):
+    app = create_test_app(tmp_path)
+    database_url = f"sqlite:///{tmp_path / 'test.db'}"
+    password = "1234567890"
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/auth/signup",
+            headers={"Origin": "http://localhost:8000"},
+            json={
+                "email": "hash-test@example.com",
+                "password": password,
+            },
+        )
+
+    assert response.status_code == 201
+
+    engine = create_engine(database_url)
+
+    with Session(engine) as session:
+        user = session.exec(
+            select(User).where(User.email == "hash-test@example.com")
+        ).first()
+
+    assert user is not None
+    assert user.password_hash != password
+    assert user.password_hash.startswith("$argon2")
+
+    password_hash = PasswordHash.recommended()
+    assert password_hash.verify(password, user.password_hash)
+
+
+def test_signup_db_query_error(tmp_path):
+    app = create_test_app(tmp_path)
+    session = MagicMock()
+    session.exec.side_effect = SQLAlchemyError("database error")
+
+    app.dependency_overrides[get_session] = lambda: session
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/auth/signup",
+                headers={"Origin": "http://localhost:8000"},
+                json={
+                    "email": "query-error@example.com",
+                    "password": "1234567890",
+                },
+            )
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "DB_ERROR"
+    session.rollback.assert_called_once()
+
+
+def test_signup_db_commit_error(tmp_path):
+    app = create_test_app(tmp_path)
+    session = MagicMock()
+    session.exec.return_value.first.return_value = None
+    session.commit.side_effect = SQLAlchemyError("database error")
+
+    app.dependency_overrides[get_session] = lambda: session
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/auth/signup",
+                headers={"Origin": "http://localhost:8000"},
+                json={
+                    "email": "commit-error@example.com",
+                    "password": "1234567890",
+                },
+            )
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "DB_ERROR"
+    session.rollback.assert_called_once()
+
+
+def test_signup_db_refresh_error(tmp_path):
+    app = create_test_app(tmp_path)
+    session = MagicMock()
+    session.exec.return_value.first.return_value = None
+    session.refresh.side_effect = SQLAlchemyError("database error")
+
+    app.dependency_overrides[get_session] = lambda: session
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/auth/signup",
+                headers={"Origin": "http://localhost:8000"},
+                json={
+                    "email": "refresh-error@example.com",
+                    "password": "1234567890",
+                },
+            )
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "DB_ERROR"
+    session.rollback.assert_called_once()
+
+def test_signup_locked_database_returns_db_error(tmp_path):
+    app = create_test_app(tmp_path)
+    database_path = tmp_path / "test.db"
+
+    with TestClient(app) as client:
+        lock_connection = sqlite3.connect(database_path, timeout=0)
+        lock_cursor = lock_connection.cursor()
+
+        try:
+            lock_cursor.execute("BEGIN EXCLUSIVE")
+
+            response = client.post(
+                "/api/auth/signup",
+                headers={"Origin": "http://localhost:8000"},
+                json={
+                    "email": "locked@example.com",
+                    "password": "1234567890",
+                },
+            )
+        finally:
+            lock_connection.rollback()
+            lock_connection.close()
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "DB_ERROR"
