@@ -13,7 +13,8 @@ Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝�
 | 언제 | 문서 | 내용 |
 |---|---|---|
 | ① 첫 회의 | [docs/team/1-kickoff.md](docs/team/1-kickoff.md) | 과제 소개, 역할 정하기, 커밋·API·DB 합의 |
-| ② 착수할 때 + 매번 | [CONTRIBUTING.md](CONTRIBUTING.md) | 처음 할 일·뼈대 둘러보기, **매번 하는 루틴 11단계**, 24개 작업 목록, 역할별 안내 |
+| ② 착수할 때 + 매번 | [CONTRIBUTING.md](CONTRIBUTING.md) | 처음 할 일·뼈대 둘러보기, **매번 하는 루틴 11단계**, 역할별 안내 |
+| 매번 | [작업 보드](https://github.com/orgs/easy-explain/projects/1) | 24개 작업 이슈와 진행 상황 (내 작업: `assignee:@me`) |
 | 작업 중 수시로 | [docs/spec/api.md](docs/spec/api.md) · [docs/spec/db.md](docs/spec/db.md) | API 명세, DB 구조 (바꾸려면 PR 먼저) |
 | ③ 평가 전 | [docs/team/2-evaluation-example.md](docs/team/2-evaluation-example.md) | 예상 진행 대본, 내 코드 설명 준비 |
 | 읽지 않아도 됨 | `AGENTS.md`, `CLAUDE.md` | AI 코딩 도구가 읽는 규칙 (CONTRIBUTING 요약본) |
@@ -117,12 +118,12 @@ AGENTS.md             # AI 코딩 도구용 규칙
 | **대화 기록** | 대화 만들기 | 새 대화 시작 | A | `POST /api/conversations` | ⬜ | |
 | | 내 기록 조회 | 내 대화 목록·상세, 남의 대화는 볼 수 없음 | A 조회 API·권한<br>C 기록 화면 | `GET /api/me/conversations`<br>`GET /api/me/chats`<br>`/history` | ⬜ | |
 | | DB 확인 도구 | 사용자별 최근 대화 조회 SQL | A | `scripts/check_logs.sql` | ⬜ | |
-| **안정성** | 오류 안내 | AI 지연·실패·DB 오류에도 서버 유지, 공통 형식으로 안내 | L 공통 오류 형식<br>B AI 오류 처리<br>C 오류 메시지 표시 | 모든 API | 🟨 | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
-| | 입력 검증 | 빈 질문, 2,000자 초과, 잘못된 값 차단 | B 서버 검증<br>C 화면 입력 제한 | `POST /api/chat` | 🟨 | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
-| | 서버 로그 | 요청·AI 호출·DB 저장을 요청 ID 로 묶어 기록 | L 요청 로그<br>B AI 호출 로그<br>A DB 저장 로그 | 서버 로그 | 🟨 | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
-| | 상태 확인 | 서버·DB 정상 여부 | L | `GET /health` | ✅ | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
+| **안정성** | 오류 안내 | AI 지연·실패·DB 오류에도 서버 유지, 공통 형식으로 안내 | L 공통 오류 형식<br>B AI 오류 처리<br>C 오류 메시지 표시 | 모든 API | 🟨 | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
+| | 입력 검증 | 빈 질문, 2,000자 초과, 잘못된 값 차단 | B 서버 검증<br>C 화면 입력 제한 | `POST /api/chat` | 🟨 | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
+| | 서버 로그 | 요청·AI 호출·DB 저장을 요청 ID 로 묶어 기록 | L 요청 로그<br>B AI 호출 로그<br>A DB 저장 로그 | 서버 로그 | 🟨 | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
+| | 상태 확인 | 서버·DB 정상 여부 | L | `GET /health` | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
 | **배포·협업** | 외부 배포 | 공개 URL, 재시작해도 기록 유지 | L | 서비스 URL | ⬜ | |
-| | 자동 검사 (CI) | PR 마다 코드 검사·테스트 자동 실행 | L | GitHub Actions | 🟨 | [#4](https://github.com/0802222/Codyssey-B7-1-Term-Project/pull/4) |
+| | 자동 검사 (CI) | PR 마다 코드 검사·테스트 자동 실행 | L | GitHub Actions | 🟨 | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
 
 ⬜ 미착수 · 🟨 일부 완료 · ✅ 완료 — 기능을 머지할 때 상태와 PR 번호를 함께 적습니다.
 
@@ -196,7 +197,7 @@ EasyExplain **웹 서버를 내 컴퓨터에서 실행**하는 방법입니다. 
 brew install uv                       # macOS (Windows: https://docs.astral.sh/uv/ 참고)
 
 # 2) 프로젝트 코드를 내려받고, 필요한 파이썬 패키지 설치
-git clone https://github.com/0802222/Codyssey-B7-1-Term-Project.git
+git clone https://github.com/easy-explain/Codyssey-B7-1-Term-Project.git
 cd Codyssey-B7-1-Term-Project
 uv sync
 
