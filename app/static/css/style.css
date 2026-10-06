@@ -4,7 +4,7 @@
  * 색·글꼴·모서리 같은 디자인 값은 맨 위 :root 변수에 모아 두었다.
  * 색을 바꾸려면 변수만 고치면 된다. (글자 대비는 모두 4.5:1 이상, 테두리는 3:1 이상으로 계산해 정했다)
  *
- * 1. 디자인 값  2. 기본  3. 레이아웃  4. 헤더·메뉴  5. 푸터  6. 버튼
+ * 1. 디자인 값  2. 기본  3. 레이아웃  4. 헤더·메뉴  5. 푸터  6. 버튼  7. 소개 페이지
  */
 
 /* ===== 1. 디자인 값 ===== */
@@ -23,6 +23,7 @@
   --accent-text: #4A2FB5;  /* 연한 강조 바탕 위의 글자 */
   --error-bg: #FFF0EB;     /* 오류 안내 바탕 */
   --error-text: #B3330F;   /* 오류 안내 글자 */
+  --highlight: #FFD9B8;    /* 제목 일부를 형광펜처럼 칠하는 색 */
 
   /* 설명 수준별 카드 색 (아주 쉽게 / 입문자 / 전공자) */
   --level-easy: #FFE6D4;
@@ -198,4 +199,163 @@ img {
 
 .btn-secondary:hover {
   background: var(--accent-soft);
+}
+
+/* ===== 7. 소개 페이지 (/) ===== */
+/* 화면에는 안 보이고 스크린리더에만 읽히는 글 */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.hero {
+  padding-block: 56px 40px;
+  text-align: center;
+}
+
+.hero-mascot {
+  display: block;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 8px;
+}
+
+.eyebrow {
+  margin-bottom: 10px;
+  color: var(--accent-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.hero h1 {
+  margin-bottom: 14px;
+  font-family: var(--font-display);
+  font-size: 2.75rem;
+  font-weight: 400; /* Jua 에는 굵은 글씨체가 없어서 400 으로 둔다 */
+  line-height: 1.3;
+}
+
+/* 글자 아래쪽 절반만 형광펜처럼 칠한다 */
+.highlight {
+  background: linear-gradient(transparent 62%, var(--highlight) 62%);
+}
+
+.lead {
+  max-width: 34em;
+  margin: 0 auto 24px;
+  color: var(--text-muted);
+  font-size: 1.0625rem;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.levels {
+  padding-block: 16px 40px;
+  text-align: center;
+}
+
+.levels h2 {
+  margin-bottom: 4px;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+
+.levels-question {
+  margin-bottom: 18px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.level-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  text-align: left;
+}
+
+.level-card {
+  padding: 20px;
+  border-radius: var(--radius-card);
+}
+
+.level-easy {
+  background: var(--level-easy);
+}
+
+.level-beginner {
+  background: var(--level-beginner);
+}
+
+.level-advanced {
+  background: var(--level-advanced);
+}
+
+.level-tag {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 2px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--accent-text);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.level-card p {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+.features {
+  padding-block: 0 56px;
+}
+
+.feature-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.feature-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.feature h3 {
+  margin-bottom: 2px;
+  font-size: 1rem;
+}
+
+.feature p {
+  color: var(--text-muted);
+  font-size: 0.875rem;
 }

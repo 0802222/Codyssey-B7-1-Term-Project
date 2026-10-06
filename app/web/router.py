@@ -5,16 +5,22 @@
 (로그인 확인은 app.auth.dependencies.OptionalUserDep 사용)
 """
 
-from fastapi import APIRouter
+from pathlib import Path
+
+from fastapi import APIRouter, Request
+from fastapi.templating import Jinja2Templates
 
 from app.core.errors import not_implemented
+
+TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 router = APIRouter(tags=["web"], include_in_schema=False)
 
 
 @router.get("/")
-def index():
-    raise not_implemented("EE-04")
+def index(request: Request):
+    return templates.TemplateResponse(request, "index.html")
 
 
 @router.get("/signup")
