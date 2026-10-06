@@ -1,0 +1,201 @@
+/*
+ * EasyExplain 공통 스타일 — 화면 디자인 F "친근한 캐릭터"
+ *
+ * 색·글꼴·모서리 같은 디자인 값은 맨 위 :root 변수에 모아 두었다.
+ * 색을 바꾸려면 변수만 고치면 된다. (글자 대비는 모두 4.5:1 이상, 테두리는 3:1 이상으로 계산해 정했다)
+ *
+ * 1. 디자인 값  2. 기본  3. 레이아웃  4. 헤더·메뉴  5. 푸터  6. 버튼
+ */
+
+/* ===== 1. 디자인 값 ===== */
+:root {
+  /* 색 */
+  --bg: #F6F2FF;           /* 페이지 배경 (연보라) */
+  --surface: #FFFFFF;      /* 헤더·푸터·카드 바탕 */
+  --line: #E4DBFF;         /* 옅은 구분선 */
+  --line-strong: #8574C4;  /* 입력칸·버튼 테두리 */
+  --text: #2A2150;         /* 본문 글자 */
+  --text-muted: #5E5784;   /* 보조 글자 */
+  --accent: #6B46E5;       /* 강조색 (주요 버튼·링크) */
+  --accent-hover: #5835CC; /* 강조색 위에 마우스를 올렸을 때 */
+  --on-accent: #FFFFFF;    /* 강조색 바탕 위의 글자 */
+  --accent-soft: #EAE2FF;  /* 연한 강조 바탕 (메뉴의 현재 위치) */
+  --accent-text: #4A2FB5;  /* 연한 강조 바탕 위의 글자 */
+  --error-bg: #FFF0EB;     /* 오류 안내 바탕 */
+  --error-text: #B3330F;   /* 오류 안내 글자 */
+
+  /* 설명 수준별 카드 색 (아주 쉽게 / 입문자 / 전공자) */
+  --level-easy: #FFE6D4;
+  --level-beginner: #D5F5E7;
+  --level-advanced: #E3DBFF;
+
+  /* 모서리 */
+  --radius-pill: 999px;
+  --radius-card: 24px;
+  --radius-bubble: 22px;
+  --radius-field: 16px;
+
+  /* 글꼴: 제목·로고는 Jua, 본문은 Pretendard. 못 받으면 뒤쪽 글꼴로 보인다 */
+  --font-body: "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --font-display: "Jua", var(--font-body);
+
+  /* 폭 */
+  --content-width: 960px;
+  --gutter: 24px;
+}
+
+/* ===== 2. 기본 ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+main {
+  flex: 1; /* 내용이 짧아도 푸터가 화면 아래에 붙게 */
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 키보드로 이동할 때 보이는 테두리 */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ===== 3. 레이아웃 ===== */
+.container {
+  width: 100%;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+}
+
+/* ===== 4. 헤더·메뉴 ===== */
+.site-header {
+  background: var(--surface);
+  border-bottom: 2px solid var(--line);
+}
+
+.site-header .container {
+  display: flex;
+  flex-wrap: wrap; /* 아주 좁은 화면에서는 메뉴가 로고 아래로 내려간다 */
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding-block: 14px;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.logo img {
+  width: 32px;
+  height: 32px;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.site-nav a {
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+
+.site-nav a:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.site-nav a[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 500;
+}
+
+/* ===== 5. 푸터 ===== */
+.site-footer {
+  background: var(--surface);
+  border-top: 2px solid var(--line);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.site-footer .container {
+  padding-block: 16px;
+}
+
+/* ===== 6. 버튼 ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px; /* 손가락으로 누르기 편한 크기 */
+  padding: 0 22px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.btn-secondary:hover {
+  background: var(--accent-soft);
+}
