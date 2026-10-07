@@ -26,20 +26,25 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 password_hash = PasswordHash.recommended()
 DUMMY_PASSWORD_HASH = password_hash.hash("dummy-password")
 
+# 비밀번호에 쓸 수 있는 글자: 영어(영문·숫자·기호)와 공백 = ASCII 32~126 (docs/spec/api.md 2장)
+PASSWORD_PATTERN = r"^[\x20-\x7E]+$"
+
 
 class SignupRequest(BaseModel):
-    email: str = Field(max_length=254)
+    email: str = Field(max_length=100)
     password: str = Field(
-        min_length=10,
-        max_length=128,
+        min_length=8,
+        max_length=64,
+        pattern=PASSWORD_PATTERN,
     )
 
 
 class LoginRequest(BaseModel):
-    email: str = Field(max_length=254)
+    email: str = Field(max_length=100)
     password: str = Field(
-        min_length=10,
-        max_length=128,
+        min_length=8,
+        max_length=64,
+        pattern=PASSWORD_PATTERN,
     )
 
 

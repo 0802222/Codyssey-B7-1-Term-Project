@@ -129,7 +129,7 @@ def test_login_rejects_invalid_password_length(client, settings):
         headers={"Origin": settings.site_origin},
         json={
             "email": "test@example.com",
-            "password": "123456789",
+            "password": "1234567",
         },
     )
 
@@ -145,7 +145,7 @@ def test_login_rejects_too_long_password(client, settings):
         headers={"Origin": settings.site_origin},
         json={
             "email": "test@example.com",
-            "password": "a" * 129,
+            "password": "a" * 65,
         },
     )
 
@@ -158,8 +158,46 @@ def test_login_rejects_too_long_email(client, settings):
         "/api/auth/login",
         headers={"Origin": settings.site_origin},
         json={
-            "email": ("a" * 243) + "@example.com",
+            "email": ("a" * 89) + "@example.com",
             "password": "1234567890",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_login_accepts_8_char_password(client, settings):
+    client.post(
+        "/api/auth/signup",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": "short@example.com",
+            "password": "abcd1234",
+        },
+    )
+
+    response = client.post(
+        "/api/auth/login",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": "short@example.com",
+            "password": "abcd1234",
+        },
+    )
+
+    assert response.status_code == 200
+
+
+def test_login_rejects_non_english_password(client, settings):
+    _signup(client, settings)
+
+    response = client.post(
+        "/api/auth/login",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": "test@example.com",
+            "password": "비밀번호1234",
         },
     )
 
