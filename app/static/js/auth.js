@@ -103,8 +103,9 @@ function connectAuthForm(form, apiUrl, onSuccess) {
 const signupForm = document.getElementById("signup-form");
 if (signupForm) {
   connectAuthForm(signupForm, "/api/auth/signup", () => {
-    // 가입 API 는 계정만 만들고 로그인 상태(세션)는 만들지 않는다 → 로그인 화면으로
-    location.replace("/login");
+    // 가입 API 는 계정만 만들고 로그인 상태(세션)는 만들지 않는다 → 로그인 화면으로.
+    // joined=1 이면 로그인 화면이 "가입이 끝났어요" 안내를 띄운다 (이메일은 주소에 넣지 않는다)
+    location.replace("/login?joined=1");
   });
 }
 

@@ -31,7 +31,9 @@ def signup_page(request: Request):
 
 @router.get("/login")
 def login_page(request: Request):
-    return templates.TemplateResponse(request, "login.html", {"active": "login"})
+    # 가입하고 넘어오면(/login?joined=1) "가입이 끝났어요" 안내를 함께 보여 준다
+    joined = request.query_params.get("joined") == "1"
+    return templates.TemplateResponse(request, "login.html", {"active": "login", "joined": joined})
 
 
 @router.get("/chat")

@@ -419,6 +419,16 @@ img {
   font-size: 0.875rem;
 }
 
+/* 안내 문구 (가입 직후의 로그인 화면) */
+.form-notice {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: var(--radius-field);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.875rem;
+}
+
 .form-error svg {
   flex: none;
   width: 20px;
