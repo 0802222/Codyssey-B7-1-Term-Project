@@ -81,3 +81,17 @@ def test_header_follows_real_login_session(client, settings):
 
     assert labels(client.get("/").text)[-1] == "button:로그아웃"
     assert labels(client.get("/chat").text)[-1] == "button:로그아웃"
+
+
+def test_header_shows_login_again_after_logout(client, settings):
+    # 로그아웃 버튼(logout.js)이 보내는 요청과 같은 것: POST /api/auth/logout + X-CSRF-Token
+    account = {"email": "logout@example.com", "password": "1234567890"}
+    headers = {"Origin": settings.site_origin}
+    client.post("/api/auth/signup", headers=headers, json=account)
+    csrf_token = client.post("/api/auth/login", headers=headers, json=account).json()["csrf_token"]
+
+    response = client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf_token})
+
+    assert response.status_code == 204
+    assert labels(client.get("/").text)[-1] == "a:로그인"
+    assert client.get("/chat", follow_redirects=False).status_code == 303
