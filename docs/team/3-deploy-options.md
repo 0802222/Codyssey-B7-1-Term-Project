@@ -1,17 +1,17 @@
 # 배포 방식 정하기 — 같이 결정할 안건
 
-> 팀장이 먼저 비교해 본 **제안**입니다. 읽어 보고 다른 생각이 있으면 편하게 말해 주세요.
+> ✅ **결정: Railway (Hobby + Volume)** — [PR #34](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/34) 에서 4명 모두 동의했어요. 결정 내용은 [7. 결정 사항](#7-결정-사항) 에 있어요.
 > 관련 작업: [EE-22 외부 배포·영속 DB·재시작 검증 (#29)](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/29)
 
 ---
 
 ## 1. 왜 지금 정하나요?
 
-배포는 원래 M4 단계(EE-22) 작업이지만, **지금 `/health` 만 있는 뼈대로 먼저 한 번 띄워 보려고** 해요.
+배포는 M4 단계(EE-22) 작업이지만, **배포할 곳은 미리 정해 두려고** 해요.
 
 - 과제 필수 요구사항: 평가 날 **외부에서 접속되는 URL**, 그리고 **서버를 재시작해도 대화 기록이 남아야** 해요.
 - 마지막에 처음 배포하면 "내 컴퓨터에선 됐는데 서버에선 안 돼요" 같은 문제를 너무 늦게 발견해요.
-- 미리 띄워 두면 기능을 머지할 때마다 실제 서버에서 바로 확인할 수 있어요.
+- 그래서 EE-22 보다 앞서, **로그인·대화 저장·실제 AI 가 머지되면 바로 첫 배포**를 해 볼 거예요. ([6. 일정](#6-일정-선행-작업-기준))
 
 ## 2. 배포할 곳의 조건
 
@@ -60,37 +60,86 @@
 
 **아쉬운 점**
 - 서울이 아니라 싱가포르 서버라 조금 느릴 수 있어요 (채팅은 AI 응답 시간이 훨씬 길어서 체감은 작을 거예요)
-- 유료예요: 월 $5. 과제 기간을 1~2개월로 보면 **총 $5~10**
+- 유료예요: Hobby 는 월 $5 기본요금에 사용료 $5 가 포함되고, **넘게 쓰면 추가 청구**돼요.
+  과제 규모에서는 거의 넘지 않을 것으로 보고, 1~2개월이면 **총 $5~10 (예상치)**
 - 평가 때 "서버를 직접 다뤘다"고 말할 거리는 EC2 보다 적어요.
   대신 "왜 이 방식을 골랐는지"(이 문서의 비교)를 설명할 수 있어요
 
 **나중에 바꾸기도 쉬워요.** 앱은 `DATABASE_URL` 같은 환경 변수만 맞추면 어디서든 뜨게 만들어 뒀어요. Railway 로 시작했다가 EC2 로 옮겨도 코드는 그대로이고 DB 파일만 옮기면 돼요.
 
-## 6. 진행 계획 (정해지면)
+## 6. 일정 (선행 작업 기준)
 
-| 단계 | 할 일 | 누가 |
-|---|---|---|
-| 1 | Railway 가입, GitHub 저장소 연결 | 팀장 |
-| 2 | Volume 연결, 환경 변수 입력 (`DATABASE_URL` 은 Volume 경로, AI 키는 Railway 비밀 값으로) | 팀장 |
-| 3 | `/health` 배포 → 휴대폰 데이터로 접속 확인 | 팀장 |
-| 4 | 재배포 후에도 DB 파일이 남는지 확인 | 팀장 |
-| 5 | 서비스 URL·배포 방법을 README 에 정리 | 팀장 |
-| 이후 | main 에 머지하면 자동 배포 → 각자 기능을 실제 서버에서 확인 | 전원 |
+**지금 바로는 띄우지 않아요.** 지금 main 은 로그인·채팅 API 가 아직 `501 NOT_IMPLEMENTED` 라서,
+띄워도 `/health` 말고는 확인할 게 없고 요금만 나가요. 그래서 날짜가 아니라 **선행 이슈가 닫히는 시점**에 맞춰 진행해요.
 
-AI 키는 Railway 의 비밀 값(Variables)에만 넣어요. 코드·단톡·스크린샷에 쓰지 않아요.
+| 단계 | 언제 (선행 조건) | 할 일 | 누가 |
+|---|---|---|---|
+| 0 | 지금 | 배포 방식 결정, 이 문서 머지 | 팀장 |
+| 1. 첫 배포 | [EE-08 로그인 (#16)](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/16) · [EE-11 대화 저장 (#18)](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/18) · [EE-13 실제 AI (#20)](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/20) 머지 후 | Hobby 가입, [8. 설정 절차](#8-railway-설정-절차) 대로 배포 → HTTPS 로그인·대화 저장·Redeploy 후 기록 유지 확인 | 팀장 |
+| 2. 자동 배포 | 1단계 직후 | main 머지 → 자동 배포 (Wait for CI). 각자 기능을 실제 서버에서 확인 | 전원 |
+| 3. 본 배포 검증 | [EE-18 통합 검증 (#25)](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/25) 닫힌 뒤 = [EE-22 (#29)](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/29) | 휴대폰 데이터 접속, 재시작 검증 기록, README 에 URL·배포 방법 | 팀장 |
+| 4. AI 검증 | EE-22 후 = [EE-23 (#30)](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/30) | 배포 환경에서 실제 AI·시간 초과 검증 기록 | B |
+| 5. 백업 | EE-20 (#27) 진행 시, 평가 전날 | Volume 백업, DB 확인·복구 방법 확인 | A · 팀장 |
+| 6. 정리 | 평가 다음 날 | DB 백업 후 프로젝트 삭제 (과금 중지), 비용 1/n 정산 | 팀장 |
 
-## 🙋 같이 정해요
+- 1단계 전까지 Railway 결제는 하지 않아요. 결제일부터 월 요금이 나가기 때문이에요.
+- 평가 직전에는 머지를 멈춰요. Volume 이 붙은 서비스는 재배포할 때 잠깐 끊겨요.
 
-- [ ] Railway 로 갈까요? (다른 의견이 있으면 이유와 함께)
-- [ ] 비용 (월 $5) 은 어떻게 나눌까요? (제안: 4명이 똑같이, 과제 끝나면 바로 해지)
-- [ ] 처음부터 운영 설정으로 띄울까요? (제안: 네. 코디세이 AI 키를 Railway 비밀 값에 넣고 `APP_ENV=production`)
-- [ ] 평가가 끝나면 서비스를 언제 내릴까요? (제안: 평가 다음 날 해지, DB 는 백업 후 삭제)
+## 7. 결정 사항
+
+| 안건 | 결정 |
+|---|---|
+| 배포 방식 | **Railway (Hobby + Volume)**. EC2 는 예비안 |
+| 비용 | 4명이 1/n. 월 $5 + 초과분이 있으면 그것도 1/n |
+| 운영 설정 | 처음부터 `APP_ENV=production`, 코디세이 AI 키는 Railway Variables 에만 |
+| 자동 배포 | main 머지 → 자동 배포, **Wait for CI** 켜서 `test` 통과한 뒤에만 |
+| 인스턴스 | 1개 (SQLite + Volume 은 한 인스턴스에만 붙어요) |
+| 평가 후 | 다음 날 해지, DB 는 백업 후 삭제 |
+
+## 8. Railway 설정 절차
+
+1단계(첫 배포) 때 팀장이 이 순서대로 해요. 화면 이름은 Railway 가 바꿀 수 있어요.
+
+1. **프로젝트 만들기**: GitHub 로 로그인 → New Project → Deploy from GitHub repo → 이 저장소 선택
+   (조직 저장소라 GitHub App 권한 승인이 필요할 수 있어요)
+2. **지역**: Service → Settings → Region 을 Southeast Asia (Singapore) 로
+3. **Volume**: 서비스 우클릭 → Attach Volume → Mount path `/app/data`
+   (Railpack 은 코드를 `/app` 에 둬요. Volume 은 실행 중에만 붙어서, DB 는 빌드가 아니라 앱 시작 때 만들어요 — `app/main.py` 의 `lifespan`)
+4. **Variables** (Raw Editor 에 붙여 넣기, 키는 직접 입력)
+
+   ```
+   RAILPACK_PYTHON_VERSION=3.12
+   APP_ENV=production
+   DATABASE_URL=sqlite:////app/data/easyexplain.db
+   SITE_ORIGIN=https://${{RAILWAY_PUBLIC_DOMAIN}}
+   AI_PROVIDER=anthropic
+   ANTHROPIC_API_KEY=(코디세이 키)
+   COOKIE_SECURE=true
+   ```
+
+   - `RAILPACK_PYTHON_VERSION`: Railpack 은 `requires-python` 을 읽지 않고 기본 3.13 을 써요. 우리는 3.12 만 허용해요
+   - `sqlite:////` 슬래시 **4개** = 절대 경로. 3개면 Volume 밖에 저장돼서 재배포 때 사라져요
+   - production 인데 `AI_PROVIDER=fake` 거나 `COOKIE_SECURE=false` 면 앱이 일부러 안 떠요 (`app/core/config.py`)
+   - 나머지 값(`AI_MODEL` 등)은 `.env.example` 기본값을 그대로 써요
+5. **실행 설정** (Service → Settings)
+   - Custom Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"`
+     (Railpack 은 `main:app` 만 자동으로 찾아서, 우리 `app.main:app` 은 직접 적어요)
+   - Healthcheck Path: `/health`
+   - Replicas: 1
+   - Wait for CI: 켜기
+6. **도메인**: Settings → Networking → Generate Domain → `https://xxx.up.railway.app` (HTTPS 자동)
+7. **확인**
+   - [ ] `/health` 가 `{"status":"ok","db":"ok"}`
+   - [ ] 휴대폰 데이터로 회원가입 → 로그인 유지 → 질문 → 답변
+   - [ ] Redeploy 후에도 계정·대화가 남아 있음 (Volume 확인)
+   - [ ] Deploy Logs 에 키·질문 원문이 없음
 
 ---
 
 ### 참고한 자료
 
 - [Railway 요금](https://railway.com/pricing) · [Railway 요금제 문서](https://docs.railway.com/pricing/plans) · [Railway 지역](https://docs.railway.com/platform/railway-metal) · [Railway Volume](https://docs.railway.com/volumes/reference)
+- Railway 설정: [FastAPI 배포 가이드](https://docs.railway.com/guides/fastapi) · [Railpack Python](https://railpack.com/languages/python) · [Variables](https://docs.railway.com/variables) · [Public Networking](https://docs.railway.com/networking/public-networking) · [Healthchecks](https://docs.railway.com/deployments/healthchecks) · [GitHub 자동 배포](https://docs.railway.com/deployments/github-autodeploys) · [Volume 백업](https://docs.railway.com/volumes/backups) · [CLI](https://docs.railway.com/cli)
 - [Render 무료 플랜](https://render.com/docs/free) · [Render 영속 디스크](https://render.com/docs/disks) · [Render vs Railway 2026](https://encore.dev/articles/render-vs-railway)
 - [Fly.io 요금](https://docs.fly.io/about/pricing)
 - [AWS 프리 티어 2026 변경점](https://infratally.com/articles/aws-free-tier-2026/) · [AWS 프리 티어 크레딧](https://cloudwebschool.com/docs/aws/fundamentals/aws-free-tier/)
