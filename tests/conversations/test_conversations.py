@@ -19,7 +19,6 @@ from app.core.errors import AppError, ErrorCode
 from app.db.models import User
 from app.db.session import init_db
 
-
 BASE_TIME = datetime(2020, 1, 1, tzinfo=UTC)
 
 
