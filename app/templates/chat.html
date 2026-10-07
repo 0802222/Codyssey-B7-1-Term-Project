@@ -2,6 +2,9 @@
 
 {% block title %}채팅 — EasyExplain{% endblock %}
 
+{# type="module": api.js 의 함수를 import 한다. module 스크립트는 defer 처럼 HTML 을 다 읽은 뒤 실행된다 #}
+{% block scripts %}<script type="module" src="/static/js/chat.js"></script>{% endblock %}
+
 {% block content %}
 <section class="chat">
   <div class="container chat-panel">
