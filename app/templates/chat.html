@@ -55,7 +55,9 @@
     <form class="composer" id="chat-form" method="post" novalidate>
       <label class="visually-hidden" for="question">질문</label>
       <textarea id="question" name="question" rows="2" required maxlength="{{ rules.question_max_length }}"
-                placeholder="궁금한 개념을 물어보세요" aria-describedby="question-count chat-error"></textarea>
+                placeholder="궁금한 개념을 물어보세요" enterkeyhint="send"
+                aria-describedby="question-count question-keys chat-error"></textarea>
+      <p class="visually-hidden" id="question-keys">Enter 를 누르면 보내고, Shift 와 Enter 를 함께 누르면 줄을 바꿔요.</p>
       <div class="composer-row">
         <span class="composer-count" id="question-count">0 / {{ rules.question_max_length }}</span>
         <button class="btn btn-primary" type="submit" data-busy-label="기다리는 중…">보내기</button>

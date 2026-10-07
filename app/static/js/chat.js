@@ -20,8 +20,11 @@ const form = document.getElementById("chat-form");
 const questionInput = document.getElementById("question");
 const sendButton = form.querySelector('button[type="submit"]');
 const sendLabel = sendButton.textContent;
+const countText = document.getElementById("question-count");
 const thread = document.getElementById("thread");
 const emptyState = document.getElementById("chat-empty");
+const errorBox = document.getElementById("chat-error");
+const errorText = document.getElementById("chat-error-text");
 
 let conversationId = null; // 첫 질문 때 POST /api/conversations 로 받는다. 새로고침하면 새 대화로 시작한다
 let waiting = false; // 답을 기다리는 중인지
@@ -66,6 +69,22 @@ async function askServer(question, level) {
 }
 
 /* ── 화면에 그리기 ── */
+
+// 오류 칸에 안내 문구를 글자로 넣어 보여 준다. role="alert" 라서 나타나는 순간 스크린리더가 읽는다
+function showError(message) {
+  errorText.textContent = message;
+  errorBox.hidden = false;
+}
+
+function clearError() {
+  errorBox.hidden = true;
+  errorText.textContent = ""; // 입력칸의 aria-describedby 가 지난 오류를 읽지 않게 비운다
+}
+
+// 글자 수 안내 "0 / 2000". 최대 글자 수는 입력칸의 maxlength 에서 읽는다
+function updateCount() {
+  countText.textContent = `${questionInput.value.length} / ${questionInput.maxLength}`;
+}
 
 // 스크린리더에만 읽히는 말머리 ("내 질문", "답변")
 function speaker(text) {
@@ -164,6 +183,7 @@ async function sendQuestion(question, { fromInput }) {
     addAnswer(turn.answer);
     if (fromInput) {
       questionInput.value = "";
+      updateCount();
     }
   } catch {
     // 답을 받지 못한 질문은 대화에서 뺀다 — 화면의 대화를 서버가 문맥으로 쓰는 완료된 턴과 맞춘다
@@ -177,9 +197,47 @@ async function sendQuestion(question, { fromInput }) {
   }
 }
 
+// 보내기 전 검사: 앞뒤 공백을 뺀 질문이 1~최대 글자인지. 문제가 있으면 안내 문구, 없으면 ""
+function findQuestionProblem(question) {
+  if (question === "") return "질문을 입력해 주세요.";
+  if (question.length > questionInput.maxLength) {
+    return `질문은 ${questionInput.maxLength}자 이하로 입력해 주세요.`;
+  }
+  return "";
+}
+
 form.addEventListener("submit", (event) => {
   event.preventDefault(); // 브라우저 기본 전송(페이지 이동)을 막는다 → 입력한 글이 그대로 남는다
+  if (waiting) return;
+  clearError();
   const question = questionInput.value.trim(); // 앞뒤 공백은 빼고 보낸다 (서버도 같은 기준으로 다시 본다)
-  if (question === "") return;
+  const problem = findQuestionProblem(question);
+  if (problem) {
+    showError(problem); // 서버에 보내지 않는다. 입력한 글은 그대로 둔다
+    questionInput.focus(); // 고칠 곳으로 포커스 (Enter 로 보냈으면 이미 여기)
+    return;
+  }
   sendQuestion(question, { fromInput: true });
+});
+
+// Enter 는 보내기, Shift+Enter 는 줄바꿈. 한글을 조합하는 중의 Enter 는 글자를 확정하는 것이라 보내지 않는다
+// (Safari 는 조합을 끝내는 Enter 에 isComposing 대신 keyCode 229 를 준다)
+questionInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+  event.preventDefault();
+  form.requestSubmit();
+});
+
+questionInput.addEventListener("input", updateCount);
+
+// 붙여 넣기: 브라우저는 maxlength 를 넘는 뒷부분을 말없이 잘라 넣는다. 질문이 잘린 채 보내지지 않게,
+// 붙여 넣은 뒤의 길이가 최대를 넘으면 넣지 않고 안내한다 (가입·로그인 칸과 같은 방식)
+questionInput.addEventListener("paste", (event) => {
+  if (waiting) return; // 읽기 전용이라 어차피 들어가지 않는다
+  const pasted = (event.clipboardData?.getData("text") ?? "").replace(/\r\n?/g, "\n"); // 줄바꿈은 한 글자
+  const replaced = questionInput.selectionEnd - questionInput.selectionStart; // 고른 글은 붙여 넣는 글로 바뀐다
+  if (questionInput.value.length - replaced + pasted.length > questionInput.maxLength) {
+    event.preventDefault();
+    showError(`질문은 ${questionInput.maxLength}자까지 입력할 수 있어요.`);
+  }
 });
