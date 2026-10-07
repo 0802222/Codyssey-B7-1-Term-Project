@@ -513,13 +513,23 @@ img {
   max-width: 760px;
 }
 
-/* 위쪽 줄: 수준 선택 */
+/* 위쪽 줄: 수준 선택 + 새 대화 (좁으면 새 대화가 아래 줄로 내려간다) */
 .chat-tools {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.chat-tools .btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* 수준 선택: 라디오 버튼을 알약 모양으로 보이게 한다.

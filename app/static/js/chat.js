@@ -28,6 +28,7 @@ const errorBox = document.getElementById("chat-error");
 const errorText = document.getElementById("chat-error-text");
 const followUps = document.getElementById("follow-ups");
 const followUpButtons = followUps.querySelectorAll("button[data-question]");
+const newChatButton = document.getElementById("new-chat");
 
 let conversationId = null; // 첫 질문 때 POST /api/conversations 로 받는다. 새로고침하면 새 대화로 시작한다
 let waiting = false; // 답을 기다리는 중인지
@@ -161,13 +162,14 @@ function selectedLevel() {
   return { value: radio.value, label: radio.dataset.label };
 }
 
-// 답을 기다리는 동안 보내기·후속 버튼을 잠그고 보내기 버튼은 "기다리는 중…" 으로 바꾼다. 입력칸은 읽기
-// 전용으로 두어서, 보낸 질문이 그대로 남아 있다가 답을 받으면 비운다 (실패하면 그대로 남아 다시 보낼 수 있다)
+// 답을 기다리는 동안 보내기·후속·새 대화 버튼을 잠그고 보내기 버튼은 "기다리는 중…" 으로 바꾼다. 입력칸은
+// 읽기 전용으로 두어서, 보낸 질문이 그대로 남아 있다가 답을 받으면 비운다 (실패하면 남아 다시 보낼 수 있다)
 function setWaiting(on) {
   waiting = on;
   sendButton.disabled = on;
   sendButton.textContent = on ? sendButton.dataset.busyLabel : sendLabel;
   questionInput.readOnly = on;
+  newChatButton.disabled = on; // 기다리는 중에 대화를 바꾸면 답이 어느 대화 것인지 꼬인다
   for (const button of followUpButtons) {
     button.disabled = on;
   }
@@ -239,6 +241,18 @@ questionInput.addEventListener("keydown", (event) => {
 });
 
 questionInput.addEventListener("input", updateCount);
+
+// 새 대화: 화면의 대화와 conversation_id 를 비운다. 다음 질문 때 POST /api/conversations 로 새 대화를
+// 만든다 — 누르기만 하고 묻지 않으면 빈 대화가 생기지 않는다. 지난 대화는 서버에 저장돼 있고, 입력칸의 글은 둔다
+newChatButton.addEventListener("click", () => {
+  if (waiting) return;
+  conversationId = null;
+  thread.replaceChildren();
+  emptyState.hidden = false;
+  followUps.hidden = true;
+  clearError();
+  questionInput.focus();
+});
 
 // 후속 버튼: 같은 대화에 버튼 문구("더 쉽게" 등)를 그대로 질문으로 보낸다. 수준은 지금 고른 것,
 // client_request_id 는 새로. 입력칸에 쓰던 글은 건드리지 않는다
