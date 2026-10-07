@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}회원가입 — EasyExplain{% endblock %}
+
+{% block content %}
+<section class="auth">
+  <div class="container">
+    <div class="auth-card">
+      <h1>회원가입</h1>
+      <p class="auth-lead">이메일로 가입하고 질문을 시작해요.</p>
+
+      {# 오류 칸: 평소에는 숨겨 두고, 가입에 실패하면 서버가 보낸 error.message 를 넣어 보여 준다 #}
+      <div class="form-error" id="form-error" role="alert" tabindex="-1" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <span id="form-error-text"></span>
+      </div>
+
+      {# method="post": 스크립트가 뜨기 전에 눌러도 비밀번호가 주소(GET 쿼리)에 붙지 않게 #}
+      <form id="signup-form" method="post">
+        <div class="field">
+          <label for="email">이메일</label>
+          <input id="email" name="email" type="email" autocomplete="email" spellcheck="false" required aria-describedby="email-hint form-error">
+          <p class="field-hint" id="email-hint">254자까지 입력할 수 있어요.</p>
+        </div>
+        <div class="field">
+          <label for="password">비밀번호</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" required aria-describedby="password-hint form-error">
+          <p class="field-hint" id="password-hint">10자 이상 128자 이하로 입력해 주세요.</p>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">가입하기</button>
+      </form>
+
+      <p class="auth-switch">이미 계정이 있나요? <a href="/login">로그인</a></p>
+    </div>
+  </div>
+</section>
+{% endblock %}

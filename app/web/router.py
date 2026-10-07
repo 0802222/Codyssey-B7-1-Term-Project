@@ -24,13 +24,14 @@ def index(request: Request):
 
 
 @router.get("/signup")
-def signup_page():
-    raise not_implemented("EE-09")
+def signup_page(request: Request):
+    # 헤더 메뉴에 "가입" 항목이 없으므로 현재 위치(active)를 넘기지 않는다
+    return templates.TemplateResponse(request, "signup.html")
 
 
 @router.get("/login")
-def login_page():
-    raise not_implemented("EE-09")
+def login_page(request: Request):
+    return templates.TemplateResponse(request, "login.html", {"active": "login"})
 
 
 @router.get("/chat")
