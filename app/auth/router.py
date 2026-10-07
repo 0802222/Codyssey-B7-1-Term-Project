@@ -34,7 +34,7 @@ class SignupRequest(BaseModel):
     email: str = Field(max_length=100)
     password: str = Field(
         min_length=8,
-        max_length=20,
+        max_length=64,
         pattern=PASSWORD_PATTERN,
     )
 
@@ -43,7 +43,7 @@ class LoginRequest(BaseModel):
     email: str = Field(max_length=100)
     password: str = Field(
         min_length=8,
-        max_length=20,
+        max_length=64,
         pattern=PASSWORD_PATTERN,
     )
 

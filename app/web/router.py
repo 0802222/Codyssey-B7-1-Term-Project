@@ -40,7 +40,7 @@ class AuthInputRules:
 AUTH_INPUT_RULES = AuthInputRules(
     email_max_length=100,
     password_min_length=8,
-    password_max_length=20,
+    password_max_length=64,
     password_ascii_only=True,
 )
 

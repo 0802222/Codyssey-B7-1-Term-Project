@@ -145,7 +145,7 @@ def test_login_rejects_too_long_password(client, settings):
         headers={"Origin": settings.site_origin},
         json={
             "email": "test@example.com",
-            "password": "a" * 21,
+            "password": "a" * 65,
         },
     )
 

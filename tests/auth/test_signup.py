@@ -126,7 +126,7 @@ def test_signup_password_too_long(client, settings):
         headers={"Origin": settings.site_origin},
         json={
             "email": "test@example.com",
-            "password": "a" * 21,
+            "password": "a" * 65,
         },
     )
 
@@ -136,7 +136,7 @@ def test_signup_password_too_long(client, settings):
 def test_signup_password_length_boundaries_are_accepted(client, settings):
     for email, password in [
         ("min-length@example.com", "a" * 8),
-        ("max-length@example.com", "a" * 20),
+        ("max-length@example.com", "a" * 64),
     ]:
         response = client.post(
             "/api/auth/signup",
