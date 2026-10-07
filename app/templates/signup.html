@@ -2,6 +2,8 @@
 
 {% block title %}회원가입 — EasyExplain{% endblock %}
 
+{% block scripts %}<script src="/static/js/auth.js" defer></script>{% endblock %}
+
 {% block content %}
 <section class="auth">
   <div class="container">
@@ -15,8 +17,9 @@
         <span id="form-error-text"></span>
       </div>
 
-      {# method="post": 스크립트가 뜨기 전에 눌러도 비밀번호가 주소(GET 쿼리)에 붙지 않게 #}
-      <form id="signup-form" method="post">
+      {# 보내기는 auth.js 가 fetch 로 한다. method="post": 스크립트가 뜨기 전에 눌러도 비밀번호가 주소(GET 쿼리)에 붙지 않게
+         novalidate: 입력 검사는 서버가 하고, 브라우저 기본 말풍선 대신 위 오류 칸에 서버 문구를 보여 준다 #}
+      <form id="signup-form" method="post" novalidate>
         <div class="field">
           <label for="email">이메일</label>
           <input id="email" name="email" type="email" autocomplete="email" spellcheck="false" required aria-describedby="email-hint form-error">
@@ -27,7 +30,7 @@
           <input id="password" name="password" type="password" autocomplete="new-password" required aria-describedby="password-hint form-error">
           <p class="field-hint" id="password-hint">10자 이상 128자 이하로 입력해 주세요.</p>
         </div>
-        <button class="btn btn-primary btn-block" type="submit">가입하기</button>
+        <button class="btn btn-primary btn-block" type="submit" data-busy-label="가입하는 중…">가입하기</button>
       </form>
 
       <p class="auth-switch">이미 계정이 있나요? <a href="/login">로그인</a></p>
