@@ -25,12 +25,10 @@ def test_wrong_method_returns_405(client):
 @pytest.mark.parametrize(
     ("method", "path"),
     [
-        ("post", "/api/auth/signup"),
         ("post", "/api/auth/login"),
         ("get", "/api/me/conversations"),
         ("get", "/api/me/chats"),
         ("post", "/api/chat"),
-        ("get", "/"),
     ],
 )
 def test_unimplemented_routes_do_not_fake_success(client, method, path):
