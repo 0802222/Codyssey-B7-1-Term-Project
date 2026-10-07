@@ -5,6 +5,7 @@
 (로그인 확인은 app.auth.dependencies.OptionalUserDep 사용)
 """
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import APIRouter, Request
@@ -18,6 +19,26 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 router = APIRouter(tags=["web"], include_in_schema=False)
 
 
+@dataclass(frozen=True)
+class AuthInputRules:
+    """가입·로그인 화면의 입력 규칙. 화면의 안내 문구는 이 값으로 만든다.
+
+    서버의 검사(app/auth/router.py)와 API 명세(docs/spec/api.md 2장)와 같은 값이어야 한다.
+    """
+
+    email_max_length: int
+    password_min_length: int
+    password_max_length: int
+
+
+# 값을 바꿀 때는 여기만 고친다
+AUTH_INPUT_RULES = AuthInputRules(
+    email_max_length=254,
+    password_min_length=10,
+    password_max_length=128,
+)
+
+
 @router.get("/")
 def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
@@ -26,14 +47,16 @@ def index(request: Request):
 @router.get("/signup")
 def signup_page(request: Request):
     # 헤더 메뉴에 "가입" 항목이 없으므로 현재 위치(active)를 넘기지 않는다
-    return templates.TemplateResponse(request, "signup.html")
+    return templates.TemplateResponse(request, "signup.html", {"rules": AUTH_INPUT_RULES})
 
 
 @router.get("/login")
 def login_page(request: Request):
     # 가입하고 넘어오면(/login?joined=1) "가입이 끝났어요" 안내를 함께 보여 준다
     joined = request.query_params.get("joined") == "1"
-    return templates.TemplateResponse(request, "login.html", {"active": "login", "joined": joined})
+    return templates.TemplateResponse(
+        request, "login.html", {"active": "login", "joined": joined, "rules": AUTH_INPUT_RULES}
+    )
 
 
 @router.get("/chat")

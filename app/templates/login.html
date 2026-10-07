@@ -30,7 +30,7 @@
         </div>
         <div class="field">
           <label for="password">비밀번호</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="10자 이상" required aria-describedby="form-error">
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="{{ rules.password_min_length }}자 이상" required aria-describedby="form-error">
         </div>
         <button class="btn btn-primary btn-block" type="submit" data-busy-label="로그인하는 중…">로그인</button>
       </form>

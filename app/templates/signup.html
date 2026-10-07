@@ -23,12 +23,12 @@
         <div class="field">
           <label for="email">이메일</label>
           <input id="email" name="email" type="email" autocomplete="email" spellcheck="false" required aria-describedby="email-hint form-error">
-          <p class="field-hint" id="email-hint">254자까지 입력할 수 있어요.</p>
+          <p class="field-hint" id="email-hint">{{ rules.email_max_length }}자까지 입력할 수 있어요.</p>
         </div>
         <div class="field">
           <label for="password">비밀번호</label>
           <input id="password" name="password" type="password" autocomplete="new-password" required aria-describedby="password-hint form-error">
-          <p class="field-hint" id="password-hint">10자 이상 128자 이하로 입력해 주세요.</p>
+          <p class="field-hint" id="password-hint">{{ rules.password_min_length }}자 이상 {{ rules.password_max_length }}자 이하로 입력해 주세요.</p>
         </div>
         <button class="btn btn-primary btn-block" type="submit" data-busy-label="가입하는 중…">가입하기</button>
       </form>
