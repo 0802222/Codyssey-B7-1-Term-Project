@@ -6,6 +6,8 @@
 여기서 실패한다.
 """
 
+import re
+
 import pytest
 
 from app.web.router import AUTH_INPUT_RULES as RULES
@@ -63,3 +65,27 @@ def test_server_treats_non_english_password_like_the_page(client, settings):
     response = post(client, settings, "/api/auth/signup", "korean@example.com", password)
 
     assert response.status_code == (422 if RULES.password_ascii_only else 201)
+
+
+@pytest.mark.parametrize(
+    "email",
+    [
+        "user@example.com",
+        "USER@Example.COM",
+        " spaced@example.com ",
+        "한글@example.com",
+        "a@b.c",
+        "user@example",
+        "user@example..com",
+        "us er@example.com",
+        "@example.com",
+        "user@@example.com",
+    ],
+)
+def test_server_agrees_with_page_on_email_format(client, settings, email):
+    # 화면은 이메일 칸의 pattern(= RULES.email_pattern)으로 앞뒤 공백을 뺀 값을 본다
+    page_accepts = re.fullmatch(RULES.email_pattern, email.strip()) is not None
+
+    response = post(client, settings, "/api/auth/signup", email, "a" * RULES.password_min_length)
+
+    assert response.status_code == (201 if page_accepts else 422)

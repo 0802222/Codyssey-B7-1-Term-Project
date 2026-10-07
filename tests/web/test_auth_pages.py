@@ -249,3 +249,38 @@ def test_login_page_shows_notice_only_after_signup(client):
     assert notice in client.get("/login?joined=1").text
     assert notice not in client.get("/login").text
     assert notice not in client.get("/login?joined=0").text
+
+
+@pytest.mark.parametrize("path", PATHS)
+def test_email_input_has_format_pattern_and_example(client, path):
+    email = find_one(client.get(path).text, "input", id="email")
+
+    # 서버와 같은 형식 정규식. auth.js 가 이 속성을 읽어 보내기 전에 형식을 본다
+    assert email["pattern"] == AUTH_INPUT_RULES.email_pattern
+    assert email["placeholder"] == "name@example.com"
+
+
+def test_email_pattern_comes_from_rules(client, monkeypatch):
+    rules = AuthInputRules(
+        email_max_length=61,
+        password_min_length=7,
+        password_max_length=33,
+        password_ascii_only=False,
+        email_pattern="[a-z]+@[a-z]+",
+    )
+    monkeypatch.setattr(web_router, "AUTH_INPUT_RULES", rules)
+
+    for path in PATHS:
+        assert find_one(client.get(path).text, "input", id="email")["pattern"] == "[a-z]+@[a-z]+"
+
+
+def test_auth_script_checks_email_before_password(client):
+    script = client.get("/static/js/auth.js").text
+    start = script.index("function findInputProblem")
+    checks = script[start : script.index("function findPasteProblem")]
+
+    assert "new RegExp(`^(?:${email.pattern})$`)" in checks
+    assert "올바른 이메일 형식을 입력해 주세요." in checks
+    # 이메일(빈 값 → 글자 수 → 형식)을 다 본 뒤에 비밀번호를 본다
+    email_checks = ("email.value", "email.maxLength", "email.pattern")
+    assert max(checks.index(code) for code in email_checks) < checks.index("password.value")
