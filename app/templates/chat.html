@@ -50,6 +50,14 @@
       <span id="chat-error-text"></span>
     </div>
 
+    {# 후속 버튼: 첫 답을 받은 뒤에 보인다. 누르면 같은 대화에 버튼 문구를 그대로 질문으로 보낸다.
+       문구는 app/chat/prompts.py 의 안내("더 쉽게", "예시 하나 더", "핵심만")와 같다 — 값은 CHAT_INPUT_RULES #}
+    <div class="follow-ups" id="follow-ups" role="group" aria-label="이어서 묻기" hidden>
+      {% for question in rules.follow_ups %}
+      <button class="chip" type="button" data-question="{{ question }}">{{ question }}</button>
+      {% endfor %}
+    </div>
+
     {# 질문 입력. method="post": 스크립트가 뜨기 전에 보내져도 질문이 주소(GET 쿼리)에 붙지 않게
        novalidate: 브라우저 기본 말풍선 대신 위 오류 칸에 안내 문구를 보여 준다 (최종 검사는 서버) #}
     <form class="composer" id="chat-form" method="post" novalidate>

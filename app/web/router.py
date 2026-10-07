@@ -68,6 +68,8 @@ class ChatInputRules:
     question_max_length: int
     levels: tuple[LevelOption, ...]
     default_level: str  # 화면을 열었을 때 골라 둔 수준
+    # 후속 버튼 = 같은 대화에 그대로 보내는 질문. app/chat/prompts.py 의 안내 문구와 같아야 한다
+    follow_ups: tuple[str, ...]
 
 
 # 값을 바꿀 때는 여기만 고친다
@@ -79,6 +81,7 @@ CHAT_INPUT_RULES = ChatInputRules(
         LevelOption("advanced", "전공자"),
     ),
     default_level="easy",
+    follow_ups=("더 쉽게", "예시 하나 더", "핵심만"),
 )
 
 

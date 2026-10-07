@@ -669,6 +669,38 @@ img {
   margin-bottom: 0;
 }
 
+/* 후속 버튼 (더 쉽게 · 예시 하나 더 · 핵심만) */
+.follow-ups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: var(--accent-soft);
+}
+
+/* 답을 기다리는 동안. 위의 :hover 보다 뒤에 있어야 마우스를 올려도 색이 그대로다 */
+.chip:disabled {
+  border-color: transparent;
+  background: var(--line);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
 /* 질문 입력 상자 */
 .composer {
   padding: 10px 10px 8px 16px;

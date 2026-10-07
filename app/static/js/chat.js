@@ -26,6 +26,8 @@ const thread = document.getElementById("thread");
 const emptyState = document.getElementById("chat-empty");
 const errorBox = document.getElementById("chat-error");
 const errorText = document.getElementById("chat-error-text");
+const followUps = document.getElementById("follow-ups");
+const followUpButtons = followUps.querySelectorAll("button[data-question]");
 
 let conversationId = null; // 첫 질문 때 POST /api/conversations 로 받는다. 새로고침하면 새 대화로 시작한다
 let waiting = false; // 답을 기다리는 중인지
@@ -159,13 +161,16 @@ function selectedLevel() {
   return { value: radio.value, label: radio.dataset.label };
 }
 
-// 답을 기다리는 동안 보내기 버튼을 잠그고 "기다리는 중…" 으로 바꾼다. 입력칸은 읽기 전용으로 두어서,
-// 보낸 질문이 그대로 남아 있다가 답을 받으면 비운다 (실패하면 그대로 남아 다시 보낼 수 있다)
+// 답을 기다리는 동안 보내기·후속 버튼을 잠그고 보내기 버튼은 "기다리는 중…" 으로 바꾼다. 입력칸은 읽기
+// 전용으로 두어서, 보낸 질문이 그대로 남아 있다가 답을 받으면 비운다 (실패하면 그대로 남아 다시 보낼 수 있다)
 function setWaiting(on) {
   waiting = on;
   sendButton.disabled = on;
   sendButton.textContent = on ? sendButton.dataset.busyLabel : sendLabel;
   questionInput.readOnly = on;
+  for (const button of followUpButtons) {
+    button.disabled = on;
+  }
 }
 
 /* ── 질문 보내기 ── */
@@ -183,6 +188,7 @@ async function sendQuestion(question, { fromInput }) {
     const turn = await askServer(question, level.value);
     addTurnTime(questionItem, turn.created_at);
     addAnswer(turn.answer);
+    followUps.hidden = false; // 답이 있어야 "더 쉽게" 같은 후속 질문이 뜻이 있다
     if (fromInput) {
       questionInput.value = "";
       updateCount();
@@ -233,6 +239,14 @@ questionInput.addEventListener("keydown", (event) => {
 });
 
 questionInput.addEventListener("input", updateCount);
+
+// 후속 버튼: 같은 대화에 버튼 문구("더 쉽게" 등)를 그대로 질문으로 보낸다. 수준은 지금 고른 것,
+// client_request_id 는 새로. 입력칸에 쓰던 글은 건드리지 않는다
+for (const button of followUpButtons) {
+  button.addEventListener("click", () => {
+    sendQuestion(button.dataset.question, { fromInput: false });
+  });
+}
 
 // 붙여 넣기: 브라우저는 maxlength 를 넘는 뒷부분을 말없이 잘라 넣는다. 질문이 잘린 채 보내지지 않게,
 // 붙여 넣은 뒤의 길이가 최대를 넘으면 넣지 않고 안내한다 (가입·로그인 칸과 같은 방식)
