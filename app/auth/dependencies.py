@@ -6,6 +6,7 @@
     def page(user: OptionalUserDep): ...         # 페이지: None 이면 /login 으로 이동
 """
 
+import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
@@ -71,6 +72,31 @@ def _get_auth_session(
     return auth_session
 
 
+def _get_session_user(
+    auth_session: AuthSession,
+    session: SessionDep,
+) -> CurrentUser | None:
+    """인증 세션에 연결된 사용자를 조회한다."""
+
+    try:
+        user = session.get(User, auth_session.user_id)
+    except SQLAlchemyError:
+        session.rollback()
+        raise AppError(
+            status_code=503,
+            code=ErrorCode.DB_ERROR,
+            message="데이터베이스 오류가 발생했어요. 잠시 후 다시 시도해 주세요.",
+        ) from None
+
+    if user is None:
+        return None
+
+    return CurrentUser(
+        id=user.id,
+        email=user.email,
+    )
+
+
 def get_current_user(
     request: Request,
     session: SessionDep,
@@ -88,15 +114,10 @@ def get_current_user(
             message="로그인이 필요합니다.",
         )
 
-    try:
-        user = session.get(User, auth_session.user_id)
-    except SQLAlchemyError:
-        session.rollback()
-        raise AppError(
-            status_code=503,
-            code=ErrorCode.DB_ERROR,
-            message="데이터베이스 오류가 발생했어요. 잠시 후 다시 시도해 주세요.",
-        ) from None
+    user = _get_session_user(
+        auth_session,
+        session,
+    )
 
     if user is None:
         raise AppError(
@@ -105,10 +126,7 @@ def get_current_user(
             message="로그인이 필요합니다.",
         )
 
-    return CurrentUser(
-        id=user.id,
-        email=user.email,
-    )
+    return user
 
 
 CurrentUserDep = Annotated[CurrentUser, Depends(get_current_user)]
@@ -125,26 +143,16 @@ def get_optional_user(
     if auth_session is None:
         return None
 
-    try:
-        user = session.get(User, auth_session.user_id)
-    except SQLAlchemyError:
-        session.rollback()
-        raise AppError(
-            status_code=503,
-            code=ErrorCode.DB_ERROR,
-            message="데이터베이스 오류가 발생했어요. 잠시 후 다시 시도해 주세요.",
-        ) from None
-
-    if user is None:
-        return None
-
-    return CurrentUser(
-        id=user.id,
-        email=user.email,
+    return _get_session_user(
+        auth_session,
+        session,
     )
 
 
-OptionalUserDep = Annotated[CurrentUser | None, Depends(get_optional_user)]
+OptionalUserDep = Annotated[
+    CurrentUser | None,
+    Depends(get_optional_user),
+]
 
 
 def require_csrf(
@@ -165,7 +173,10 @@ def require_csrf(
     if (
         not csrf_token
         or auth_session is None
-        or csrf_token != auth_session.csrf_token
+        or not secrets.compare_digest(
+            csrf_token,
+            auth_session.csrf_token,
+        )
     ):
         raise AppError(
             status_code=403,

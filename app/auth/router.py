@@ -24,6 +24,7 @@ from app.db.session import SessionDep
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 password_hash = PasswordHash.recommended()
+DUMMY_PASSWORD_HASH = password_hash.hash("dummy-password")
 
 
 class SignupRequest(BaseModel):
@@ -47,7 +48,7 @@ def _validate_origin(
     settings,
 ) -> None:
     """요청 Origin이 허용된 사이트인지 확인한다.
-    
+
     허용되지 않은 Origin이면 CSRF_REJECTED 오류를 발생시킨다.
     """
     origin = request.headers.get("origin")
@@ -62,7 +63,7 @@ def _validate_origin(
 
 def _validate_email(email: str) -> str:
     """이메일 형식을 검증하고 정규화한다.
-    
+
     앞뒤 공백을 제거하고 소문자로 변환한다.
     """
     email = email.strip().lower()
@@ -167,7 +168,7 @@ def login(
     settings: SettingsDep,
 ):
     """이메일과 비밀번호를 검증하여 로그인 세션을 생성한다.
-    
+
     세션 토큰과 CSRF 토큰을 발급하고 세션 쿠키를 설정한다.
     """
 
@@ -177,7 +178,7 @@ def login(
     )
 
     email = _validate_email(request.email)
-    
+
     try:
         user = session.exec(
             select(User).where(User.email == email)
@@ -190,10 +191,18 @@ def login(
             message="데이터베이스 오류가 발생했어요. 잠시 후 다시 시도해 주세요.",
         ) from None
 
-    if user is None or not password_hash.verify(
+    password_hash_value = (
+        user.password_hash
+        if user is not None
+        else DUMMY_PASSWORD_HASH
+    )
+
+    password_valid = password_hash.verify(
         request.password,
-        user.password_hash,
-    ):
+        password_hash_value,
+    )
+
+    if user is None or not password_valid:
         raise AppError(
             status_code=401,
             code=ErrorCode.INVALID_CREDENTIALS,
@@ -255,7 +264,7 @@ def me(
     request: Request,
 ):
     """현재 로그인한 사용자의 정보를 조회한다.
-    
+
     인증된 세션의 사용자 정보와 CSRF 토큰을 반환한다.
     """
 
@@ -291,7 +300,7 @@ def logout(
     settings: SettingsDep,
 ):
     """현재 로그인한 사용자의 세션을 종료한다.
-    
+
     세션을 삭제하고 브라우저의 세션 쿠키를 제거한다.
     """
 
