@@ -133,10 +133,10 @@ def test_signup_page_explains_input_rules(client):
 def test_input_rules_are_the_agreed_values():
     # 화면이 쓰는 입력 규칙. 바꾸면 서버(app/auth/router.py)와 API 명세 2장도 같은 값으로 바꾼다
     assert AUTH_INPUT_RULES == AuthInputRules(
-        email_max_length=254,
-        password_min_length=10,
-        password_max_length=128,
-        password_ascii_only=False,
+        email_max_length=100,
+        password_min_length=8,
+        password_max_length=20,
+        password_ascii_only=True,
     )
 
 

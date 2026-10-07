@@ -36,10 +36,10 @@ class AuthInputRules:
 
 # 값을 바꿀 때는 여기만 고친다
 AUTH_INPUT_RULES = AuthInputRules(
-    email_max_length=254,
-    password_min_length=10,
-    password_max_length=128,
-    password_ascii_only=False,
+    email_max_length=100,
+    password_min_length=8,
+    password_max_length=20,
+    password_ascii_only=True,
 )
 
 
