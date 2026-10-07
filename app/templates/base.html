@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}EasyExplain{% endblock %}</title>
+  <link rel="icon" href="/static/img/mascot.svg" type="image/svg+xml">
+  {# 글꼴: 제목·로고는 Jua, 본문은 Pretendard. 못 받으면 style.css 의 대체 글꼴로 보인다 #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="/"><img src="/static/img/mascot.svg" alt="" width="32" height="32">EasyExplain</a>
+      {# 라우터가 active 값("chat" / "history" / "login")을 넘기면 그 메뉴가 현재 위치로 표시된다 #}
+      <nav class="site-nav" aria-label="주 메뉴">
+        <a href="/chat"{% if active == "chat" %} aria-current="page"{% endif %}>채팅</a>
+        <a href="/history"{% if active == "history" %} aria-current="page"{% endif %}>내 기록</a>
+        <a href="/login"{% if active == "login" %} aria-current="page"{% endif %}>로그인</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">AI 설명은 틀릴 수 있어요. 학습용 개념 설명으로만 활용해 주세요.</div>
+  </footer>
+</body>
+</html>
