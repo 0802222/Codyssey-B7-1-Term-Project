@@ -5,7 +5,7 @@
  * 색을 바꾸려면 변수만 고치면 된다. (글자 대비는 모두 4.5:1 이상, 테두리는 3:1 이상으로 계산해 정했다)
  *
  * 1. 디자인 값  2. 기본  3. 레이아웃  4. 헤더·메뉴  5. 푸터  6. 버튼  7. 소개 페이지
- * 8. 가입·로그인  9. 모바일
+ * 8. 가입·로그인  9. 채팅  10. 모바일
  */
 
 /* ===== 1. 디자인 값 ===== */
@@ -489,7 +489,226 @@ img {
   font-weight: 500;
 }
 
-/* ===== 9. 모바일 (화면 폭 520px 이하) ===== */
+/* ===== 9. 채팅 (/chat) ===== */
+.chat {
+  padding-block: 24px 40px;
+}
+
+/* 채팅은 글이 길어서 본문 폭(960px)보다 좁게 가운데에 둔다 */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 760px;
+}
+
+/* 위쪽 줄: 수준 선택 */
+.chat-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* 수준 선택: 라디오 버튼을 알약 모양으로 보이게 한다.
+   동그라미만 안 보이게 할 뿐 라디오 버튼 그대로라 키보드(Tab, ←→)와 스크린리더로 고를 수 있다 */
+.level-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.level-option {
+  position: relative;
+  cursor: pointer;
+}
+
+.level-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.level-option span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.level-option input:checked + span {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 500;
+}
+
+.level-option input:focus-visible + span {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.level-option svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 첫 질문 전 안내 */
+.chat-empty {
+  padding: 24px 16px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.chat-empty img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 8px;
+}
+
+.chat-empty-title {
+  margin-bottom: 4px;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+/* 대화: 내 질문은 오른쪽 보라 말풍선, 답변은 왼쪽 흰 말풍선 + 전구 캐릭터 */
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 88%;
+}
+
+.msg-me {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.msg-ai {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.msg-mascot {
+  flex: none;
+  width: 38px;
+  height: 38px;
+}
+
+.bubble {
+  min-width: 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-bubble);
+  line-height: 1.7;
+  white-space: pre-wrap; /* 답변의 줄바꿈을 그대로 보여 준다 (HTML 로 바꾸지 않는다) */
+  word-break: keep-all; /* 한국어는 낱말 중간에서 줄을 바꾸지 않는다 */
+  overflow-wrap: anywhere; /* 긴 주소처럼 끊을 곳이 없는 글은 넘치지 않게 아무 데서나 바꾼다 */
+}
+
+.msg-me .bubble {
+  border-bottom-right-radius: 6px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.msg-ai .bubble {
+  border: 2px solid var(--line);
+  border-bottom-left-radius: 6px;
+  background: var(--surface);
+}
+
+.msg-meta {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* 채팅의 오류 칸은 위아래 간격을 .chat-panel 의 gap 으로 맞춘다 */
+.chat .form-error {
+  margin-bottom: 0;
+}
+
+/* 질문 입력 상자 */
+.composer {
+  padding: 10px 10px 8px 16px;
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+/* 포커스 테두리는 입력칸 대신 상자 전체에 그린다 */
+.composer:focus-within {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  max-height: 40vh;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit; /* 16px — 휴대폰에서 입력칸을 눌러도 화면이 확대되지 않는 크기 */
+  resize: none;
+  field-sizing: content; /* 지원하는 브라우저(Chrome 등)에서는 글이 길어지면 칸도 커진다 */
+}
+
+.composer textarea:focus-visible {
+  outline: none;
+}
+
+.composer textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.composer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.composer-count {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* ===== 10. 모바일 (화면 폭 520px 이하) ===== */
 /* 메뉴가 3개뿐이라 햄버거 없이 375px 에서도 로고와 한 줄에 들어간다 */
 @media (max-width: 520px) {
   :root {
@@ -554,5 +773,45 @@ img {
 
   .auth-card {
     padding: 22px 18px;
+  }
+
+  .chat {
+    padding-block: 16px 24px;
+  }
+
+  /* 수준 3개를 한 줄에 같은 폭으로 */
+  .level-picker {
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+
+  .level-option {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .level-option span {
+    justify-content: center;
+    padding: 0 6px;
+    font-size: 0.875rem;
+    text-align: center;
+  }
+
+  .msg {
+    max-width: 94%;
+  }
+}
+
+/* 아주 좁은 화면(360px 이하): 수준 이름이 낱말 중간에서 줄바꿈되지 않게 아이콘·여백·글자를 줄인다 */
+@media (max-width: 360px) {
+  .level-option span {
+    gap: 4px;
+    padding: 0 4px;
+    font-size: 0.8125rem;
+  }
+
+  .level-option svg {
+    width: 16px;
+    height: 16px;
   }
 }
