@@ -7,6 +7,7 @@
  *    client_request_id 는 요청마다 새로 만드는 UUID — 같은 요청이 두 번 가도 서버가 AI 를 두 번 부르지 않는다.
  * 3. 답을 기다리는 동안 보내기 버튼을 잠근다 (중복 전송 방지).
  * 4. 질문·답변은 textContent 로만 넣는다 — 답변에 <script> 가 섞여 와도 글자로만 보인다.
+ * 5. 시각은 API 의 UTC(…Z)를 한국 시간(KST)으로 바꿔 보여 준다.
  *
  * 수준 값(easy·beginner·advanced)과 이름은 이 파일에 적지 않고 HTML 의 라디오 버튼에서 읽는다 —
  * app/web/router.py 의 CHAT_INPUT_RULES 한곳에서 정한다.
@@ -117,6 +118,21 @@ function addAnswer(text) {
   return item;
 }
 
+// API 시각은 UTC(예: 2026-10-02T07:00:00Z). 화면에는 한국 시간으로 바꿔 보여 준다 (DB·API 는 UTC 그대로)
+function formatKst(t) {
+  return new Date(t).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+}
+
+// 질문 말풍선 아래, 수준 옆에 턴 시각을 붙인다: <time datetime="원래 UTC">한국 시간</time>
+// 응답에는 턴 시각(created_at — 서버가 질문을 받은 때) 하나뿐이라 질문 쪽에 한 번 보여 준다
+function addTurnTime(questionItem, createdAt) {
+  if (!createdAt || Number.isNaN(Date.parse(createdAt))) return; // 시각이 없거나 읽을 수 없으면 수준만 둔다
+  const time = document.createElement("time");
+  time.dateTime = createdAt;
+  time.textContent = formatKst(createdAt);
+  questionItem.querySelector(".msg-meta").append(" · ", time);
+}
+
 // 지금 고른 수준. value 는 API 로 보내는 값, label 은 말풍선 아래에 쓰는 이름 (라디오 버튼의 data-label)
 function selectedLevel() {
   const radio = document.querySelector('input[name="level"]:checked');
@@ -144,6 +160,7 @@ async function sendQuestion(question, { fromInput }) {
   const questionItem = addQuestion(question, level.label);
   try {
     const turn = await askServer(question, level.value);
+    addTurnTime(questionItem, turn.created_at);
     addAnswer(turn.answer);
     if (fromInput) {
       questionInput.value = "";
