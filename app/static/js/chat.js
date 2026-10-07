@@ -8,13 +8,14 @@
  * 3. 답을 기다리는 동안 보내기 버튼을 잠근다 (중복 전송 방지).
  * 4. 질문·답변은 textContent 로만 넣는다 — 답변에 <script> 가 섞여 와도 글자로만 보인다.
  * 5. 시각은 API 의 UTC(…Z)를 한국 시간(KST)으로 바꿔 보여 준다.
+ * 6. 실패하면 서버가 보낸 error.message 를 오류 칸에 보여 주고, 입력한 질문은 지우지 않는다.
  *
  * 수준 값(easy·beginner·advanced)과 이름은 이 파일에 적지 않고 HTML 의 라디오 버튼에서 읽는다 —
  * app/web/router.py 의 CHAT_INPUT_RULES 한곳에서 정한다.
  * CSRF 토큰을 붙여 POST 하는 apiPost 는 api.js (로그아웃 버튼과 같이 쓴다).
  */
 
-import { apiPost } from "/static/js/api.js";
+import { UNKNOWN_ERROR_MESSAGE, apiPost, failureMessage } from "/static/js/api.js";
 
 const form = document.getElementById("chat-form");
 const questionInput = document.getElementById("question");
@@ -43,7 +44,7 @@ function newRequestId() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-// 서버가 실패를 알려 왔거나 서버에 닿지 못했을 때 던진다
+// 서버가 실패를 알려 왔거나 서버에 닿지 못했을 때 던진다. message 는 화면에 보여 줄 문구
 class RequestFailed extends Error {}
 
 // 첫 질문이면 대화를 먼저 만들고, 질문을 보내 완료된 턴(명세 3장의 성공 응답)을 돌려준다
@@ -51,7 +52,7 @@ async function askServer(question, level) {
   if (conversationId === null) {
     const created = await apiPost("/api/conversations", {});
     if (!created.ok || !created.data?.id) {
-      throw new RequestFailed();
+      throw new RequestFailed(failureMessage(created));
     }
     conversationId = created.data.id;
   }
@@ -63,7 +64,7 @@ async function askServer(question, level) {
   });
   // 성공 응답: { request_id, turn_id, conversation_id, level, question, answer, status, created_at }
   if (!result.ok || result.data?.status !== "completed" || typeof result.data.answer !== "string") {
-    throw new RequestFailed();
+    throw new RequestFailed(failureMessage(result));
   }
   return result.data;
 }
@@ -172,6 +173,7 @@ function setWaiting(on) {
 // 질문 하나를 보내고 답을 받아 붙인다. fromInput: 입력칸의 질문이면 답을 받은 뒤 입력칸을 비운다
 async function sendQuestion(question, { fromInput }) {
   if (waiting) return; // 이미 기다리는 중이면 무시한다 (Enter·클릭 연타)
+  clearError();
   const level = selectedLevel();
   // 잠그는 버튼에 포커스가 있었으면 브라우저가 포커스를 뺀다. 잠금을 푼 뒤 그 자리로 돌려준다
   const focusedBefore = document.activeElement;
@@ -185,10 +187,12 @@ async function sendQuestion(question, { fromInput }) {
       questionInput.value = "";
       updateCount();
     }
-  } catch {
-    // 답을 받지 못한 질문은 대화에서 뺀다 — 화면의 대화를 서버가 문맥으로 쓰는 완료된 턴과 맞춘다
+  } catch (error) {
+    // 답을 받지 못한 질문은 대화에서 뺀다 — 화면의 대화를 서버가 문맥으로 쓰는 완료된 턴과 맞춘다.
+    // 입력칸의 질문은 지우지 않았으니 그대로 다시 보낼 수 있다 (보낼 때마다 새 client_request_id)
     questionItem.remove();
     emptyState.hidden = thread.children.length > 0;
+    showError(error instanceof RequestFailed ? error.message : UNKNOWN_ERROR_MESSAGE);
   } finally {
     setWaiting(false);
     if (document.activeElement === document.body && focusedBefore?.isConnected) {

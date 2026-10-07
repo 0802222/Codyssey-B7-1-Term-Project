@@ -11,6 +11,10 @@
 // auth.js 가 csrf_token 을 보관하는 이름과 같아야 한다
 export const CSRF_TOKEN_KEY = "csrf_token";
 
+// 서버의 오류 문구를 받지 못했을 때 보여 줄 문구 (auth.js 와 같은 문구)
+export const NETWORK_ERROR_MESSAGE = "서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.";
+export const UNKNOWN_ERROR_MESSAGE = "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요.";
+
 // 응답 본문을 JSON 으로 읽는다. JSON 이 아니면(프록시의 HTML 오류 페이지 등) null
 export async function readJson(response) {
   try {
@@ -80,4 +84,10 @@ export async function apiPost(url, body) {
     forgetCsrfToken(); // 다음 요청은 /api/auth/me 에서 새 토큰을 받는다
   }
   return { ok: response.ok, status: response.status, offline: false, data };
+}
+
+// 실패한 apiPost 결과를 화면에 보여 줄 문구로: 서버가 보낸 error.message, 못 받았으면 대체 문구
+export function failureMessage(result) {
+  if (result.offline) return NETWORK_ERROR_MESSAGE;
+  return result.data?.error?.message || UNKNOWN_ERROR_MESSAGE;
 }
