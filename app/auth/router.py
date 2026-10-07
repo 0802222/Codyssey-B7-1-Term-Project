@@ -35,8 +35,11 @@ class SignupRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=254)
+    password: str = Field(
+        min_length=10,
+        max_length=128,
+    )
 
 
 def _validate_origin(
@@ -197,11 +200,14 @@ def login(
             message="이메일 또는 비밀번호가 올바르지 않습니다.",
         )
 
+    user_id = user.id
+    user_email = user.email
+
     session_token = secrets.token_urlsafe(32)
     csrf_token = secrets.token_urlsafe(32)
 
     auth_session = AuthSession(
-        user_id=user.id,
+        user_id=user_id,
         token_hash=hash_token(session_token),
         csrf_token=csrf_token,
         expires_at=(
@@ -236,8 +242,8 @@ def login(
 
     return {
         "user": {
-            "id": user.id,
-            "email": user.email,
+            "id": user_id,
+            "email": user_email,
         },
         "csrf_token": csrf_token,
     }

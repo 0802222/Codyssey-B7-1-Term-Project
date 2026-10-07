@@ -121,6 +121,52 @@ def test_login_email_is_normalized(client, settings):
     assert response.json()["user"]["email"] == "test@example.com"
 
 
+def test_login_rejects_invalid_password_length(client, settings):
+    _signup(client, settings)
+
+    response = client.post(
+        "/api/auth/login",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": "test@example.com",
+            "password": "123456789",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_login_rejects_too_long_password(client, settings):
+    _signup(client, settings)
+
+    response = client.post(
+        "/api/auth/login",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": "test@example.com",
+            "password": "a" * 129,
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_login_rejects_too_long_email(client, settings):
+    response = client.post(
+        "/api/auth/login",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": ("a" * 243) + "@example.com",
+            "password": "1234567890",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
 def test_me_success(client, settings):
     _signup(client, settings)
     login_response = _login(client, settings)
@@ -280,3 +326,30 @@ def test_login_session_ttl(client, settings):
     )
 
     assert expected_min <= auth_session.expires_at <= expected_max
+
+
+def test_login_does_not_read_user_after_commit(
+    client,
+    settings,
+    monkeypatch,
+):
+    _signup(client, settings)
+
+    original_commit = Session.commit
+
+    def commit_and_expire_user(self):
+        original_commit(self)
+
+        for obj in list(self.identity_map.values()):
+            if isinstance(obj, User):
+                self.expire(obj, ["id", "email"])
+
+    monkeypatch.setattr(Session, "commit", commit_and_expire_user)
+
+    response = _login(client, settings)
+
+    assert response.status_code == 200
+    assert response.json()["user"] == {
+        "id": 1,
+        "email": "test@example.com",
+    }
