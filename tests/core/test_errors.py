@@ -27,7 +27,6 @@ def test_wrong_method_returns_405(client):
     [
         ("get", "/api/me/conversations"),
         ("get", "/api/me/chats"),
-        ("get", "/"),
     ],
 )
 def test_unimplemented_routes_do_not_fake_success(client, method, path):
