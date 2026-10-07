@@ -5,7 +5,7 @@
 
 Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝트」** · 4인 팀
 
-> **현재 상태:** 앱 뼈대(서버 실행, `/health`, 공통 오류·로그)까지 준비. 실제 기능은 아직 `501` 을 반환합니다.
+> **현재 상태:** 앱 뼈대, 회원가입·로그인 API 까지 구현. 채팅·기록·배포는 진행 중입니다. 과제 요구사항별 근거와 진행 상태는 [7장](#7-과제-요구사항-근거).
 
 <details>
 <summary><b>👥 팀원용 문서 안내 — 언제 무엇을 읽나요?</b></summary>
@@ -54,6 +54,8 @@ AI 를 직접 만드는 게 아니라, 이미 있는 AI(Claude)를 **우리 서�
 | ⑤ | 안정성 | 서버 로그, AI 실패·지연에도 **서버가 안 죽고 안내**, 입력 검증 |
 | ⑥ | 배포 | 평가 때 **외부에서 접속 가능한 URL** |
 | ⑦ | 협업 | 브랜치·PR 머지, **1인당 의미 있는 커밋 10개 이상** |
+
+과제 원문 항목마다 어디서 만족하는지는 [7장 과제 요구사항 근거](#7-과제-요구사항-근거)에 있습니다.
 
 ---
 
@@ -108,12 +110,12 @@ AGENTS.md             # AI 코딩 도구용 규칙
 
 | 대분류 | 기능 | 설명 | 담당 | API · 화면 | 상태 | PR |
 |---|---|---|---|---|---|---|
-| **계정** | 회원가입 | 이메일·비밀번호, 비밀번호는 해시로 저장 | A 가입 API·DB<br>C 가입 화면 | `POST /api/auth/signup`<br>`/signup` | ⬜ | |
-| | 로그인·로그아웃 | 세션 쿠키 발급·삭제 | A 세션 처리<br>C 로그인 화면 | `POST /api/auth/login`<br>`POST /api/auth/logout`<br>`/login` | ⬜ | |
-| | 접근 제어 | 비로그인은 API 401, 페이지는 로그인으로 이동 | A | `GET /api/auth/me` | ⬜ | |
+| **계정** | 회원가입 | 이메일·비밀번호, 비밀번호는 해시로 저장 | A 가입 API·DB<br>C 가입 화면 | `POST /api/auth/signup`<br>`/signup` | 🟨 | [#35](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/35) |
+| | 로그인·로그아웃 | 세션 쿠키 발급·삭제 | A 세션 처리<br>C 로그인 화면 | `POST /api/auth/login`<br>`POST /api/auth/logout`<br>`/login` | 🟨 | [#37](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/37) |
+| | 접근 제어 | 비로그인은 API 401, 페이지는 로그인으로 이동 | A | `GET /api/auth/me` | 🟨 | [#37](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/37) |
 | **채팅** | 질문·답변 | 같은 화면에 답 표시, 대기 중 버튼 잠금 | B 채팅 API·AI 호출<br>C 채팅 화면 | `POST /api/chat`<br>`/chat` | ⬜ | |
-| | 설명 수준 | 아주 쉽게 / 입문자 / 전공자 | B 수준별 프롬프트<br>C 수준 선택 UI | `POST /api/chat` 의 `level` | ⬜ | |
-| | 문맥 유지 | 같은 대화의 최근 5턴을 기억 | B | (서버 내부) | ⬜ | |
+| | 설명 수준 | 아주 쉽게 / 입문자 / 전공자 | B 수준별 프롬프트<br>C 수준 선택 UI | `POST /api/chat` 의 `level` | 🟨 | [#8](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8) |
+| | 문맥 유지 | 같은 대화의 최근 5턴을 기억 | B | (서버 내부) | 🟨 | [#8](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8) |
 | | 후속 버튼 | 더 쉽게 / 예시 하나 더 / 핵심만 | C | `/chat` | ⬜ | |
 | **대화 기록** | 대화 만들기 | 새 대화 시작 | A | `POST /api/conversations` | ⬜ | |
 | | 내 기록 조회 | 내 대화 목록·상세, 남의 대화는 볼 수 없음 | A 조회 API·권한<br>C 기록 화면 | `GET /api/me/conversations`<br>`GET /api/me/chats`<br>`/history` | ⬜ | |
@@ -138,6 +140,8 @@ AGENTS.md             # AI 코딩 도구용 규칙
 - 소셜 로그인 (카카오, 구글 등)
 - 결제
 - 실시간 스트리밍 응답 (답변이 한 글자씩 나오는 방식)
+- 관리자 화면 — 모든 사용자의 대화를 보는 화면은 공개 URL 에서 개인정보 노출 위험이 커서 만들지 않습니다.
+  과제의 "DB 확인 가이드"(3가지 중 1개 이상)는 **내 기록 API**(`GET /api/me/chats`)와 **확인용 SQL**(`scripts/check_logs.sql`)로 제공합니다.
 - 의료·법률·투자 조언 — AI 설명은 틀릴 수 있어 학습용 개념 설명으로만 제공합니다
 
 ---
@@ -225,6 +229,13 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | `ANTHROPIC_API_KEY` | AI 키 (**비밀**) |
 | `AI_MODEL` | 사용할 AI 모델 |
 | `AI_TIMEOUT_SECONDS` | AI 응답 최대 대기 시간 (기본 30초) |
+| `AI_MAX_OUTPUT_TOKENS` | AI 답변 최대 길이 |
+| `CONTEXT_TURNS` · `CONTEXT_MAX_CHARS` | AI 에 함께 보낼 이전 대화 수(기본 5턴)·최대 글자 수 |
+| `SITE_ORIGIN` | 서비스 주소. 가입·로그인 요청의 출처(Origin) 검사에 사용 |
+| `SESSION_TTL_SECONDS` | 로그인 유지 시간 (기본 2시간) |
+| `COOKIE_SECURE` | 로그인 쿠키를 HTTPS 로만 보냄 (운영은 `true` 필수) |
+| `USER_REQUESTS_PER_MINUTE` · `DAILY_REQUEST_LIMIT` | 질문 횟수 제한 (1인 1분 · 전체 하루) |
+| `LOG_LEVEL` | 서버 로그 수준 |
 
 서버 배포 방법과 서비스 URL 은 배포 후 추가합니다.
 
@@ -251,3 +262,59 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 - [ ] 모든 기능이 PR 로 머지됨 (3장 기능 표의 PR 칸)
 - [ ] 각자 맡은 코드를 설명할 수 있음 → [docs/team/2-evaluation-example.md](docs/team/2-evaluation-example.md)
 - [ ] 서버 재시작 후에도 대화 기록 유지
+
+---
+
+## 7. 과제 요구사항 근거
+
+과제 원문(B7-1) 항목마다 **어디서 만족하는지** 적습니다. 기능을 머지할 때 상태와 근거를 함께 갱신합니다.
+✅ 완료 · 🟨 일부 완료 · ⬜ 예정 (담당 이슈)
+
+### 기능 요구사항 (원문 4장)
+
+| 원문 요구사항 | 근거 (코드 · 문서 · 테스트) | 상태 |
+|---|---|---|
+| 4-1 질문 입력 웹 페이지, 같은 화면에서 응답 확인 | `/chat` 화면 (`app/templates/`, `app/static/js/`) | ⬜ [EE-12][i19] · [EE-14][i21] |
+| 4-2 회원가입·로그인 | API: [app/auth/router.py](app/auth/router.py), [tests/auth/](tests/auth/) · 화면: `/signup` `/login` | 🟨 API ✅ [#35][p35] [#37][p37] · 화면 [EE-09][i17] |
+| 4-2 로그인 여부로 기능 구분, 챗봇은 로그인 사용자만 | `CurrentUserDep` → 비로그인 API 는 401, 상태 변경은 CSRF 없으면 403 ([app/auth/dependencies.py](app/auth/dependencies.py), [tests/core/test_fixtures.py](tests/core/test_fixtures.py)) | 🟨 API ✅ [#37][p37] · 페이지 이동 [EE-12][i19] |
+| 4-3 AI 는 서버에서 호출 (키 노출 방지) | 화면은 우리 서버만 부르고, AI 는 [app/chat/provider.py](app/chat/provider.py) 경계로 서버에서만 호출. 키는 환경 변수 `ANTHROPIC_API_KEY` | 🟨 경계·가짜 AI ✅ [#6][p6] · 실제 연결 [EE-13][i20] |
+| 4-3 문맥 유지 전략 | 같은 대화의 최근 5턴, 최대 12,000자 ([app/chat/context.py](app/chat/context.py), [tests/chat/test_context.py](tests/chat/test_context.py)) | 🟨 ✅ [#8][p8] · 채팅 연결 [EE-13][i20] |
+| 4-4 질문·응답 누적 저장 (사용자·시각·질문·응답) | `chat_turns` 의 `user_id` `created_at` `question` `answer` ([docs/spec/db.md](docs/spec/db.md)) | 🟨 테이블 ✅ [#33][p33] · 저장 [EE-13][i20] |
+| 4-4 사용자 기준 조회·추적 | 내 기록 API `GET /api/me/chats` · 확인용 SQL `scripts/check_logs.sql` | ⬜ [EE-11][i18] · [EE-20][i27] |
+| 4-5 서버 로그: 요청 수신 / AI 호출 / AI 응답·실패 / DB 저장 성공·실패 | `request_received` · `ai_call_start` · `ai_call_success`·`ai_call_failed` · `db_save_success`·`db_save_failed`, 모두 같은 `request_id` ([app/core/logging.py](app/core/logging.py), [app/core/middleware.py](app/core/middleware.py)) | 🟨 요청 로그 ✅ [#4][p4] · AI·DB 로그 [EE-13][i20] |
+| 4-5 AI 실패·타임아웃에도 서버 유지, 사용자에게 안내 | 모든 예외를 공통 JSON 오류로 변환 ([app/core/errors.py](app/core/errors.py)) · AI 오류는 504 `AI_TIMEOUT` 등 한국어 안내 | 🟨 공통 오류 ✅ [#4][p4] · AI 오류 [EE-16][i23] |
+| 4-5 입력 검증 1개 이상 | 가입·로그인 이메일 형식·비밀번호 길이 → 422 ([tests/auth/](tests/auth/)) · 질문 1~2,000자 | ✅ [#35][p35] [#37][p37] · 질문 [EE-13][i20] |
+| 4-6 외부 접속 URL, 배포·환경 변수 문서 | Railway + Volume ([배포 방식 결정](docs/team/3-deploy-options.md)) · 실행 방법·환경 변수 5장 | 🟨 결정 ✅ [#34][p34] · 배포 [EE-22][i29] |
+| 4-7 브랜치 전략, 기능 단위 작업 브랜치 | `main` 보호 + 이슈별 `feat/ee-XX-…` 브랜치 ([CONTRIBUTING.md](CONTRIBUTING.md)) | ✅ |
+| 4-7 PR 기반 Merge | main 직접 커밋 금지. 승인 1명 + CI `test` 통과 후 Merge commit ([.github/workflows/ci.yml](.github/workflows/ci.yml)) | ✅ |
+| 4-7 1인 유의미한 커밋 10회, 역할·개인별 작업 요약 | 3장 역할·기능 표(담당·PR) · `git shortlog -sne --no-merges origin/main` | ⬜ [EE-24][i31] |
+
+### 산출물 · 개발 환경 · 제약 사항 (원문 2·5·6장)
+
+| 원문 요구사항 | 근거 | 상태 |
+|---|---|---|
+| README 기술 문서 7항목 | 6장 체크리스트 | 🟨 [EE-24][i31] |
+| DB 확인 가이드 (3가지 중 1개 이상) | 로그 조회 API(`GET /api/me/chats`) + 확인용 SQL(`scripts/check_logs.sql`). 관리자 화면은 비제공 (3장) | ⬜ [EE-11][i18] · [EE-20][i27] |
+| Python & FastAPI, SQLite | 4장 기술 스택 | ✅ |
+| 평가자가 DB 에 연결·조회 가능 | 배포 서버의 DB 에 확인용 SQL 실행 (`railway ssh`) | ⬜ [EE-20][i27] |
+| 민감정보는 환경 변수, `.env` 는 Git 제외, 예시 제공 | [.env.example](.env.example), [.gitignore](.gitignore), 설정은 [app/core/config.py](app/core/config.py) 에서만 읽음 | ✅ |
+| README 에 환경 변수 이름·설정 방법 | 5장 | ✅ |
+| AI 호출 타임아웃 설정, 실패 시 안내 | `AI_TIMEOUT_SECONDS` 기본 30초 ([app/core/config.py](app/core/config.py)) | 🟨 설정 ✅ · 적용 [EE-13][i20] · 안내 [EE-16][i23] |
+| 과제 목표: 각자 맡은 부분을 설명 | [평가 대비](docs/team/2-evaluation-example.md) | ⬜ [EE-24][i31] |
+
+[i17]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/17
+[i18]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/18
+[i19]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/19
+[i20]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/20
+[i21]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/21
+[i23]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/23
+[i27]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/27
+[i29]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/29
+[i31]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/31
+[p4]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4
+[p6]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/6
+[p8]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8
+[p33]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/33
+[p34]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/34
+[p35]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/35
+[p37]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/37
