@@ -28,7 +28,7 @@
       <form id="login-form" method="post" novalidate>
         <div class="field">
           <label for="email">이메일</label>
-          <input id="email" name="email" type="email" autocomplete="email" spellcheck="false" required
+          <input id="email" name="email" type="email" placeholder="name@example.com" autocomplete="email" spellcheck="false" required
                  maxlength="{{ rules.email_max_length }}" pattern="{{ rules.email_pattern }}" aria-describedby="form-error">
         </div>
         <div class="field">
