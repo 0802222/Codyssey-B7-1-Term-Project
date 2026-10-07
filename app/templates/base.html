@@ -18,11 +18,18 @@
   <header class="site-header">
     <div class="container">
       <a class="logo" href="/"><img src="/static/img/mascot.svg" alt="" width="32" height="32">EasyExplain</a>
-      {# 라우터가 active 값("chat" / "history" / "login")을 넘기면 그 메뉴가 현재 위치로 표시된다 #}
+      {# 라우터가 active 값("chat" / "history" / "login")을 넘기면 그 메뉴가 현재 위치로 표시된다.
+         logged_in(라우터가 OptionalUserDep 로 확인)이 참이면 "로그인" 메뉴 대신 "로그아웃" 버튼을 보여 준다 #}
       <nav class="site-nav" aria-label="주 메뉴">
         <a href="/chat"{% if active == "chat" %} aria-current="page"{% endif %}>채팅</a>
         <a href="/history"{% if active == "history" %} aria-current="page"{% endif %}>내 기록</a>
+        {% if logged_in %}
+        {# 로그아웃은 서버의 세션을 지우는 요청(POST /api/auth/logout + X-CSRF-Token)이라 링크가 아니라 버튼이다.
+           누르면 하는 일(요청·토큰 정리·이동)은 EE-14 에서 붙인다 #}
+        <button id="logout-button" type="button">로그아웃</button>
+        {% else %}
         <a href="/login"{% if active == "login" %} aria-current="page"{% endif %}>로그인</a>
+        {% endif %}
       </nav>
     </div>
   </header>

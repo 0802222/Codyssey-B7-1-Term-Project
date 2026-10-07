@@ -82,23 +82,36 @@ CHAT_INPUT_RULES = ChatInputRules(
 )
 
 
+# 모든 페이지는 user: OptionalUserDep 로 로그인 여부를 받아 logged_in 으로 넘긴다.
+# base.html 헤더가 그 값으로 "로그인" 메뉴 또는 "로그아웃" 버튼을 보여 준다
+
+
 @router.get("/")
-def index(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+def index(request: Request, user: OptionalUserDep):
+    return templates.TemplateResponse(request, "index.html", {"logged_in": user is not None})
 
 
 @router.get("/signup")
-def signup_page(request: Request):
+def signup_page(request: Request, user: OptionalUserDep):
     # 헤더 메뉴에 "가입" 항목이 없으므로 현재 위치(active)를 넘기지 않는다
-    return templates.TemplateResponse(request, "signup.html", {"rules": AUTH_INPUT_RULES})
+    return templates.TemplateResponse(
+        request, "signup.html", {"logged_in": user is not None, "rules": AUTH_INPUT_RULES}
+    )
 
 
 @router.get("/login")
-def login_page(request: Request):
+def login_page(request: Request, user: OptionalUserDep):
     # 가입하고 넘어오면(/login?joined=1) "가입이 끝났어요" 안내를 함께 보여 준다
     joined = request.query_params.get("joined") == "1"
     return templates.TemplateResponse(
-        request, "login.html", {"active": "login", "joined": joined, "rules": AUTH_INPUT_RULES}
+        request,
+        "login.html",
+        {
+            "active": "login",
+            "logged_in": user is not None,
+            "joined": joined,
+            "rules": AUTH_INPUT_RULES,
+        },
     )
 
 
@@ -109,7 +122,9 @@ def chat_page(request: Request, user: OptionalUserDep):
     if user is None:
         return RedirectResponse("/login", status_code=303)
     return templates.TemplateResponse(
-        request, "chat.html", {"active": "chat", "rules": CHAT_INPUT_RULES}
+        request,
+        "chat.html",
+        {"active": "chat", "logged_in": user is not None, "rules": CHAT_INPUT_RULES},
     )
 
 

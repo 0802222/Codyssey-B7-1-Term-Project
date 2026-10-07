@@ -140,7 +140,9 @@ img {
   gap: 4px;
 }
 
-.site-nav a {
+/* 메뉴 링크와 로그아웃 버튼(로그인했을 때 "로그인" 자리)은 같은 모양이다 */
+.site-nav a,
+.site-nav button {
   padding: 8px 14px;
   border-radius: var(--radius-pill);
   color: var(--text-muted);
@@ -148,7 +150,16 @@ img {
   text-decoration: none;
 }
 
-.site-nav a:hover {
+.site-nav button {
+  border: 0;
+  background: none;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+.site-nav a:hover,
+.site-nav button:hover {
   background: var(--accent-soft);
   color: var(--accent-text);
 }
@@ -732,7 +743,8 @@ img {
     gap: 0;
   }
 
-  .site-nav a {
+  .site-nav a,
+  .site-nav button {
     padding: 8px 10px;
     font-size: 0.875rem;
   }
