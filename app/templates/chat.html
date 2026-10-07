@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}채팅 — EasyExplain{% endblock %}
+
+{% block content %}
+<section class="chat">
+  <div class="container chat-panel">
+    <h1 class="visually-hidden">채팅</h1>
+
+    {# 수준 선택: 라디오 버튼 3개. 값(easy·beginner·advanced)과 이름은 app/web/router.py 의 CHAT_INPUT_RULES.
+       아이콘: Tabler Icons (MIT) 의 seeding·plant·tree SVG 경로 #}
+    <div class="chat-tools">
+      <fieldset class="level-picker">
+        <legend class="visually-hidden">설명 수준</legend>
+        {% for level in rules.levels %}
+        <label class="level-option">
+          <input type="radio" name="level" value="{{ level.value }}" data-label="{{ level.label }}"
+                 {%- if level.value == rules.default_level %} checked{% endif %}>
+          <span>
+            {%- if level.value == "easy" -%}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 10a6 6 0 0 0 -6 -6h-3v2a6 6 0 0 0 6 6h3"/><path d="M12 14a6 6 0 0 1 6 -6h3v1a6 6 0 0 1 -6 6h-3"/><path d="M12 20l0 -10"/></svg>
+            {%- elif level.value == "beginner" -%}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 15h10v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2v-4z"/><path d="M12 9a6 6 0 0 0 -6 -6h-3v2a6 6 0 0 0 6 6h3"/><path d="M12 11a6 6 0 0 1 6 -6h3v1a6 6 0 0 1 -6 6h-3"/><path d="M12 15l0 -6"/></svg>
+            {%- elif level.value == "advanced" -%}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 13l-2 -2"/><path d="M12 12l2 -2"/><path d="M12 21v-13"/><path d="M9.824 16a3 3 0 0 1 -2.743 -3.69a3 3 0 0 1 .304 -4.833a3 3 0 0 1 4.615 -3.707a3 3 0 0 1 4.614 3.707a3 3 0 0 1 .305 4.833a3 3 0 0 1 -2.919 3.695h-4z"/></svg>
+            {%- endif -%}
+            {{ level.label }}</span>
+        </label>
+        {% endfor %}
+      </fieldset>
+    </div>
+
+    {# 첫 질문 전에만 보이는 안내 #}
+    <div class="chat-empty" id="chat-empty">
+      <img src="/static/img/mascot.svg" alt="" width="64" height="64">
+      <p class="chat-empty-title">어떤 개념이 궁금한가요?</p>
+      <p>수준을 고르고 질문하면 그 눈높이에 맞춰 설명해요.</p>
+    </div>
+
+    {# 대화: 질문·답변 말풍선을 스크립트가 여기에 붙인다. aria-live 라서 새 답변을 스크린리더가 읽는다 #}
+    <ol class="thread" id="thread" aria-live="polite" aria-label="대화"></ol>
+
+    {# 오류 칸: 평소에는 숨겨 두고, 질문이 규칙에 맞지 않으면 안내 문구를, 요청이 실패하면 서버가 보낸
+       error.message 를 넣어 보여 준다 #}
+    <div class="form-error" id="chat-error" role="alert" tabindex="-1" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+      <span id="chat-error-text"></span>
+    </div>
+
+    {# 질문 입력. method="post": 스크립트가 뜨기 전에 보내져도 질문이 주소(GET 쿼리)에 붙지 않게
+       novalidate: 브라우저 기본 말풍선 대신 위 오류 칸에 안내 문구를 보여 준다 (최종 검사는 서버) #}
+    <form class="composer" id="chat-form" method="post" novalidate>
+      <label class="visually-hidden" for="question">질문</label>
+      <textarea id="question" name="question" rows="2" required maxlength="{{ rules.question_max_length }}"
+                placeholder="궁금한 개념을 물어보세요" aria-describedby="question-count chat-error"></textarea>
+      <div class="composer-row">
+        <span class="composer-count" id="question-count">0 / {{ rules.question_max_length }}</span>
+        <button class="btn btn-primary" type="submit" data-busy-label="기다리는 중…">보내기</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

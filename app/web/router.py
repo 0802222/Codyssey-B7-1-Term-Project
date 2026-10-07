@@ -9,8 +9,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import APIRouter, Request
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from app.auth.dependencies import OptionalUserDep
 from app.core.errors import not_implemented
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
@@ -45,6 +47,41 @@ AUTH_INPUT_RULES = AuthInputRules(
 )
 
 
+@dataclass(frozen=True)
+class LevelOption:
+    """채팅 화면의 설명 수준 하나."""
+
+    value: str  # API 로 보내는 값 (docs/spec/api.md 3장의 level)
+    label: str  # 화면에 보이는 이름
+
+
+@dataclass(frozen=True)
+class ChatInputRules:
+    """채팅 화면의 입력 규칙과 고를 수 있는 수준.
+
+    템플릿이 이 값으로 질문 칸의 maxlength·글자 수 안내와 수준 선택을 만들고, chat.js 는 그 HTML 을
+    읽어 보낸다. 최종 검사는 서버(POST /api/chat)가 하므로 API 명세 3장과 같은 값이어야 한다 —
+    질문은 앞뒤 공백을 뺀 뒤 1~2,000자(빈 질문은 화면이 막는다),
+    level 은 easy / beginner / advanced.
+    """
+
+    question_max_length: int
+    levels: tuple[LevelOption, ...]
+    default_level: str  # 화면을 열었을 때 골라 둔 수준
+
+
+# 값을 바꿀 때는 여기만 고친다
+CHAT_INPUT_RULES = ChatInputRules(
+    question_max_length=2000,
+    levels=(
+        LevelOption("easy", "아주 쉽게"),
+        LevelOption("beginner", "입문자"),
+        LevelOption("advanced", "전공자"),
+    ),
+    default_level="easy",
+)
+
+
 @router.get("/")
 def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
@@ -66,8 +103,14 @@ def login_page(request: Request):
 
 
 @router.get("/chat")
-def chat_page():
-    raise not_implemented("EE-12")
+def chat_page(request: Request, user: OptionalUserDep):
+    # 로그인하지 않았으면 로그인 화면으로 보낸다(303).
+    # 화면을 열어도 질문 API 는 서버가 다시 로그인을 확인한다
+    if user is None:
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(
+        request, "chat.html", {"active": "chat", "rules": CHAT_INPUT_RULES}
+    )
 
 
 @router.get("/history")
