@@ -7,10 +7,10 @@
  * 4. 실패하면 서버가 보낸 error.message 를 오류 칸에 보여 주고, 입력값은 지우지 않는다.
  * 5. 성공하면 가입은 로그인 화면으로, 로그인은 채팅 화면으로 이동한다.
  *
- * 규칙의 값(글자 수, 비밀번호에 영어만 받는지)은 이 파일에 적지 않고 HTML 에서 읽는다 —
- * 입력칸의 minlength·maxlength 와 비밀번호 칸의 data-ascii-only. 그 값은 app/web/router.py 의
- * AUTH_INPUT_RULES 한곳에서 정한다. 화면 검사는 빨리 알려 주기 위한 것이고, 최종 검사는 서버가 한다.
- * 이메일 형식은 서버만 검사한다 (서버의 "올바른 이메일 형식을 입력해 주세요." 가 그대로 나온다).
+ * 규칙의 값(글자 수, 이메일 형식, 비밀번호에 영어만 받는지)은 이 파일에 적지 않고 HTML 에서 읽는다 —
+ * 입력칸의 minlength·maxlength, 이메일 칸의 pattern, 비밀번호 칸의 data-ascii-only. 그 값은
+ * app/web/router.py 의 AUTH_INPUT_RULES 한곳에서 정한다. 이메일을 먼저 다 본 뒤 비밀번호를 본다.
+ * 화면 검사는 빨리 알려 주기 위한 것이고, 최종 검사는 서버가 한다.
  */
 
 // 서버의 오류 문구를 받지 못했을 때 보여 줄 문구
@@ -68,6 +68,10 @@ function findInputProblem(form) {
   if (email.value.trim() === "") return "이메일을 입력해 주세요.";
   if (email.value.length > email.maxLength) {
     return `이메일은 ${email.maxLength}자 이하로 입력해 주세요.`;
+  }
+  // 이메일 형식: pattern 은 서버와 같은 정규식이다. 문구도 서버와 같게 한다
+  if (!new RegExp(`^(?:${email.pattern})$`).test(email.value.trim())) {
+    return "올바른 이메일 형식을 입력해 주세요.";
   }
   if (password.value === "") return "비밀번호를 입력해 주세요.";
   if (password.hasAttribute("data-ascii-only") && !ENGLISH_ONLY.test(password.value)) {
