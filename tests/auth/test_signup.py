@@ -126,11 +126,96 @@ def test_signup_password_too_long(client, settings):
         headers={"Origin": settings.site_origin},
         json={
             "email": "test@example.com",
-            "password": "a" * 129,
+            "password": "a" * 21,
         },
     )
 
     assert response.status_code == 422
+
+
+def test_signup_password_length_boundaries_are_accepted(client, settings):
+    for email, password in [
+        ("min-length@example.com", "a" * 8),
+        ("max-length@example.com", "a" * 20),
+    ]:
+        response = client.post(
+            "/api/auth/signup",
+            headers={"Origin": settings.site_origin},
+            json={
+                "email": email,
+                "password": password,
+            },
+        )
+
+        assert response.status_code == 201
+
+
+def test_signup_rejects_non_english_password(client, settings):
+    for password in ["비밀번호12345678", "password🙂12", "pässword12"]:
+        response = client.post(
+            "/api/auth/signup",
+            headers={"Origin": settings.site_origin},
+            json={
+                "email": "test@example.com",
+                "password": password,
+            },
+        )
+
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_signup_keeps_spaces_and_symbols_in_password(client, settings):
+    password = " p@ss w0rd! "
+
+    response = client.post(
+        "/api/auth/signup",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": "space@example.com",
+            "password": password,
+        },
+    )
+
+    assert response.status_code == 201
+
+    engine = create_engine(settings.database_url)
+
+    with Session(engine) as session:
+        user = session.exec(
+            select(User).where(User.email == "space@example.com")
+        ).first()
+
+    assert user is not None
+    assert PasswordHash.recommended().verify(password, user.password_hash)
+    assert not PasswordHash.recommended().verify(password.strip(), user.password_hash)
+
+
+def test_signup_email_length_boundary(client, settings):
+    domain = "@example.com"
+    email_100 = "a" * (100 - len(domain)) + domain
+    email_101 = "b" * (101 - len(domain)) + domain
+
+    accepted = client.post(
+        "/api/auth/signup",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": email_100,
+            "password": "1234567890",
+        },
+    )
+    rejected = client.post(
+        "/api/auth/signup",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": email_101,
+            "password": "1234567890",
+        },
+    )
+
+    assert accepted.status_code == 201
+    assert rejected.status_code == 422
+    assert rejected.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 def test_signup_email_is_normalized(client, settings):
