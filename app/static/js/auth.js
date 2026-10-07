@@ -14,6 +14,10 @@
 const NETWORK_ERROR_MESSAGE = "서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.";
 const UNKNOWN_ERROR_MESSAGE = "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요.";
 
+// 로그인 응답의 csrf_token 을 보관하는 이름. 채팅 화면(EE-12·EE-14)이 같은 이름으로 꺼내
+// 로그인 뒤 POST 요청의 X-CSRF-Token 헤더에 붙인다.
+const CSRF_TOKEN_KEY = "csrf_token";
+
 const errorBox = document.getElementById("form-error");
 const errorText = document.getElementById("form-error-text");
 
@@ -26,6 +30,16 @@ function showError(message) {
 function clearError() {
   errorBox.hidden = true;
   errorText.textContent = ""; // 입력칸의 aria-describedby 가 지난 오류를 읽지 않게 비운다
+}
+
+// 이 탭의 sessionStorage 에 보관한다. 페이지를 옮겨도 남고, 탭을 닫으면 지워진다.
+// 브라우저 설정으로 저장소를 쓸 수 없으면 건너뛴다 — 그때는 다음 화면이 GET /api/auth/me 로 다시 받는다.
+function saveCsrfToken(token) {
+  try {
+    sessionStorage.setItem(CSRF_TOKEN_KEY, token);
+  } catch {
+    // 로그인 자체는 끝났으므로 이동은 그대로 한다
+  }
 }
 
 // 응답 본문을 JSON 으로 읽는다. JSON 이 아니면(프록시의 HTML 오류 페이지 등) null
@@ -96,7 +110,11 @@ if (signupForm) {
 
 const loginForm = document.getElementById("login-form");
 if (loginForm) {
-  connectAuthForm(loginForm, "/api/auth/login", () => {
+  connectAuthForm(loginForm, "/api/auth/login", (data) => {
+    // 세션 쿠키는 브라우저가 알아서 저장한다(HttpOnly 라 JS 는 못 읽는다). csrf_token 만 직접 보관한다
+    if (data?.csrf_token) {
+      saveCsrfToken(data.csrf_token);
+    }
     location.replace("/chat");
   });
 }
