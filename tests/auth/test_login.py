@@ -336,15 +336,26 @@ def test_login_does_not_read_user_after_commit(
     _signup(client, settings)
 
     original_commit = Session.commit
+    original_execute = Session.execute
 
-    def commit_and_expire_user(self):
+    state = {
+        "committed": False,
+        "user_selects_after_commit": 0,
+    }
+
+    def track_commit(self):
         original_commit(self)
+        state["committed"] = True
 
-        for obj in list(self.identity_map.values()):
-            if isinstance(obj, User):
-                self.expire(obj, ["id", "email"])
+    def track_execute(self, statement, *args, **kwargs):
+        if state["committed"] and hasattr(statement, "get_final_froms"):
+            if User.__table__ in statement.get_final_froms():
+                state["user_selects_after_commit"] += 1
 
-    monkeypatch.setattr(Session, "commit", commit_and_expire_user)
+        return original_execute(self, statement, *args, **kwargs)
+
+    monkeypatch.setattr(Session, "commit", track_commit)
+    monkeypatch.setattr(Session, "execute", track_execute)
 
     response = _login(client, settings)
 
@@ -353,3 +364,4 @@ def test_login_does_not_read_user_after_commit(
         "id": 1,
         "email": "test@example.com",
     }
+    assert state["user_selects_after_commit"] == 0
