@@ -113,7 +113,7 @@ def test_signup_password_too_short(client, settings):
         headers={"Origin": settings.site_origin},
         json={
             "email": "test@example.com",
-            "password": "123456789",
+            "password": "1234567",
         },
     )
 

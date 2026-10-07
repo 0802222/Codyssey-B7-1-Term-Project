@@ -129,7 +129,7 @@ def test_login_rejects_invalid_password_length(client, settings):
         headers={"Origin": settings.site_origin},
         json={
             "email": "test@example.com",
-            "password": "123456789",
+            "password": "1234567",
         },
     )
 
