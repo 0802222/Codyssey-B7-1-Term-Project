@@ -7,5 +7,5 @@ def test_logged_in_client_passes_auth_and_reaches_handler(logged_in_client):
 
 def test_client_without_login_stops_at_auth(client):
     response = client.post("/api/chat")
-    assert response.status_code == 501
-    assert "EE-08" in response.json()["error"]["message"]
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTH_REQUIRED"
