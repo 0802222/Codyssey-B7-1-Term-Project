@@ -11,24 +11,32 @@
       <h1>회원가입</h1>
       <p class="auth-lead">이메일로 가입하고 질문을 시작해요.</p>
 
-      {# 오류 칸: 평소에는 숨겨 두고, 가입에 실패하면 서버가 보낸 error.message 를 넣어 보여 준다 #}
+      {# 오류 칸: 평소에는 숨겨 두고, 입력이 규칙에 맞지 않으면 auth.js 의 안내 문구를,
+         가입에 실패하면 서버가 보낸 error.message 를 넣어 보여 준다 #}
       <div class="form-error" id="form-error" role="alert" tabindex="-1" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
         <span id="form-error-text"></span>
       </div>
 
       {# 보내기는 auth.js 가 fetch 로 한다. method="post": 스크립트가 뜨기 전에 눌러도 비밀번호가 주소(GET 쿼리)에 붙지 않게
-         novalidate: 입력 검사는 서버가 하고, 브라우저 기본 말풍선 대신 위 오류 칸에 서버 문구를 보여 준다 #}
+         novalidate: 브라우저 기본 말풍선 대신 auth.js 가 위 오류 칸에 안내 문구를 보여 준다 (최종 검사는 서버)
+         입력 규칙 값(rules)은 app/web/router.py 의 AUTH_INPUT_RULES. maxlength 를 넘는 글자는 입력되지 않는다 #}
       <form id="signup-form" method="post" novalidate>
         <div class="field">
           <label for="email">이메일</label>
-          <input id="email" name="email" type="email" autocomplete="email" spellcheck="false" required aria-describedby="email-hint form-error">
+          <input id="email" name="email" type="email" autocomplete="email" spellcheck="false" required
+                 maxlength="{{ rules.email_max_length }}" aria-describedby="email-hint form-error">
           <p class="field-hint" id="email-hint">{{ rules.email_max_length }}자까지 입력할 수 있어요.</p>
         </div>
         <div class="field">
           <label for="password">비밀번호</label>
-          <input id="password" name="password" type="password" autocomplete="new-password" required aria-describedby="password-hint form-error">
-          <p class="field-hint" id="password-hint">{{ rules.password_min_length }}자 이상 {{ rules.password_max_length }}자 이하로 입력해 주세요.</p>
+          <input id="password" name="password" type="password" autocomplete="new-password" required
+                 minlength="{{ rules.password_min_length }}" maxlength="{{ rules.password_max_length }}"
+                 {%- if rules.password_ascii_only %} data-ascii-only{% endif %} aria-describedby="password-hint form-error">
+          <p class="field-hint" id="password-hint">
+            {{- rules.password_min_length }}~{{ rules.password_max_length }}자로 입력해 주세요.
+            {%- if rules.password_ascii_only %} 영문·숫자·기호만 쓸 수 있어요.{% endif -%}
+          </p>
         </div>
         <button class="btn btn-primary btn-block" type="submit" data-busy-label="가입하는 중…">가입하기</button>
       </form>

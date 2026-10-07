@@ -21,14 +21,17 @@ router = APIRouter(tags=["web"], include_in_schema=False)
 
 @dataclass(frozen=True)
 class AuthInputRules:
-    """가입·로그인 화면의 입력 규칙. 화면의 안내 문구는 이 값으로 만든다.
+    """가입·로그인 화면의 입력 규칙.
 
-    서버의 검사(app/auth/router.py)와 API 명세(docs/spec/api.md 2장)와 같은 값이어야 한다.
+    템플릿이 이 값으로 안내 문구와 입력칸 속성(minlength·maxlength·data-ascii-only)을 만들고,
+    auth.js 는 그 속성을 읽어 보내기 전에 검사한다. 최종 검사는 서버(app/auth/router.py)가 하므로
+    API 명세(docs/spec/api.md 2장)·서버와 같은 값이어야 한다.
     """
 
     email_max_length: int
     password_min_length: int
     password_max_length: int
+    password_ascii_only: bool  # True 면 비밀번호에 영어(영문·숫자·기호·공백, ASCII 32~126)만 받는다
 
 
 # 값을 바꿀 때는 여기만 고친다
@@ -36,6 +39,7 @@ AUTH_INPUT_RULES = AuthInputRules(
     email_max_length=254,
     password_min_length=10,
     password_max_length=128,
+    password_ascii_only=False,
 )
 
 

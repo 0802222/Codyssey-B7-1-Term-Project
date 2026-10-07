@@ -122,7 +122,7 @@ def test_signup_page_explains_input_rules(client):
     assert "email-hint" in find_one(html, "input", id="email")["aria-describedby"]
     assert "password-hint" in find_one(html, "input", id="password")["aria-describedby"]
     assert "254자" in html
-    assert "10자 이상 128자 이하" in html
+    assert "10~128자" in html
 
 
 @pytest.mark.parametrize(("path", "other_page"), [("/signup", "/login"), ("/login", "/signup")])

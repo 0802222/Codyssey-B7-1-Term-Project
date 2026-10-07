@@ -1,18 +1,25 @@
 /*
  * 회원가입·로그인 폼 (EE-09) — /signup, /login 이 함께 쓴다.
  *
- * 1. 폼을 보내면 페이지를 새로 불러오지 않고 fetch 로 JSON API 를 부른다.
- * 2. 보내는 동안 버튼을 잠가 같은 요청이 두 번 가지 않게 한다.
- * 3. 실패하면 서버가 보낸 error.message 를 오류 칸에 보여 주고, 입력값은 지우지 않는다.
- * 4. 성공하면 가입은 로그인 화면으로, 로그인은 채팅 화면으로 이동한다.
+ * 1. 보내기 전에 입력 규칙을 화면에서 먼저 확인하고, 어긋나면 무엇을 고칠지 오류 칸에 알려 준다.
+ * 2. 규칙에 맞으면 페이지를 새로 불러오지 않고 fetch 로 JSON API 를 부른다.
+ * 3. 보내는 동안 버튼을 잠가 같은 요청이 두 번 가지 않게 한다.
+ * 4. 실패하면 서버가 보낸 error.message 를 오류 칸에 보여 주고, 입력값은 지우지 않는다.
+ * 5. 성공하면 가입은 로그인 화면으로, 로그인은 채팅 화면으로 이동한다.
  *
- * 입력 규칙(이메일 형식, 비밀번호 10~128자)은 서버가 검사한다. 화면은 규칙을 안내만 하고
- * 같은 검사를 또 하지 않는다. 규칙이 서버 한 곳에만 있고, 오류는 늘 같은 칸에 같은 모양으로 나온다.
+ * 규칙의 값(글자 수, 비밀번호에 영어만 받는지)은 이 파일에 적지 않고 HTML 에서 읽는다 —
+ * 입력칸의 minlength·maxlength 와 비밀번호 칸의 data-ascii-only. 그 값은 app/web/router.py 의
+ * AUTH_INPUT_RULES 한곳에서 정한다. 화면 검사는 빨리 알려 주기 위한 것이고, 최종 검사는 서버가 한다.
+ * 이메일 형식은 서버만 검사한다 (서버의 "올바른 이메일 형식을 입력해 주세요." 가 그대로 나온다).
  */
 
 // 서버의 오류 문구를 받지 못했을 때 보여 줄 문구
 const NETWORK_ERROR_MESSAGE = "서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.";
 const UNKNOWN_ERROR_MESSAGE = "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요.";
+
+// 영어만 받는 비밀번호에 쓸 수 있는 글자: 영문·숫자·기호와 공백 (ASCII 32~126). 한글·이모지는 안 된다
+const ENGLISH_ONLY = /^[\x20-\x7E]*$/;
+const NOT_ENGLISH_MESSAGE = "비밀번호는 영어(영문·숫자·기호)로만 입력해 주세요.";
 
 // 로그인 응답의 csrf_token 을 보관하는 이름. 채팅 화면(EE-12·EE-14)이 같은 이름으로 꺼내
 // 로그인 뒤 POST 요청의 X-CSRF-Token 헤더에 붙인다.
@@ -21,10 +28,13 @@ const CSRF_TOKEN_KEY = "csrf_token";
 const errorBox = document.getElementById("form-error");
 const errorText = document.getElementById("form-error-text");
 
-function showError(message) {
+// moveFocus: 제출할 때는 오류 칸으로 포커스를 옮긴다. 입력하는 도중(붙여 넣기)에는 칸에 그대로 둔다
+function showError(message, { moveFocus = true } = {}) {
   errorText.textContent = message; // HTML 이 아니라 글자로만 넣는다
   errorBox.hidden = false; // role="alert" 라서 나타나는 순간 스크린리더가 읽는다
-  errorBox.focus(); // 포커스를 오류 칸으로 옮긴다. 여기서 Tab 을 누르면 이메일 칸이다
+  if (moveFocus) {
+    errorBox.focus(); // 포커스를 오류 칸으로 옮긴다. 여기서 Tab 을 누르면 이메일 칸이다
+  }
 }
 
 function clearError() {
@@ -51,6 +61,38 @@ async function readJson(response) {
   }
 }
 
+// 보내기 전 검사: 규칙에 어긋나면 안내 문구를, 맞으면 "" 를 돌려준다. 위의 칸부터 하나씩 본다
+function findInputProblem(form) {
+  const { email, password } = form.elements;
+
+  if (email.value.trim() === "") return "이메일을 입력해 주세요.";
+  if (email.value.length > email.maxLength) {
+    return `이메일은 ${email.maxLength}자 이하로 입력해 주세요.`;
+  }
+  if (password.value === "") return "비밀번호를 입력해 주세요.";
+  if (password.hasAttribute("data-ascii-only") && !ENGLISH_ONLY.test(password.value)) {
+    return NOT_ENGLISH_MESSAGE;
+  }
+  if (password.value.length < password.minLength || password.value.length > password.maxLength) {
+    return `비밀번호는 ${password.minLength}~${password.maxLength}자로 입력해 주세요.`;
+  }
+  return "";
+}
+
+// 붙여 넣기 검사: 브라우저는 maxlength 를 넘는 뒷부분을 말없이 잘라 넣는다. 잘린 값으로 가입되지 않게,
+// 붙여 넣을 글이 칸의 최대 길이보다 길거나 영어만 받는 칸에 다른 글자가 섞여 있으면 안내 문구를 돌려준다
+function findPasteProblem(input, clipboardText) {
+  const text = clipboardText.replace(/[\r\n]/g, ""); // 한 줄 입력칸에는 줄바꿈이 들어가지 않는다
+  if (input.hasAttribute("data-ascii-only") && !ENGLISH_ONLY.test(text)) {
+    return NOT_ENGLISH_MESSAGE;
+  }
+  if (text.length > input.maxLength) {
+    const field = input.name === "email" ? "이메일은" : "비밀번호는";
+    return `${field} ${input.maxLength}자까지 입력할 수 있어요.`;
+  }
+  return "";
+}
+
 // form 을 보내면 apiUrl 로 이메일·비밀번호를 POST 하고, 성공하면 onSuccess(응답 JSON) 를 부른다
 function connectAuthForm(form, apiUrl, onSuccess) {
   const button = form.querySelector('button[type="submit"]');
@@ -61,11 +103,26 @@ function connectAuthForm(form, apiUrl, onSuccess) {
     button.textContent = sending ? button.dataset.busyLabel || idleLabel : idleLabel;
   }
 
+  for (const input of [form.elements.email, form.elements.password]) {
+    input.addEventListener("paste", (event) => {
+      const problem = findPasteProblem(input, event.clipboardData?.getData("text") ?? "");
+      if (problem) {
+        event.preventDefault(); // 넣지 않는다 → 입력칸은 붙여 넣기 전 그대로
+        showError(problem, { moveFocus: false });
+      }
+    });
+  }
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault(); // 브라우저 기본 전송(페이지 이동)을 막는다 → 입력값이 그대로 남는다
     if (button.disabled) return; // 이미 보내는 중이면 무시한다
 
     clearError();
+    const problem = findInputProblem(form);
+    if (problem) {
+      showError(problem); // 서버에 보내지 않는다. 입력값은 그대로 둔다
+      return;
+    }
     setSending(true);
 
     let response;
