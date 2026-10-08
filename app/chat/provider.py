@@ -13,7 +13,6 @@ from typing import Annotated, Literal, Protocol
 from fastapi import Depends
 
 from app.core.deps import SettingsDep
-from app.core.errors import not_implemented
 
 
 @dataclass(frozen=True)
@@ -70,8 +69,9 @@ def get_ai_provider(settings: SettingsDep) -> AIProvider:
 
         return FakeAIProvider()
 
-    # 실제 Anthropic 연결은 EE-13에서 구현한다. 실제 설정을 Fake로 대체하지 않는다.
-    raise not_implemented("EE-13")
+    from app.chat.anthropic_provider import AnthropicProvider
+
+    return AnthropicProvider(settings)
 
 
 AIProviderDep = Annotated[AIProvider, Depends(get_ai_provider)]
