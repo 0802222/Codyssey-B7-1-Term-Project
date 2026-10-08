@@ -119,6 +119,7 @@ AGENTS.md             # AI 코딩 도구용 규칙
 | | 내 기록 조회 | 내 대화 목록·상세, 남의 대화는 볼 수 없음 | A 조회 API·권한<br>C 기록 화면 | `GET /api/me/conversations`<br>`GET /api/me/chats`<br>`/history` | ⬜ | |
 | | DB 확인 도구 | 사용자별 최근 대화 조회 SQL | A | `scripts/check_logs.sql` | ⬜ | |
 | **안정성** | 오류 안내 | AI 지연·실패·DB 오류에도 서버 유지, 공통 형식으로 안내 | L 공통 오류 형식<br>B AI 오류 처리<br>C 오류 메시지 표시 | 모든 API | 🟨 | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
+| | 질문 횟수 제한 | 사용자별 최근 60초·서비스 전체 UTC 하루 한도, 단일 worker·인스턴스 기준 | B | `POST /api/chat` | 🟨 | [#44](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/44) |
 | | 입력 검증 | 빈 질문, 2,000자 초과, 잘못된 값 차단 | B 서버 검증<br>C 화면 입력 제한 | `POST /api/chat` | 🟨 | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
 | | 서버 로그 | 요청·AI 호출·DB 저장을 요청 ID 로 묶어 기록 | L 요청 로그<br>B AI 호출 로그<br>A DB 저장 로그 | 서버 로그 | 🟨 | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
 | | 상태 확인 | 서버·DB 정상 여부 | L | `GET /health` | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
@@ -128,8 +129,10 @@ AGENTS.md             # AI 코딩 도구용 규칙
 ⬜ 미착수 · 🟨 일부 완료 · ✅ 완료 — 기능을 머지할 때 상태와 PR 번호를 함께 적습니다.
 
 EE-13 서버 구현과 Fake 기반 검증은 [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43)에서 진행했습니다.
-아직 병합 전이며 화면 연결(EE-14)·횟수 제한(EE-16)·실제 AI 품질 검증(EE-19)이 남아 관련 기능은 🟨로 표시합니다.
+횟수 제한과 오류·중복 요청 검증은 [#44](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/44)에서 진행했습니다.
+아직 병합 전이며 화면 연결(EE-14)·실제 AI 품질 검증(EE-19)이 남아 관련 기능은 🟨로 표시합니다.
 처리 순서와 설명 자료는 [EE-13 안내](app/chat/EE-13.md)를 참고합니다.
+한도 집계 대상과 단일 worker·재시작 초기화 제한은 [EE-16 안내](app/chat/EE-16.md)에 설명했습니다.
 
 ### 비제공 기능
 
