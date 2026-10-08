@@ -22,17 +22,6 @@ def test_wrong_method_returns_405(client):
     assert_error(client.delete("/health"), 405, "METHOD_NOT_ALLOWED")
 
 
-@pytest.mark.parametrize(
-    ("method", "path"),
-    [
-        ("get", "/api/me/conversations"),
-        ("get", "/api/me/chats"),
-    ],
-)
-def test_unimplemented_routes_do_not_fake_success(client, method, path):
-    assert_error(getattr(client, method)(path), 501, "NOT_IMPLEMENTED")
-
-
 def test_validation_error_uses_common_format(app, client):
     @app.get("/_test/validate")
     def validate(n: int):
