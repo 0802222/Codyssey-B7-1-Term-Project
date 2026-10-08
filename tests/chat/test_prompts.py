@@ -1,13 +1,13 @@
 import pytest
 
-from app.chat.prompts import build_system_prompt
+from app.chat.prompts import LEVEL_GUIDANCE, build_system_prompt
 
 
 @pytest.mark.parametrize(
     ("level", "required_guidance"),
     [
         ("easy", ["일상적인 단어", "간단한 비유", "생소한 용어를 풀어"]),
-        ("beginner", ["기본 용어를 정의", "작은 예시"]),
+        ("beginner", ["기본 용어", "뜻을 풀고", "작은 예시", "작동 흐름"]),
         ("advanced", ["전문 용어", "원리", "전제·한계"]),
     ],
 )
@@ -62,6 +62,25 @@ def test_uncertainty_sources_and_unavailable_tools_are_described_honestly(level)
     assert "도구 실행·파일 접근·외부 검색 기능이 있는 것처럼 말하지 않는다" in prompt
 
 
+def test_beginner_explains_topic_specific_terms_and_flow_beyond_an_analogy():
+    guidance = LEVEL_GUIDANCE["beginner"]
+
+    assert "주제에 필요한 기본 용어" in guidance
+    assert "1~2개" in guidance
+    assert "뜻을 풀고" in guidance
+    assert "작은 예시로 작동 흐름을 설명" in guidance
+    assert "비유만 반복하지 않는다" in guidance
+
+
+@pytest.mark.parametrize("level", ["easy", "beginner", "advanced"])
+def test_analogies_and_unverified_service_examples_do_not_claim_false_facts(level):
+    prompt = build_system_prompt(level)
+
+    assert "비유나 단순화로 실제와 다른 동작을 단정하지 않는다" in prompt
+    assert "특정 서비스의 확인되지 않은 동작이나 URL·수치" in prompt
+    assert "가정 또는 가상 예시라고 밝힌다" in prompt
+
+
 @pytest.mark.parametrize("level", ["", "EASY", "expert", "easy\n"])
 def test_unknown_level_is_rejected_instead_of_using_a_default(level):
     with pytest.raises(ValueError):
@@ -78,7 +97,7 @@ def test_changing_the_current_level_does_not_keep_the_previous_guidance():
     assert beginner != advanced
     assert "일상적인 단어" in easy
     assert "전제·한계" in advanced
-    assert "기본 용어를 정의" in beginner
+    assert "주제에 필요한 기본 용어" in beginner
     assert "일상적인 단어" not in advanced
     assert "전제·한계" not in easy
     assert build_system_prompt("easy") == easy
