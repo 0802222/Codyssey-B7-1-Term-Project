@@ -18,6 +18,7 @@ from app.chat.provider import (
     AIUnavailableError,
     AIUpstreamError,
 )
+from app.chat.rate_limit import ChatRateLimiter
 from app.chat.schemas import ChatRequest, ChatResponse
 from app.conversations import repository
 from app.core.config import Settings
@@ -31,6 +32,7 @@ _active_users: set[tuple[object, int]] = set()
 _active_users_lock = Lock()
 
 _FAILURES = {
+    ErrorCode.RATE_LIMITED: (429, "질문 요청 한도를 초과했어요. 잠시 후 다시 시도해 주세요."),
     ErrorCode.AI_TIMEOUT: (504, "응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요."),
     ErrorCode.AI_UPSTREAM_ERROR: (502, "AI 응답을 받지 못했어요. 잠시 후 다시 시도해 주세요."),
     ErrorCode.AI_UNAVAILABLE: (503, "지금은 AI를 이용할 수 없어요. 잠시 후 다시 시도해 주세요."),
@@ -136,6 +138,7 @@ async def answer_question(
     session: Session,
     settings: Settings,
     provider: AIProvider,
+    rate_limiter: ChatRateLimiter,
 ) -> ChatResponse:
     conversation = repository.get_conversation_for_user(session, request.conversation_id, user_id)
     if conversation is None:
@@ -186,6 +189,14 @@ async def answer_question(
         system = build_system_prompt(request.level)
         # pending은 이미 commit됐다. refresh·조회가 시작한 트랜잭션만 끝내고 AI를 기다린다.
         session.rollback()
+
+        try:
+            # 실제 AI 호출 직전에만 센다. 중복 응답·준비 단계 DB 실패는 횟수를 쓰지 않는다.
+            rate_limiter.check_and_count(user_id)
+        except AppError as exc:
+            repository.fail_turn(session, turn_id, user_id, exc.code)
+            log_event("chat_rate_limited", user_id=user_id, turn_id=turn_id)
+            raise
 
         log_event("ai_call_start", user_id=user_id, turn_id=turn_id)
         try:

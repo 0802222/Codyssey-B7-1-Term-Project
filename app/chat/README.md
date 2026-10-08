@@ -35,7 +35,8 @@ provider = FakeAIProvider(mode=FakeMode.TIMEOUT)
 | `empty` | 빈 응답을 `AIUpstreamError`로 알림 |
 
 `reply`가 빈 값·공백뿐인 경우도 `AIUpstreamError`입니다. HTTP 오류 매핑과 실패 저장은
-EE-13에 연결했습니다. EE-16에서는 별도로 요청 횟수 제한과 안정화를 진행합니다.
+EE-13에 연결했습니다. [EE-16](EE-16.md)에서는 AI 호출 직전 사용자별 최근 60초와
+서비스 전체 UTC 하루 횟수를 제한합니다. 한도 초과는 AI 없이 429로 응답합니다.
 
 ## 의존성 교체
 
