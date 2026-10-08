@@ -324,6 +324,21 @@ def test_logout_with_wrong_csrf(client, settings):
     assert response.json()["error"]["code"] == "CSRF_REJECTED"
 
 
+def test_logout_with_non_ascii_csrf(client, settings):
+    _signup(client, settings)
+    _login(client, settings)
+
+    response = client.post(
+        "/api/auth/logout",
+        headers={
+            "X-CSRF-Token": "가나다",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "CSRF_REJECTED"
+
+
 def test_login_cookie_attributes(client, settings):
     _signup(client, settings)
 
