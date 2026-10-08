@@ -114,6 +114,7 @@ AGENTS.md             # AI 코딩 도구용 규칙
 | **채팅** | 질문·답변 | 같은 화면에 답 표시, 대기 중 버튼 잠금 | B 채팅 API·AI 호출<br>C 채팅 화면 | `POST /api/chat`<br>`/chat` | 🟨 | [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
 | | 설명 수준 | 아주 쉽게 / 입문자 / 전공자 | B 수준별 프롬프트<br>C 수준 선택 UI | `POST /api/chat` 의 `level` | 🟨 | [#8](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
 | | 문맥 유지 | 같은 대화의 최근 5턴을 기억 | B | (서버 내부) | 🟨 | [#8](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
+| | 설명 품질 증빙 | 실제 AI 수준별·후속 문맥 샘플과 수동 검토 | B | 수동 수집 | 🟨 | |
 | | 후속 버튼 | 더 쉽게 / 예시 하나 더 / 핵심만 | C | `/chat` | ⬜ | |
 | **대화 기록** | 대화 만들기 | 새 대화 시작 | A | `POST /api/conversations` | ⬜ | |
 | | 내 기록 조회 | 내 대화 목록·상세, 남의 대화는 볼 수 없음 | A 조회 API·권한<br>C 기록 화면 | `GET /api/me/conversations`<br>`GET /api/me/chats`<br>`/history` | ⬜ | |
@@ -130,7 +131,9 @@ AGENTS.md             # AI 코딩 도구용 규칙
 
 EE-13 서버 구현과 Fake 기반 검증은 [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43)에서 진행했습니다.
 횟수 제한과 오류·중복 요청 검증은 [#44](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/44)에서 진행했습니다.
-아직 병합 전이며 화면 연결(EE-14)·실제 AI 품질 검증(EE-19)이 남아 관련 기능은 🟨로 표시합니다.
+EE-13·EE-16 서버 구현은 병합됐습니다. 수준별·후속 문맥의 실제 AI 샘플 10개와
+프롬프트 보완 전후 검토 결과는 [EE-19 안내](app/chat/EE-19.md)에 모았습니다.
+지도 예시의 정확성에 남은 보완 사항도 함께 기록했습니다. EE-19는 PR 리뷰·병합 전이므로 🟨입니다.
 처리 순서와 설명 자료는 [EE-13 안내](app/chat/EE-13.md)를 참고합니다.
 한도 집계 대상과 단일 worker·재시작 초기화 제한은 [EE-16 안내](app/chat/EE-16.md)에 설명했습니다.
 
