@@ -1,7 +1,10 @@
 from datetime import UTC, datetime, timedelta
 
+from fastapi import Request
 from sqlmodel import Session, create_engine, select
 
+from app.auth.dependencies import require_csrf
+from app.core.errors import AppError
 from app.db.models import AuthSession, User
 
 
@@ -328,15 +331,41 @@ def test_logout_with_non_ascii_csrf(client, settings):
     _signup(client, settings)
     _login(client, settings)
 
-    response = client.post(
-        "/api/auth/logout",
-        headers={
-            "X-CSRF-Token": "가나다",
-        },
-    )
+    engine = create_engine(settings.database_url)
 
-    assert response.status_code == 403
-    assert response.json()["error"]["code"] == "CSRF_REJECTED"
+    with Session(engine) as session:
+        auth_session = session.exec(
+            select(AuthSession)
+        ).first()
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/auth/logout",
+        "headers": [
+            (
+                b"x-csrf-token",
+                "가나다".encode(),
+            ),
+        ],
+    }
+
+    request = Request(scope)
+    request.state.auth_session = auth_session
+
+    user = type(
+        "CurrentUser",
+        (),
+        {"id": auth_session.user_id, "email": "test@example.com"},
+    )()
+
+    try:
+        require_csrf(request, user)
+    except AppError as error:
+        assert error.status_code == 403
+        assert error.code == "CSRF_REJECTED"
+    else:
+        raise AssertionError("CSRF 검증이 거부되어야 합니다.")
 
 
 def test_login_cookie_attributes(client, settings):
