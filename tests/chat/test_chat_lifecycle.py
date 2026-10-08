@@ -9,6 +9,7 @@ from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
 from app.chat.fake_provider import FakeAIProvider
+from app.chat.rate_limit import ChatRateLimiter
 from app.chat.schemas import ChatRequest
 from app.chat.service import answer_question
 from app.conversations import repository
@@ -40,15 +41,23 @@ def _request(conversation_id):
     )
 
 
-async def _ask(session, settings, request, user_id, provider):
-    return await answer_question(
-        request,
-        user_id=user_id,
-        request_id="lifecycle-test",
-        session=session,
-        settings=settings,
-        provider=provider,
-    )
+@pytest.fixture
+def ask():
+    # 한 시나리오의 요청은 같은 카운터를 공유한다. 여기서는 기존 수명 검증에 집중한다.
+    limiter = ChatRateLimiter(user_requests_per_minute=100, daily_request_limit=1000)
+
+    async def call(session, settings, request, user_id, provider):
+        return await answer_question(
+            request,
+            user_id=user_id,
+            request_id="lifecycle-test",
+            session=session,
+            settings=settings,
+            provider=provider,
+            rate_limiter=limiter,
+        )
+
+    return call
 
 
 def _stored(engine):
@@ -56,14 +65,14 @@ def _stored(engine):
         return list(session.exec(select(ChatTurn).order_by(ChatTurn.id)).all())
 
 
-def test_concurrent_user_is_busy_but_cached_answer_and_other_user_work(data, settings):
+def test_concurrent_user_is_busy_but_cached_answer_and_other_user_work(data, settings, ask):
     engine, users, conversations = data
 
     async def scenario():
         started, release = asyncio.Event(), asyncio.Event()
         cached_request = _request(conversations[0])
         with Session(engine) as session:
-            cached = await _ask(session, settings, cached_request, users[0], FakeAIProvider())
+            cached = await ask(session, settings, cached_request, users[0], FakeAIProvider())
 
         with Session(engine) as first, Session(engine) as second:
 
@@ -77,18 +86,18 @@ def test_concurrent_user_is_busy_but_cached_answer_and_other_user_work(data, set
                     return await super().generate_reply(*args, **kwargs)
 
             task = asyncio.create_task(
-                _ask(first, settings, _request(conversations[0]), users[0], BlockingProvider())
+                ask(first, settings, _request(conversations[0]), users[0], BlockingProvider())
             )
             try:
                 await asyncio.wait_for(started.wait(), timeout=2)
                 with pytest.raises(AppError) as error:
-                    await _ask(
+                    await ask(
                         second, settings, _request(conversations[0]), users[0], FakeAIProvider()
                     )
                 assert (error.value.status_code, error.value.code) == (409, ErrorCode.CHAT_BUSY)
-                replay = await _ask(second, settings, cached_request, users[0], FakeAIProvider())
+                replay = await ask(second, settings, cached_request, users[0], FakeAIProvider())
                 assert replay == cached
-                other = await _ask(
+                other = await ask(
                     second, settings, _request(conversations[1]), users[1], FakeAIProvider()
                 )
                 assert other.status == "completed"
@@ -98,16 +107,14 @@ def test_concurrent_user_is_busy_but_cached_answer_and_other_user_work(data, set
 
         with Session(engine) as session:
             assert (
-                await _ask(
-                    session, settings, _request(conversations[0]), users[0], FakeAIProvider()
-                )
+                await ask(session, settings, _request(conversations[0]), users[0], FakeAIProvider())
             ).status == "completed"
 
     asyncio.run(scenario())
     assert len(_stored(engine)) == 4  # 거절된 동시 질문은 저장하지 않았다.
 
 
-def test_service_enforces_deadline_even_when_provider_does_not(data, settings):
+def test_service_enforces_deadline_even_when_provider_does_not(data, settings, ask):
     engine, users, conversations = data
     settings.ai_timeout_seconds = 0.02
     cancelled = []
@@ -120,14 +127,14 @@ def test_service_enforces_deadline_even_when_provider_does_not(data, settings):
                 cancelled.append(True)
 
     with Session(engine) as session, pytest.raises(AppError) as error:
-        asyncio.run(_ask(session, settings, _request(conversations[0]), users[0], SlowProvider()))
+        asyncio.run(ask(session, settings, _request(conversations[0]), users[0], SlowProvider()))
     assert (error.value.status_code, error.value.code) == (504, ErrorCode.AI_TIMEOUT)
     assert cancelled == [True]
     turn = _stored(engine)[0]
     assert (turn.status, turn.error_code, turn.answer) == ("failed", "AI_TIMEOUT", None)
 
 
-def test_cancelled_request_is_saved_and_releases_user_guard(data, settings):
+def test_cancelled_request_is_saved_and_releases_user_guard(data, settings, ask):
     engine, users, conversations = data
 
     async def scenario():
@@ -140,7 +147,7 @@ def test_cancelled_request_is_saved_and_releases_user_guard(data, settings):
 
         with Session(engine) as session:
             task = asyncio.create_task(
-                _ask(session, settings, _request(conversations[0]), users[0], BlockingProvider())
+                ask(session, settings, _request(conversations[0]), users[0], BlockingProvider())
             )
             await asyncio.wait_for(started.wait(), timeout=2)
             task.cancel()
@@ -148,7 +155,7 @@ def test_cancelled_request_is_saved_and_releases_user_guard(data, settings):
                 await task
         assert _stored(engine)[0].status == "failed"
         with Session(engine) as session:
-            result = await _ask(
+            result = await ask(
                 session, settings, _request(conversations[0]), users[0], FakeAIProvider()
             )
             assert result.status == "completed"
@@ -158,7 +165,7 @@ def test_cancelled_request_is_saved_and_releases_user_guard(data, settings):
 
 @pytest.mark.parametrize("mode, rejected_status", [("success", "completed"), ("timeout", "failed")])
 def test_result_save_failure_returns_db_error_and_keeps_pending(
-    data, settings, mode, rejected_status
+    data, settings, mode, rejected_status, ask
 ):
     engine, users, conversations = data
 
@@ -170,7 +177,7 @@ def test_result_save_failure_returns_db_error_and_keeps_pending(
     try:
         with Session(engine) as session, pytest.raises(AppError) as error:
             asyncio.run(
-                _ask(
+                ask(
                     session,
                     settings,
                     _request(conversations[0]),
@@ -185,7 +192,9 @@ def test_result_save_failure_returns_db_error_and_keeps_pending(
     assert (turn.status, turn.answer, turn.error_code) == ("pending", None, None)
 
 
-def test_context_read_failure_is_saved_without_ai_and_replays_db_error(data, settings, monkeypatch):
+def test_context_read_failure_is_saved_without_ai_and_replays_db_error(
+    data, settings, monkeypatch, ask
+):
     engine, users, conversations = data
     calls = []
 
@@ -201,14 +210,14 @@ def test_context_read_failure_is_saved_without_ai_and_replays_db_error(data, set
     request = _request(conversations[0])
     for _ in range(2):
         with Session(engine) as session, pytest.raises(AppError) as error:
-            asyncio.run(_ask(session, settings, request, users[0], ObservedProvider()))
+            asyncio.run(ask(session, settings, request, users[0], ObservedProvider()))
         assert (error.value.status_code, error.value.code) == (503, ErrorCode.DB_ERROR)
     assert calls == []
     turn = _stored(engine)[0]
     assert (turn.status, turn.error_code, turn.answer) == ("failed", "DB_ERROR", None)
 
 
-def test_unexpected_provider_error_is_sanitized_saved_and_releases_guard(data, settings):
+def test_unexpected_provider_error_is_sanitized_saved_and_releases_guard(data, settings, ask):
     engine, users, conversations = data
 
     class BrokenProvider(FakeAIProvider):
@@ -216,12 +225,12 @@ def test_unexpected_provider_error_is_sanitized_saved_and_releases_guard(data, s
             raise RuntimeError("private-provider-detail")
 
     with Session(engine) as session, pytest.raises(AppError) as error:
-        asyncio.run(_ask(session, settings, _request(conversations[0]), users[0], BrokenProvider()))
+        asyncio.run(ask(session, settings, _request(conversations[0]), users[0], BrokenProvider()))
     assert (error.value.status_code, error.value.code) == (500, ErrorCode.INTERNAL_ERROR)
     assert "private-provider-detail" not in error.value.message
     assert _stored(engine)[0].error_code == "INTERNAL_ERROR"
     with Session(engine) as session:
         result = asyncio.run(
-            _ask(session, settings, _request(conversations[0]), users[0], FakeAIProvider())
+            ask(session, settings, _request(conversations[0]), users[0], FakeAIProvider())
         )
         assert result.status == "completed"

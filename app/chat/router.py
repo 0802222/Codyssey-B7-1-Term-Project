@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request
 
 from app.auth.dependencies import CsrfDep, CurrentUserDep
 from app.chat.provider import AIProviderDep
+from app.chat.rate_limit import RateLimiterDep
 from app.chat.schemas import ChatRequest, ChatResponse
 from app.chat.service import answer_question
 from app.core.deps import SettingsDep
@@ -21,6 +22,7 @@ async def chat(
     session: SessionDep,
     settings: SettingsDep,
     provider: AIProviderDep,
+    rate_limiter: RateLimiterDep,
 ):
     return await answer_question(
         body,
@@ -29,4 +31,5 @@ async def chat(
         session=session,
         settings=settings,
         provider=provider,
+        rate_limiter=rate_limiter,
     )
