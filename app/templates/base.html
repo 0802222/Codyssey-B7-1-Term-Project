@@ -11,18 +11,27 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="/static/css/style.css">
-  {# 페이지별 스크립트. defer 를 붙여 HTML 을 다 읽은 뒤 실행되게 한다 #}
+  {# 로그인했으면 헤더의 로그아웃 버튼을 움직이는 스크립트. type="module" 은 defer 처럼 HTML 을 다 읽은 뒤 실행된다 #}
+  {% if logged_in %}<script type="module" src="/static/js/logout.js"></script>{% endif %}
+  {# 페이지별 스크립트. defer(또는 type="module")로 HTML 을 다 읽은 뒤 실행되게 한다 #}
   {% block scripts %}{% endblock %}
 </head>
 <body>
   <header class="site-header">
     <div class="container">
       <a class="logo" href="/"><img src="/static/img/mascot.svg" alt="" width="32" height="32">EasyExplain</a>
-      {# 라우터가 active 값("chat" / "history" / "login")을 넘기면 그 메뉴가 현재 위치로 표시된다 #}
+      {# 라우터가 active 값("chat" / "history" / "login")을 넘기면 그 메뉴가 현재 위치로 표시된다.
+         logged_in(라우터가 OptionalUserDep 로 확인)이 참이면 "로그인" 메뉴 대신 "로그아웃" 버튼을 보여 준다 #}
       <nav class="site-nav" aria-label="주 메뉴">
         <a href="/chat"{% if active == "chat" %} aria-current="page"{% endif %}>채팅</a>
         <a href="/history"{% if active == "history" %} aria-current="page"{% endif %}>내 기록</a>
+        {% if logged_in %}
+        {# 로그아웃은 서버의 세션을 지우는 요청(POST /api/auth/logout + X-CSRF-Token)이라 링크가 아니라 버튼이다.
+           누르면 하는 일(요청·토큰 정리·이동)은 /static/js/logout.js #}
+        <button id="logout-button" type="button">로그아웃</button>
+        {% else %}
         <a href="/login"{% if active == "login" %} aria-current="page"{% endif %}>로그인</a>
+        {% endif %}
       </nav>
     </div>
   </header>

@@ -9,8 +9,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import APIRouter, Request
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from app.auth.dependencies import OptionalUserDep
 from app.core.errors import not_implemented
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
@@ -45,29 +47,88 @@ AUTH_INPUT_RULES = AuthInputRules(
 )
 
 
+@dataclass(frozen=True)
+class LevelOption:
+    """채팅 화면의 설명 수준 하나."""
+
+    value: str  # API 로 보내는 값 (docs/spec/api.md 3장의 level)
+    label: str  # 화면에 보이는 이름
+
+
+@dataclass(frozen=True)
+class ChatInputRules:
+    """채팅 화면의 입력 규칙과 고를 수 있는 수준.
+
+    템플릿이 이 값으로 질문 칸의 maxlength·글자 수 안내와 수준 선택을 만들고, chat.js 는 그 HTML 을
+    읽어 보낸다. 최종 검사는 서버(POST /api/chat)가 하므로 API 명세 3장과 같은 값이어야 한다 —
+    질문은 앞뒤 공백을 뺀 뒤 1~2,000자(빈 질문은 화면이 막는다),
+    level 은 easy / beginner / advanced.
+    """
+
+    question_max_length: int
+    levels: tuple[LevelOption, ...]
+    default_level: str  # 화면을 열었을 때 골라 둔 수준
+    # 후속 버튼 = 같은 대화에 그대로 보내는 질문. app/chat/prompts.py 의 안내 문구와 같아야 한다
+    follow_ups: tuple[str, ...]
+
+
+# 값을 바꿀 때는 여기만 고친다
+CHAT_INPUT_RULES = ChatInputRules(
+    question_max_length=2000,
+    levels=(
+        LevelOption("easy", "아주 쉽게"),
+        LevelOption("beginner", "입문자"),
+        LevelOption("advanced", "전공자"),
+    ),
+    default_level="easy",
+    follow_ups=("더 쉽게", "예시 하나 더", "핵심만"),
+)
+
+
+# 모든 페이지는 user: OptionalUserDep 로 로그인 여부를 받아 logged_in 으로 넘긴다.
+# base.html 헤더가 그 값으로 "로그인" 메뉴 또는 "로그아웃" 버튼을 보여 준다
+
+
 @router.get("/")
-def index(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+def index(request: Request, user: OptionalUserDep):
+    return templates.TemplateResponse(request, "index.html", {"logged_in": user is not None})
 
 
 @router.get("/signup")
-def signup_page(request: Request):
+def signup_page(request: Request, user: OptionalUserDep):
     # 헤더 메뉴에 "가입" 항목이 없으므로 현재 위치(active)를 넘기지 않는다
-    return templates.TemplateResponse(request, "signup.html", {"rules": AUTH_INPUT_RULES})
+    return templates.TemplateResponse(
+        request, "signup.html", {"logged_in": user is not None, "rules": AUTH_INPUT_RULES}
+    )
 
 
 @router.get("/login")
-def login_page(request: Request):
+def login_page(request: Request, user: OptionalUserDep):
     # 가입하고 넘어오면(/login?joined=1) "가입이 끝났어요" 안내를 함께 보여 준다
     joined = request.query_params.get("joined") == "1"
     return templates.TemplateResponse(
-        request, "login.html", {"active": "login", "joined": joined, "rules": AUTH_INPUT_RULES}
+        request,
+        "login.html",
+        {
+            "active": "login",
+            "logged_in": user is not None,
+            "joined": joined,
+            "rules": AUTH_INPUT_RULES,
+        },
     )
 
 
 @router.get("/chat")
-def chat_page():
-    raise not_implemented("EE-12")
+def chat_page(request: Request, user: OptionalUserDep):
+    # 로그인하지 않았으면 로그인 화면으로 보낸다(303).
+    # 화면을 열어도 질문 API 는 서버가 다시 로그인을 확인한다
+    if user is None:
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(
+        request,
+        "chat.html",
+        {"active": "chat", "logged_in": user is not None, "rules": CHAT_INPUT_RULES},
+    )
 
 
 @router.get("/history")
