@@ -174,8 +174,8 @@ def require_csrf(
         not csrf_token
         or auth_session is None
         or not secrets.compare_digest(
-            csrf_token,
-            auth_session.csrf_token,
+            csrf_token.encode(),
+            auth_session.csrf_token.encode(),
         )
     ):
         raise AppError(
