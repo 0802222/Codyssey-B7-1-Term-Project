@@ -29,7 +29,7 @@ def add_provider_probe(app):
                 max_output_tokens=40,
             )
         except AIProviderError as exc:
-            # HTTP 오류 매핑(EE-16) 대신 주입한 provider 의 예외 종류만 관찰한다.
+            # HTTP 오류 매핑과 별도로 주입한 provider의 예외 종류만 관찰한다.
             return {"provider_error": type(exc).__name__}
 
 
