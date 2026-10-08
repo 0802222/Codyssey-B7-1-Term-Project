@@ -114,7 +114,7 @@ AGENTS.md             # AI 코딩 도구용 규칙
 | **채팅** | 질문·답변 | 같은 화면에 답 표시, 대기 중 버튼 잠금 | B 채팅 API·AI 호출<br>C 채팅 화면 | `POST /api/chat`<br>`/chat` | 🟨 | [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
 | | 설명 수준 | 아주 쉽게 / 입문자 / 전공자 | B 수준별 프롬프트<br>C 수준 선택 UI | `POST /api/chat` 의 `level` | 🟨 | [#8](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
 | | 문맥 유지 | 같은 대화의 최근 5턴을 기억 | B | (서버 내부) | 🟨 | [#8](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
-| | 설명 품질 증빙 | 실제 AI 수준별·후속 문맥 샘플과 수동 검토 | B | 수동 수집 | 🟨 | |
+| | 설명 품질 증빙 | 실제 AI 수준별·후속 문맥 샘플과 수동 검토 | B | 수동 수집 | 🟨 | [#46](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/46) |
 | | 후속 버튼 | 더 쉽게 / 예시 하나 더 / 핵심만 | C | `/chat` | ⬜ | |
 | **대화 기록** | 대화 만들기 | 새 대화 시작 | A | `POST /api/conversations` | ⬜ | |
 | | 내 기록 조회 | 내 대화 목록·상세, 남의 대화는 볼 수 없음 | A 조회 API·권한<br>C 기록 화면 | `GET /api/me/conversations`<br>`GET /api/me/chats`<br>`/history` | ⬜ | |
