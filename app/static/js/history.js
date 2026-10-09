@@ -1,19 +1,24 @@
 /*
- * 내 기록 화면 (EE-17) — /history
+ * 내 기록 화면 (EE-17) — /history (대화 목록), /history?conversation=<대화 id> (대화 상세)
  *
  * 1. 대화 목록: GET /api/me/conversations?limit=20&offset=0 으로 내 대화를 불러와 서버가 정렬해 준 순서(최근에
  *    질문한 대화가 위)대로 붙인다. 더 있으면(has_more) "더 보기" 가 다음 20개를 이어 붙인다.
  * 2. 제목: 서버가 대화를 만들 때 붙인 제목("새 대화")이 그대로면 그 대화의 첫 질문 앞부분을 대신 보여 준다.
  *    첫 질문은 상세(GET /api/conversations/{id})에만 있어서, 화면에 보이는 항목만 한 번에 3개씩 불러온다.
  *    서버가 제목을 채우면(첫 질문 일부 등 — DB 명세) 그 제목을 그대로 쓰고 상세를 묻지 않는다.
- * 3. 서버 글(제목·질문)은 textContent 로만 넣는다 — <script> 가 섞여 와도 글자로만 보인다.
- * 4. 시각은 API 의 UTC 를 한국 시간(KST)으로 바꿔 보여 준다.
+ * 3. 대화 상세: 목록에서 대화를 누르면 페이지를 새로 받지 않고 주소만 /history?conversation=<id> 로 바꾼 뒤
+ *    (history.pushState) GET /api/conversations/{id} 의 턴을 서버가 정렬해 준 순서(오래된 것이 위)대로 채팅 화면과
+ *    같은 말풍선으로 그린다. 주소에 대화 id 가 있어서 새로고침·뒤로 가기·주소 공유가 그대로 되고, 뒤로 가기로
+ *    목록에 돌아오면 더 보기로 불러온 목록이 그대로 남아 있다. 주소의 id 는 UUID 모양인지 먼저 본다.
+ * 4. 서버 글(제목·질문·답변)은 textContent 로만 넣는다 — <script> 가 섞여 와도 글자로만 보인다.
+ * 5. 시각은 API 의 UTC 를 한국 시간(KST)으로 바꿔 보여 준다.
  *
  * 한 번에 불러오는 수·제목 기준은 이 파일에 적지 않고 HTML 의 data- 속성에서 읽는다 — app/web/router.py 의 HISTORY_RULES.
+ * 수준 이름(아주 쉽게 등)도 HTML 의 수준 이름표(#level-names)에서 읽는다 — CHAT_INPUT_RULES.
  * 401 이면 api.js 의 apiGet 이 로그인 화면으로 보낸다.
  */
 
-import { apiGet, failureMessage, isUuid } from "/static/js/api.js";
+import { CONVERSATION_NOT_FOUND_MESSAGE, apiGet, failureMessage, isUuid } from "/static/js/api.js";
 
 const page = document.getElementById("history");
 const PAGE_SIZE = Number(page.dataset.pageSize); // 목록을 한 번에 불러오는 대화 수
@@ -22,10 +27,22 @@ const TITLE_MAX_LENGTH = Number(page.dataset.titleMaxLength); // 첫 질문으�
 // 첫 질문을 알려고 상세를 동시에 몇 개까지 부를지 — 목록 한 쪽(20개)을 한꺼번에 묻지 않게 조금씩
 const TITLE_REQUESTS_AT_ONCE = 3;
 
+const heading = document.getElementById("history-heading");
+const listView = document.getElementById("list-view");
 const list = document.getElementById("conversation-list");
 const emptyState = document.getElementById("list-empty");
 const moreButton = document.getElementById("list-more");
 const moreLabel = moreButton.textContent;
+const detailView = document.getElementById("detail-view");
+const backLink = document.getElementById("back-to-list");
+const detailTitle = document.getElementById("detail-title");
+const detailMeta = document.getElementById("detail-meta");
+const thread = document.getElementById("detail-thread");
+// 수준 값(easy 등) → 화면 이름(아주 쉽게 등)
+const levelNames = new Map(
+  Array.from(document.getElementById("level-names").children, (item) => [item.dataset.level, item.textContent.trim()]),
+);
+const LIST_TITLE = document.title; // "내 기록 — EasyExplain". 상세에서는 앞에 대화 제목을 붙인다
 
 /* ── 상태 줄·오류 칸 ── */
 
@@ -64,6 +81,7 @@ function panel(name) {
 }
 
 const listPanel = panel("list");
+const detailPanel = panel("detail");
 
 /* ── 시각 ── */
 
@@ -202,10 +220,12 @@ function addConversation(conversation) {
     time.className = "history-item-time";
     body.append(time);
   }
+  const url = `/history?conversation=${encodeURIComponent(conversation.id)}`;
   const link = document.createElement("a");
   link.className = "history-item";
-  link.href = `/history?conversation=${encodeURIComponent(conversation.id)}`;
+  link.href = url;
   link.append(body);
+  link.addEventListener("click", (event) => followInPage(event, url));
   const item = document.createElement("li");
   item.append(link);
   list.append(item);
@@ -262,6 +282,164 @@ async function loadConversations() {
 
 moreButton.addEventListener("click", loadConversations);
 
+/* ── 말풍선 (채팅 화면과 같은 모양 — style.css 의 .msg·.bubble 를 같이 쓴다) ── */
+
+// 스크린리더에만 읽히는 말머리 ("내 질문", "답변")
+function speaker(text) {
+  const label = document.createElement("span");
+  label.className = "visually-hidden";
+  label.textContent = text;
+  return label;
+}
+
+// 말풍선. 글은 textContent 로만 넣는다 — innerHTML 이면 글 속의 <script>·<img onerror> 가 실행될 수 있다
+function bubble(text) {
+  const element = document.createElement("div");
+  element.className = "bubble";
+  element.textContent = text;
+  return element;
+}
+
+// 답변 말풍선 왼쪽의 전구 캐릭터 (꾸밈 그림이라 스크린리더가 읽지 않는다)
+function mascotImage() {
+  const mascot = document.createElement("img");
+  mascot.className = "msg-mascot";
+  mascot.src = "/static/img/mascot.svg";
+  mascot.alt = "";
+  mascot.width = 38;
+  mascot.height = 38;
+  return mascot;
+}
+
+// 수준 값의 화면 이름. 이름표에 없는 값이면 값 그대로
+function levelName(value) {
+  return levelNames.get(value) ?? value;
+}
+
+// 답을 받은 턴인지 (완료되지 않은 턴의 answer 는 null — 명세 2장)
+function hasAnswer(turn) {
+  return turn.status === "completed" && typeof turn.answer === "string";
+}
+
+// 턴 하나 → 내 질문 말풍선(아래 줄에 수준 · 한국 시간) + 답변 말풍선
+function turnItems(turn) {
+  const meta = document.createElement("p");
+  meta.className = "msg-meta";
+  meta.append(levelName(turn.level));
+  const time = timeElement(turn.created_at);
+  if (time) meta.append(" · ", time);
+  const question = document.createElement("li");
+  question.className = "msg msg-me";
+  question.append(speaker("내 질문"), bubble(turn.question), meta);
+  if (!hasAnswer(turn)) return [question];
+  const answer = document.createElement("li");
+  answer.className = "msg msg-ai";
+  answer.append(speaker("답변"), mascotImage(), bubble(turn.answer));
+  return [question, answer];
+}
+
+/* ── 대화 상세 ── */
+
+let openedId = null; // 마지막으로 연 대화 — 목록으로 돌아오면 그 항목으로 포커스를 돌려준다
+let detailTicket = 0; // 상세를 열 때마다 1씩 — 그사이 다른 화면으로 바뀌었으면 늦게 온 응답은 버린다
+
+// 불러온 대화를 그린다: 제목(목록 항목도 같이), "질문 N개 · 시작 <시각>", 턴들(오래된 순 = 서버 순서 그대로)
+function drawDetail(id, { conversation, turns }) {
+  const title = displayTitle(conversation.title, turns[0]?.question);
+  setTitle(id, title);
+  detailTitle.textContent = title;
+  document.title = `${title} — ${LIST_TITLE}`;
+  detailMeta.replaceChildren(`질문 ${turns.length}개`);
+  const started = timeElement(conversation.created_at);
+  if (started) detailMeta.append(" · 시작 ", started);
+  if (turns.length === 0) detailPanel.say("이 대화에는 아직 질문이 없어요.");
+  thread.replaceChildren(...turns.flatMap(turnItems));
+}
+
+// 대화 하나를 불러와 보여 준다. moveFocus: 화면 안에서 넘어왔으면 제목으로 포커스를 옮긴다
+async function showDetail(id, { moveFocus }) {
+  openedId = id;
+  const ticket = ++detailTicket;
+  listView.hidden = true;
+  detailView.hidden = false;
+  detailPanel.clear();
+  detailPanel.say("");
+  detailMeta.replaceChildren();
+  thread.replaceChildren();
+  // 목록에서 왔으면 그 항목의 제목을 바로 보여 주고 포커스를 옮긴다. 제목을 모르면 불러온 뒤에 옮긴다
+  const known = titles.get(id) ?? titleElements.get(id)?.textContent ?? "";
+  detailTitle.textContent = known;
+  document.title = known ? `${known} — ${LIST_TITLE}` : LIST_TITLE;
+  if (moveFocus && known) detailTitle.focus();
+  const focusLater = moveFocus && !known;
+  let result;
+  if (isUuid(id)) {
+    detailPanel.say("대화를 불러오는 중이에요.");
+    result = await apiGet(`/api/conversations/${id}`);
+    if (ticket !== detailTicket) return; // 그사이 목록이나 다른 대화로 바뀌었다
+    detailPanel.say("");
+  } else {
+    // 주소의 id 모양이 틀렸다(잘린 주소, 손으로 고친 주소) — 서버에 묻지 않고 없는 대화와 같게 안내한다
+    result = { ok: false, status: 0, offline: false, data: null };
+  }
+  if (isConversationDetail(result)) {
+    drawDetail(id, result.data);
+    if (focusLater) detailTitle.focus();
+    return;
+  }
+  // 없는 대화·남의 대화(서버가 똑같이 404 로 답한다)·모양이 틀린 id 는 목록으로 안내하고, 그 밖의 실패는 다시 시도
+  const notFound = !isUuid(id) || result.data?.error?.code === "CONVERSATION_NOT_FOUND";
+  if (notFound) {
+    detailTitle.textContent = "";
+    document.title = LIST_TITLE;
+  }
+  detailPanel.fail(
+    notFound ? CONVERSATION_NOT_FOUND_MESSAGE : failureMessage(result),
+    notFound ? { hint: "목록에서 다시 골라 주세요." } : { onRetry: () => showDetail(id, { moveFocus: true }) },
+  );
+  if (focusLater) detailPanel.box.focus();
+}
+
+/* ── 주소에 따라 목록·상세 ── */
+
+// 목록을 보여 준다. 처음이면 첫 쪽을 불러오고, 이미 불러왔으면 그대로(더 보기로 불러온 것까지) 둔다
+function showList({ moveFocus }) {
+  detailTicket += 1; // 기다리던 상세 응답이 늦게 와도 그리지 않는다
+  detailView.hidden = true;
+  listView.hidden = false;
+  document.title = LIST_TITLE;
+  if (!listLoaded) loadConversations();
+  // 상세에서 돌아왔으면 방금 본 대화로 포커스(그 자리로 스크롤도 된다), 없으면 제목 "내 기록" 으로
+  if (moveFocus) (shown.get(openedId) ?? heading).focus();
+}
+
+// 주소의 conversation 값(볼 대화 id). 없으면 null — 목록
+function conversationInAddress() {
+  return new URLSearchParams(location.search).get("conversation");
+}
+
+// 지금 주소에 맞는 칸을 보여 준다. moveFocus: 화면 안에서 바뀔 때만 포커스를 옮긴다 (처음 열 때는 브라우저 기본 그대로)
+function route({ moveFocus }) {
+  const id = conversationInAddress();
+  if (id === null) {
+    showList({ moveFocus });
+  } else {
+    showDetail(id, { moveFocus });
+  }
+}
+
+// 링크를 누르면 페이지를 새로 받지 않고 주소만 바꿔(history.pushState) 그 칸을 보여 준다.
+// 새 탭으로 열기(가운데 버튼, Ctrl·Cmd·Shift·Alt 와 함께 누르기)는 막지 않고 브라우저에 맡긴다
+function followInPage(event, url) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  history.pushState(null, "", url);
+  route({ moveFocus: true });
+}
+
+backLink.addEventListener("click", (event) => followInPage(event, "/history"));
+window.addEventListener("popstate", () => route({ moveFocus: true })); // 뒤로·앞으로 가기
+
 /* ── 시작 ── */
 
-loadConversations();
+route({ moveFocus: false });
