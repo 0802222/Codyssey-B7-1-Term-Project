@@ -1,0 +1,249 @@
+{
+  "source": "remote_http",
+  "scenario": "levels_and_followups",
+  "base_url": "https://codyssey-b7-1-term-project-production.up.railway.app",
+  "collection_status": "completed",
+  "quality_review": "not_performed",
+  "started_at": "2026-10-09T13:32:13.111683+00:00",
+  "finished_at": "2026-10-09T13:33:09.018471+00:00",
+  "http_timeout_seconds": 60,
+  "server_runtime": {
+    "provider": "not_verified",
+    "model": "not_exposed",
+    "deploy_commit": "not_verified",
+    "server_logs": "not_verified",
+    "gateway_quota": "not_verified"
+  },
+  "checks": [
+    {
+      "step": "health:before",
+      "started_at": "2026-10-09T13:32:13.181766+00:00",
+      "http_status": 200,
+      "request_id": "f9a0d9c4e5da4f3dbb3a9debdd15e53b",
+      "elapsed_seconds": 0.295,
+      "body_request_id": null
+    },
+    {
+      "step": "signup",
+      "started_at": "2026-10-09T13:32:13.477039+00:00",
+      "http_status": 201,
+      "request_id": "250b789593844afb9e4572c176808b7e",
+      "elapsed_seconds": 0.227,
+      "body_request_id": null
+    },
+    {
+      "step": "login",
+      "started_at": "2026-10-09T13:32:13.704508+00:00",
+      "http_status": 200,
+      "request_id": "6d6de78e9ad6464b8974d129643f71d0",
+      "elapsed_seconds": 0.228,
+      "body_request_id": null
+    },
+    {
+      "step": "conversation:A",
+      "started_at": "2026-10-09T13:32:13.932716+00:00",
+      "http_status": 201,
+      "request_id": "a401481b82c74195bfdf7aa4e89d228b",
+      "elapsed_seconds": 0.158,
+      "body_request_id": null
+    },
+    {
+      "step": "chat:A-easy",
+      "started_at": "2026-10-09T13:32:14.096693+00:00",
+      "http_status": 200,
+      "request_id": "bfdd507998d042f1b4fbb954958ce9d2",
+      "elapsed_seconds": 11.787,
+      "body_request_id": "bfdd507998d042f1b4fbb954958ce9d2"
+    },
+    {
+      "step": "history:A-easy",
+      "started_at": "2026-10-09T13:32:25.883699+00:00",
+      "http_status": 200,
+      "request_id": "cfa3d9a5133f45a4b6bd0ca2f2505ed6",
+      "elapsed_seconds": 0.116,
+      "body_request_id": null
+    },
+    {
+      "step": "replay:A-easy",
+      "started_at": "2026-10-09T13:32:25.999943+00:00",
+      "http_status": 200,
+      "request_id": "752bb0b429ad4478b066c31cb697b12e",
+      "elapsed_seconds": 0.138,
+      "body_request_id": "bfdd507998d042f1b4fbb954958ce9d2"
+    },
+    {
+      "step": "history:A-easy",
+      "started_at": "2026-10-09T13:32:26.138029+00:00",
+      "http_status": 200,
+      "request_id": "5d6f22ac77e84027985e474cb75bc439",
+      "elapsed_seconds": 0.133,
+      "body_request_id": null
+    },
+    {
+      "step": "conversation:B",
+      "started_at": "2026-10-09T13:32:26.273051+00:00",
+      "http_status": 201,
+      "request_id": "c948564e571743a4a545f19dee95cd0f",
+      "elapsed_seconds": 0.168,
+      "body_request_id": null
+    },
+    {
+      "step": "chat:B-beginner",
+      "started_at": "2026-10-09T13:32:26.444432+00:00",
+      "http_status": 200,
+      "request_id": "0605710bab4e4f8b87975009aa5c14b8",
+      "elapsed_seconds": 10.301,
+      "body_request_id": "0605710bab4e4f8b87975009aa5c14b8"
+    },
+    {
+      "step": "history:B-beginner",
+      "started_at": "2026-10-09T13:32:36.747367+00:00",
+      "http_status": 200,
+      "request_id": "001a30210c6d46a4accd4e358af25300",
+      "elapsed_seconds": 0.128,
+      "body_request_id": null
+    },
+    {
+      "step": "conversation:C",
+      "started_at": "2026-10-09T13:32:36.879149+00:00",
+      "http_status": 201,
+      "request_id": "b86cda229e6f48d2b8eb2075169b05a7",
+      "elapsed_seconds": 0.165,
+      "body_request_id": null
+    },
+    {
+      "step": "chat:C-advanced",
+      "started_at": "2026-10-09T13:32:37.047526+00:00",
+      "http_status": 200,
+      "request_id": "3291f8500a7d45c1a1402d1a9f06082c",
+      "elapsed_seconds": 13.199,
+      "body_request_id": "3291f8500a7d45c1a1402d1a9f06082c"
+    },
+    {
+      "step": "history:C-advanced",
+      "started_at": "2026-10-09T13:32:50.247887+00:00",
+      "http_status": 200,
+      "request_id": "2f10be52d443417f9a74ca894f8a4b46",
+      "elapsed_seconds": 0.113,
+      "body_request_id": null
+    },
+    {
+      "step": "chat:C-easier",
+      "started_at": "2026-10-09T13:32:50.365326+00:00",
+      "http_status": 200,
+      "request_id": "5d4ff86c5a1445038f49769ffeb4ac83",
+      "elapsed_seconds": 10.459,
+      "body_request_id": "5d4ff86c5a1445038f49769ffeb4ac83"
+    },
+    {
+      "step": "history:C-easier",
+      "started_at": "2026-10-09T13:33:00.825116+00:00",
+      "http_status": 200,
+      "request_id": "aa4dbd63f2074439bbefc67ed9fd0918",
+      "elapsed_seconds": 0.126,
+      "body_request_id": null
+    },
+    {
+      "step": "chat:C-example",
+      "started_at": "2026-10-09T13:33:00.960652+00:00",
+      "http_status": 200,
+      "request_id": "4515151cdaaa46e49e5a18b74fc4d534",
+      "elapsed_seconds": 7.501,
+      "body_request_id": "4515151cdaaa46e49e5a18b74fc4d534"
+    },
+    {
+      "step": "history:C-example",
+      "started_at": "2026-10-09T13:33:08.461869+00:00",
+      "http_status": 200,
+      "request_id": "562e3a4543ff45c6930e73085b3dca58",
+      "elapsed_seconds": 0.125,
+      "body_request_id": null
+    },
+    {
+      "step": "health:after",
+      "started_at": "2026-10-09T13:33:08.588485+00:00",
+      "http_status": 200,
+      "request_id": "1d14452d643d4d1fb059f0495f4ae670",
+      "elapsed_seconds": 0.12,
+      "body_request_id": null
+    },
+    {
+      "step": "logout",
+      "started_at": "2026-10-09T13:33:08.708877+00:00",
+      "http_status": 204,
+      "request_id": "b27c0486fb7f4c0ebc5ae1140fc8d984",
+      "elapsed_seconds": 0.31,
+      "body_request_id": null
+    }
+  ],
+  "cases": [
+    {
+      "id": "A-easy",
+      "conversation_alias": "A",
+      "conversation_id": "eabb2195-c0a9-45fd-8866-321e29e361b4",
+      "level": "easy",
+      "question": "API가 무엇인지 설명해줘.",
+      "answer": "API는 서로 다른 프로그램이 대화할 수 있게 해주는 창구예요.\n\n조금 더 풀어볼게요. 식당을 생각해보세요. 손님(나의 앱)이 원하는 음식을 직접 주방(다른 서비스)에 들어가서 만들 수는 없잖아요. 그래서 웨이터가 주문을 받아 주방에 전달하고, 완성된 음식을 다시 손님에게 가져다줘요. 여기서 웨이터 역할을 하는 게 바로 API예요.\n\n예시를 들어볼게요. 날씨 앱을 만든다고 해봐요. 직접 날씨 데이터를 수집하기는 너무 어렵죠. 그래서 기상청이나 날씨 회사가 만들어둔 API에 \"서울 날씨 알려줘\"라고 요청을 보내면, API가 \"오늘 맑음, 23도\"라고 답을 돌려줘요. 내 앱은 그 답을 화면에 보여주기만 하면 돼요.\n\n핵심 정리예요.\n1. API는 프로그램끼리 소통하는 창구예요.\n2. 내가 직접 만들기 어려운 기능을 다른 곳에서 빌려 쓸 수 있어요.\n3. 요청을 보내면 정해진 형식으로 답을 돌려줘요.\n\n궁금한 점 있으면 더 물어봐요!",
+      "status": "completed",
+      "storage_verified": true,
+      "turn_id": 9,
+      "request_id": "bfdd507998d042f1b4fbb954958ce9d2",
+      "stored_turn_count": 1,
+      "replay_verified": true,
+      "replay_ai_call_count": "server_logs_required"
+    },
+    {
+      "id": "B-beginner",
+      "conversation_alias": "B",
+      "conversation_id": "131ec0ba-94fc-4c9c-bc5b-ef6b13b0f4d1",
+      "level": "beginner",
+      "question": "API가 무엇인지 설명해줘.",
+      "answer": "API는 두 프로그램이 서로 대화할 수 있게 해주는 창구예요.\n\n좀 더 풀어볼게요. 프로그램은 보통 혼자 모든 걸 처리하지 않아요. 날씨 정보가 필요하면 날씨 서버에 요청을 보내고, 결과를 받아오는 식이죠. 이때 \"어떻게 요청을 보내고, 어떤 형태로 답이 오는지\" 정해놓은 규칙이 바로 API예요.\n\n예시를 볼게요.\n\n스마트폰 날씨 앱이 있다고 해요. 앱 자체는 날씨 데이터를 갖고 있지 않아요. 대신 이런 순서로 동작해요.\n\n1. 앱이 날씨 서버의 API로 요청을 보내요. 예: \"서울 오늘 날씨 알려줘\"\n2. 서버가 규칙에 맞는 형태로 답을 돌려줘요. 예: \"맑음, 23도\"\n3. 앱이 그 정보를 화면에 보여줘요.\n\n핵심 정리예요.\n\n- API는 프로그램 사이에서 요청과 응답을 주고받는 규칙이에요.\n- 덕분에 앱은 필요한 기능을 직접 만들지 않고, 다른 서버의 기능을 빌려 쓸 수 있어요.\n\n궁금한 점 있으면 더 물어봐요!",
+      "status": "completed",
+      "storage_verified": true,
+      "turn_id": 10,
+      "request_id": "0605710bab4e4f8b87975009aa5c14b8",
+      "stored_turn_count": 1
+    },
+    {
+      "id": "C-advanced",
+      "conversation_alias": "C",
+      "conversation_id": "487c4e73-8f77-41a3-88e6-1bb89030b02b",
+      "level": "advanced",
+      "question": "API가 무엇인지 설명해줘.",
+      "answer": "API(Application Programming Interface)는 서로 다른 소프트웨어 컴포넌트가 상호작용할 수 있도록 정의된 인터페이스 명세예요.\n\n설명\n\n소프트웨어 모듈 간 경계에서 \"무엇을 요청할 수 있고, 어떤 형식으로 응답이 오는지\"를 계약처럼 규정해요. 호출자는 내부 구현을 알 필요 없이 명세만 보고 사용할 수 있어요. 이 추상화 덕분에 내부 구현이 바뀌어도 인터페이스가 유지되면 클라이언트 코드는 영향을 받지 않아요.\n\nAPI의 형태는 맥락에 따라 다양해요.\n\n1. 라이브러리·프레임워크 API: 함수·클래스·메서드 시그니처 집합 (예: Python의 os.path.join())\n2. 웹 API (REST, GraphQL 등): HTTP 프로토콜 위에서 엔드포인트·메서드·페이로드 형식을 정의\n3. OS API: 시스템 콜 래퍼 (예: POSIX, WinAPI)\n4. 하드웨어 드라이버 API: 하드웨어 추상화 계층\n\n예시\n\n기상 데이터를 제공하는 REST API가 있다고 할게요. (가상 예시예요.)\n\n  GET https://api.example-weather.com/v1/current?city=Seoul\n  → 응답: { \"temp\": 23, \"humidity\": 60 }\n\n내 앱은 기상 데이터를 어떻게 수집하고 저장하는지 알 필요 없이, 엔드포인트와 응답 스펙만 보고 데이터를 가져올 수 있어요.\n\n핵심 정리\n\n1. API는 구현이 아니라 인터페이스 명세예요.\n2. 캡슐화와 모듈 경계를 유지해 의존성을 낮춰줘요.\n3. 형태는 함수 시그니처부터 HTTP 엔드포인트까지 다양하지만, \"호출 규약을 정의한다\"는 본질은 같아요.\n\n궁금한 부분이 있으면 더 물어봐요!",
+      "status": "completed",
+      "storage_verified": true,
+      "turn_id": 11,
+      "request_id": "3291f8500a7d45c1a1402d1a9f06082c",
+      "stored_turn_count": 1
+    },
+    {
+      "id": "C-easier",
+      "conversation_alias": "C",
+      "conversation_id": "487c4e73-8f77-41a3-88e6-1bb89030b02b",
+      "level": "easy",
+      "question": "더 쉽게",
+      "answer": "API는 \"주문서\" 같은 거예요.\n\n식당을 생각해 보세요. 손님은 주방 안에서 요리가 어떻게 만들어지는지 몰라도 돼요. 메뉴판을 보고 \"비빔밥 주세요\"라고 말하면, 주방에서 만들어서 가져다줘요.\n\n여기서\n- 메뉴판이 API예요. \"이렇게 요청하면 이런 걸 받을 수 있어요\"라고 알려주는 약속이에요.\n- 손님은 내 앱이고, 주방은 다른 서비스예요.\n\n예를 들어, 날씨 앱을 만든다고 해요. 날씨 데이터를 직접 수집하려면 엄청 복잡하겠죠. 그런데 기상청이 API를 제공하면, \"서울 날씨 알려줘\"라고 요청만 보내면 데이터를 받을 수 있어요. 안에서 어떻게 처리하는지는 몰라도 돼요.\n\n핵심 정리\n\n1. API는 두 프로그램이 대화하는 방법을 정해놓은 약속이에요.\n2. 내부 동작을 몰라도 정해진 방식으로 요청하면 결과를 받을 수 있어요.\n3. 덕분에 다른 서비스의 기능을 내 앱에 쉽게 가져다 쓸 수 있어요.\n\n더 궁금한 게 있으면 물어봐요!",
+      "status": "completed",
+      "storage_verified": true,
+      "turn_id": 12,
+      "request_id": "5d4ff86c5a1445038f49769ffeb4ac83",
+      "stored_turn_count": 2
+    },
+    {
+      "id": "C-example",
+      "conversation_alias": "C",
+      "conversation_id": "487c4e73-8f77-41a3-88e6-1bb89030b02b",
+      "level": "easy",
+      "question": "예시 하나 더",
+      "answer": "카카오 로그인 버튼을 생각해 보세요!\n\n여러 앱에서 \"카카오로 로그인\" 버튼을 본 적 있죠? 그 앱 개발자는 카카오 로그인 시스템을 직접 만든 게 아니에요. 카카오가 제공하는 API를 사용한 거예요.\n\n흐름을 보면,\n\n1. 사용자가 \"카카오로 로그인\" 버튼을 눌러요.\n2. 앱이 카카오 API에 \"이 사람 로그인 확인해줘\"라고 요청을 보내요.\n3. 카카오가 확인하고 \"맞아요, 이 사람 정보예요\"라고 답해줘요.\n4. 앱은 그 정보를 받아서 로그인을 완성해요.\n\n앱 개발자는 카카오가 비밀번호를 어떻게 저장하고 확인하는지 전혀 몰라도 돼요. 카카오가 정해준 방식대로 요청만 보내면 되거든요. 이게 바로 API를 쓰는 거예요!",
+      "status": "completed",
+      "storage_verified": true,
+      "turn_id": 13,
+      "request_id": "4515151cdaaa46e49e5a18b74fc4d534",
+      "stored_turn_count": 3
+    }
+  ],
+  "logout_status": "completed"
+}
