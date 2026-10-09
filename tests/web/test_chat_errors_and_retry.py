@@ -190,15 +190,15 @@ def test_retry_keeps_the_key_only_when_the_server_may_have_it():
     resend = between(source, "function resendFailed", "\n}\n")
     failure = flat(between(source, "function showFailure", "\n}\n"))
 
-    assert "const STALE_BUSY_MS = 60 * 1000;" in source
-    assert (
-        "request.sameIdNext = outcomeUnknown(result) || "
-        '(code === "CHAT_BUSY" && Date.now() - request.sentAt < STALE_BUSY_MS);'
-    ) in failure
-    # 같은 번호를 쓸 때가 아니면(서버가 실패를 알려 옴, 오래 처리 중) 새 번호
+    # 처리 여부를 모르거나(응답 없음) 처리 중(CHAT_BUSY)이면 같은 번호 — 시간이 지나도 안 바꾼다.
+    # 화면은 서버가 언제 처리를 시작했는지 몰라서, 시간만으로 실패라고 단정하면 중복이 생긴다
+    # (PR #47 리뷰)
+    assert 'request.sameIdNext = outcomeUnknown(result) || code === "CHAT_BUSY";' in failure
+    assert "sentAt" not in source and "STALE_BUSY_MS" not in source
+    # 같은 번호를 쓸 때가 아니면(서버가 실패를 확정해 알려 옴) 새 번호
+    # 동작은 js/chat_retry.test.mjs
     assert "if (!failed.sameIdNext) {" in resend
     assert resend.index("if (!failed.sameIdNext) {") < resend.index("newRequestId();")
-    assert "failed.sentAt = Date.now();" in resend
 
 
 def test_failed_question_stays_until_the_user_moves_on():

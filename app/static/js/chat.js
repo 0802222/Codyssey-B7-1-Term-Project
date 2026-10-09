@@ -18,11 +18,6 @@
 
 import { apiPost, failureMessage, outcomeUnknown } from "/static/js/api.js";
 
-// 같은 요청 번호로 다시 보냈는데 처음 보낸 지 이만큼 지나도 "처리 중"(409 CHAT_BUSY)이면, 서버가 처리하다 멈춰
-// 남은 표시(서버 재시작 등)로 보고 다음에는 새 번호로 보낸다. 서버는 AI 답을 최대 ai_timeout_seconds(기본 30초)만
-// 기다리므로 그보다 넉넉히 길게 잡았다 — 서버 설정을 60초보다 길게 바꾸면 이 값도 늘린다
-const STALE_BUSY_MS = 60 * 1000;
-
 // 질문 한도(429 RATE_LIMITED)에 걸린 뒤 보내기를 막는 시간(초). 서버가 언제 풀리는지 알려 주지 않아서 처음은 10초,
 // 연달아 걸리면 두 배씩 늘려 최대 60초 — 사용자 한도는 최근 60초 동안의 질문을 세므로 60초를 기다리면 반드시 풀린다
 const RATE_LIMIT_WAITS = [10, 20, 40, 60];
@@ -273,7 +268,7 @@ function startCooldown() {
 
 // 새 질문 하나를 보낸다. fromInput: 입력칸의 질문이면 답을 받은 뒤 입력칸을 비운다.
 // 질문 요청 = { question, level: { value, label }, fromInput, item: 내 질문 말풍선,
-//              requestId: client_request_id, sentAt: 그 번호를 처음 보낸 때, sameIdNext: 다시 보낼 때 같은 번호를 쓸지 }
+//              requestId: client_request_id, sameIdNext: 다시 보낼 때 같은 번호를 쓸지 }
 function sendQuestion(question, { fromInput }) {
   if (isLocked()) return; // 기다리는 중이면 무시한다 (Enter·클릭 연타, 429 뒤 기다리는 동안)
   const level = selectedLevel();
@@ -290,7 +285,6 @@ function sendQuestion(question, { fromInput }) {
     fromInput,
     item: null,
     requestId: newRequestId(),
-    sentAt: Date.now(),
     sameIdNext: false,
   };
   clearError();
@@ -300,16 +294,17 @@ function sendQuestion(question, { fromInput }) {
 
 // 답을 못 받은 질문을 다시 보낸다 (오류 칸의 "다시 보내기"). 같은 말풍선·질문·수준 그대로, 입력칸의 글도 그대로.
 // 요청 번호(client_request_id)는 앞의 실패가 어떤 것이었는지에 따라 정한다 (showFailure 의 sameIdNext):
-// - 응답을 못 받아 서버가 처리했는지 모름(연결 끊김, JSON 이 아닌 응답) → 같은 번호. 서버가 이미 답을 만들었으면
-//   AI 를 다시 부르지 않고 저장한 답을 돌려주고, 아직 만드는 중이면 409 CHAT_BUSY 를 돌려준다 (중복 호출·중복 턴 방지)
-// - 처리 중(409 CHAT_BUSY) → 같은 번호로 다시 묻는다. 처음 보낸 지 STALE_BUSY_MS 가 지나도 처리 중이면 새 번호
-// - 서버가 실패를 알려 옴(AI 시간 초과·오류, 한도 초과 등) → 새 번호. 같은 번호면 서버가 저장한 실패를 그대로
+// - 응답을 못 받아 서버가 처리했는지 모름(연결 끊김, JSON 이 아닌 응답, 200 인데 본문을 못 읽음) → 같은 번호.
+//   서버가 이미 답을 만들었으면 AI 를 다시 부르지 않고 저장한 답을 돌려주고, 아직 만드는 중이면 409 CHAT_BUSY
+// - 처리 중(409 CHAT_BUSY) → 같은 번호로 다시 묻는다. 시간이 얼마나 지나도 바꾸지 않는다 — 화면은 서버가 언제
+//   처리를 시작했는지 모르므로, 시간만으로 실패라고 단정하면 아직 처리 중인 질문을 새 번호로 한 번 더 보낼 수 있다.
+//   재시작 때 남은 처리 중 표시는 서버가 중단으로 정리하면(#22) 같은 번호에 503 이 와서 그때 새 번호가 된다
+// - 서버가 실패를 알려 옴(AI 시간 초과·오류, 한도 초과, 중단 등) → 새 번호. 같은 번호면 서버가 저장한 실패를 그대로
 //   돌려준다 (API 명세 3장 "다시 시도는 클라이언트가 새 키로")
 function resendFailed() {
   if (isLocked() || !failed) return;
   if (!failed.sameIdNext) {
     failed.requestId = newRequestId();
-    failed.sentAt = Date.now();
   }
   send(failed);
 }
@@ -365,8 +360,7 @@ function showFailure(request, result) {
   }
   failed = request;
   // 다시 보낼 때 같은 요청 번호를 쓸지 (규칙은 resendFailed 위)
-  request.sameIdNext =
-    outcomeUnknown(result) || (code === "CHAT_BUSY" && Date.now() - request.sentAt < STALE_BUSY_MS);
+  request.sameIdNext = outcomeUnknown(result) || code === "CHAT_BUSY";
   let note = "";
   if (code === "CONVERSATION_NOT_FOUND") {
     // 404: 대화가 서버에 없다(지워졌거나, 다른 탭에서 다른 계정으로 로그인함). 다시 보내면 새 대화를 만들게 하고,

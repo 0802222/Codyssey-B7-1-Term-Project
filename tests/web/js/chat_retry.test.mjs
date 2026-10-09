@@ -16,27 +16,47 @@ afterEach(() => {
 });
 
 function fakeServer() {
-  const turns = new Map();
+  const turns = new Map(); // client_request_id → { status: "pending" | "completed" | "interrupted", turn }
   let aiCalls = 0;
+  const answer = (body) => {
+    aiCalls += 1;
+    return {
+      request_id: `request-${aiCalls}`,
+      turn_id: aiCalls,
+      conversation_id: body.conversation_id,
+      level: body.level,
+      question: body.question,
+      answer: `답변 ${aiCalls}`,
+      status: "completed",
+      created_at: "2026-10-09T01:00:00Z",
+    };
+  };
   return {
     get aiCalls() {
       return aiCalls;
     },
+    // 질문을 받아 AI 를 부르기 시작했다(pending). finish 전까지 같은 키는 409 CHAT_BUSY
+    start(body) {
+      turns.set(body.client_request_id, { status: "pending", turn: answer(body) });
+    },
+    finish(key) {
+      turns.get(key).status = "completed";
+    },
+    // 재시작 때 남은 pending 을 서버가 중단(interrupted)으로 정리했다 (#22) → 같은 키는 503 AI_UNAVAILABLE
+    interrupt(key) {
+      turns.get(key).status = "interrupted";
+    },
     chat(body) {
       const saved = turns.get(body.client_request_id);
-      if (saved) return json(200, saved);
-      aiCalls += 1;
-      const turn = {
-        request_id: `request-${aiCalls}`,
-        turn_id: aiCalls,
-        conversation_id: body.conversation_id,
-        level: body.level,
-        question: body.question,
-        answer: `답변 ${aiCalls}`,
-        status: "completed",
-        created_at: "2026-10-09T01:00:00Z",
-      };
-      turns.set(body.client_request_id, turn);
+      if (saved?.status === "pending") {
+        return error(409, "CHAT_BUSY", "이전 질문에 답하는 중이에요. 잠시 기다려 주세요.");
+      }
+      if (saved?.status === "interrupted") {
+        return error(503, "AI_UNAVAILABLE", "지금은 AI를 이용할 수 없어요. 잠시 후 다시 시도해 주세요.");
+      }
+      if (saved) return json(200, saved.turn);
+      const turn = answer(body);
+      turns.set(body.client_request_id, { status: "completed", turn });
       return json(200, turn);
     },
   };
@@ -108,20 +128,71 @@ test("응답을 못 받았으면(연결 끊김) 같은 요청 번호로 다시 �
   assert.deepEqual(bubbles(), ["API가 뭐야?", "답변 1"]);
 });
 
-test("처리 중(409 CHAT_BUSY)이면 같은 번호로 다시 묻고, 처음 보낸 지 60초가 지나도 처리 중이면 새 번호", async () => {
+test("처리 중(409 CHAT_BUSY)이면 시간이 지나도 같은 번호로 다시 묻고, 서버가 중단을 확정하면(503) 그때 새 번호", async () => {
   const server = fakeServer();
-  const busy = () => error(409, "CHAT_BUSY", "이전 질문에 답하는 중이에요. 잠시 기다려 주세요.");
-  const { calls } = install(serve((call, n) => (n <= 2 ? busy() : server.chat(call.body))));
+  let now = realNow();
+  Date.now = () => now;
+  const { calls } = install(
+    serve((call, n) => {
+      if (n === 1) {
+        server.start(call.body); // 서버는 처리를 시작했는데
+        return offline(); // 응답은 오지 못했다
+      }
+      return server.chat(call.body);
+    }),
+  );
   await loadChat();
 
-  await ask("API가 뭐야?"); // 처리 중
-  Date.now = () => realNow() + 61_000; // 다음 답은 처음 보낸 지 61초 뒤에 받은 것으로
-  await resend(); // 같은 번호로 다시 → 그래도 처리 중 → 서버에 남은 처리 중 표시로 본다
-  await resend(); // 그다음에는 새 번호
+  await ask("API가 뭐야?");
+  for (const later of [61_000, 10 * 60_000]) {
+    now += later; // 1분, 10분이 지나도
+    await resend();
+    assert.equal($("chat-error-text").textContent, "이전 질문에 답하는 중이에요. 잠시 기다려 주세요.");
+  }
+  assert.equal(new Set(keys(calls)).size, 1); // 화면은 시간만으로 실패라고 단정하지 않는다
+
+  server.interrupt(keys(calls)[0]); // 서버가 남은 pending 을 중단으로 정리 (#22)
+  await resend(); // 같은 번호 → 503 (서버가 실패를 확정)
+  assert.equal($("chat-error-text").textContent, "지금은 AI를 이용할 수 없어요. 잠시 후 다시 시도해 주세요.");
+  await resend(); // 이제 새 번호
   const all = keys(calls);
-  assert.equal(all.length, 3);
-  assert.equal(all[1], all[0]);
-  assert.notEqual(all[2], all[0]);
+  assert.equal(all.length, 5);
+  assert.equal(new Set(all.slice(0, 4)).size, 1);
+  assert.notEqual(all[4], all[0]);
+  assert.deepEqual(bubbles(), ["API가 뭐야?", "답변 2"]);
+});
+
+test("대화 만들기·통신이 늦어 처음 보낸 지 60초가 넘어도 처리 중이면 같은 번호 — AI 를 두 번 부르지 않는다 (PR #47 리뷰)", async () => {
+  // 리뷰의 시간 순서: 대화 만들기 응답 50초 지연 → 질문은 50초에 서버 도착 → 51초에 연결 유실 →
+  // 61초에 같은 번호로 다시 → CHAT_BUSY → 원래 질문은 75초에 완료(AI 25초) → 76초에 다시 보내기
+  const server = fakeServer();
+  const start = realNow();
+  let now = start;
+  Date.now = () => now;
+  const { calls } = install((call, all) => {
+    if (call.url === "/api/conversations") {
+      now = start + 50_000;
+      return json(201, { id: CONVERSATION, title: "새 대화" });
+    }
+    if (chatCalls(all).length === 1) {
+      server.start(call.body);
+      now = start + 51_000;
+      return offline();
+    }
+    return server.chat(call.body);
+  });
+  await loadChat();
+
+  await ask("API가 뭐야?");
+  now = start + 61_000;
+  await resend();
+  assert.equal($("chat-error-text").textContent, "이전 질문에 답하는 중이에요. 잠시 기다려 주세요.");
+  server.finish(keys(calls)[0]);
+  now = start + 76_000;
+  await resend();
+
+  assert.equal(new Set(keys(calls)).size, 1);
+  assert.equal(server.aiCalls, 1); // 새 번호였다면 AI 호출·완료 턴이 2개
   assert.deepEqual(bubbles(), ["API가 뭐야?", "답변 1"]);
 });
 

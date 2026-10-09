@@ -15,16 +15,17 @@ import re
 from datetime import UTC, date, datetime, time
 from pathlib import Path
 from types import SimpleNamespace
-from uuid import uuid4
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 import pytest
+from sqlmodel import Session, select
 
 from app.chat import rate_limit
 from app.chat.fake_provider import FakeAIProvider
 from app.chat.provider import AITimeoutError, get_ai_provider
-from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
+from app.db.models import ChatTurn
 from app.web.router import CHAT_INPUT_RULES as RULES
 
 JS_DIR = Path(__file__).parents[2] / "app" / "static" / "js"
@@ -172,15 +173,45 @@ def test_error_codes_the_screen_checks_are_real_error_codes():
     assert used <= set(ErrorCode.__members__)
 
 
-def test_stale_busy_wait_is_longer_than_the_server_waits_for_ai():
-    # 같은 키가 이 시간보다 오래 "처리 중"이면 화면은 서버에 남은 pending 으로 보고 새 키를 쓴다.
-    # 서버는 AI 답을 ai_timeout_seconds 까지만 기다리므로 그보다 길어야
-    # 진짜 처리 중인 요청을 새 키로 두 번 보내지 않는다
-    match = re.search(r"const STALE_BUSY_MS = (\d+) \* 1000;", script("chat.js"))
-    assert match, "chat.js 의 STALE_BUSY_MS"
-    stale_seconds = int(match.group(1))
+def test_same_key_stays_busy_while_processing_and_fails_only_when_the_server_says_so(
+    app, browser, conversation_id, ai
+):
+    # 화면은 409 CHAT_BUSY 에 시간이 지나도 같은 키를 쓴다. 그래도 되는 근거가 서버의 이 동작이다:
+    # 같은 키가 처리 중(pending)이면 409, 서버가 중단(interrupted)으로 정리하면(재시작 뒤 #22)
+    # 503 을 준다
+    # → 화면은 그 확정된 실패를 받은 뒤에야 새 키로 보낸다 (동작은 js/chat_retry.test.mjs)
+    key = uuid4()
+    user_id = browser.client.get("/api/auth/me").json()["user"]["id"]
+    with Session(app.state.engine) as session:
+        session.add(
+            ChatTurn(
+                conversation_id=UUID(conversation_id),
+                user_id=user_id,
+                client_request_id=key,
+                request_id="still-running",
+                level="easy",
+                question="처리 중 질문",
+                status="pending",
+            )
+        )
+        session.commit()
 
-    assert stale_seconds > Settings.model_fields["ai_timeout_seconds"].default
+    busy = chat(browser, conversation_id, "처리 중 질문", key=str(key))
+    assert busy.status_code == 409
+    assert busy.json()["error"]["code"] == ErrorCode.CHAT_BUSY
+
+    with Session(app.state.engine) as session:
+        turn = session.exec(select(ChatTurn).where(ChatTurn.client_request_id == key)).one()
+        turn.status = "interrupted"
+        session.add(turn)
+        session.commit()
+    stopped = chat(browser, conversation_id, "처리 중 질문", key=str(key))
+    new_key = chat(browser, conversation_id, "처리 중 질문")
+
+    assert stopped.status_code == 503
+    assert stopped.json()["error"]["code"] == ErrorCode.AI_UNAVAILABLE
+    assert new_key.status_code == 200
+    assert ai.calls == 1  # 같은 키 두 번은 AI 를 부르지 않았다
 
 
 # ── 401·403·404·422 ──
