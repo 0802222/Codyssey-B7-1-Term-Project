@@ -727,9 +727,33 @@ img {
   }
 }
 
-/* 채팅의 오류 칸은 위아래 간격을 .chat-panel 의 gap 으로 맞춘다 */
+/* 채팅의 오류 칸은 위아래 간격을 .chat-panel 의 gap 으로 맞춘다.
+   요청이 실패했을 때는 오른쪽에 "다시 보내기" 버튼이 붙고, 좁은 화면에서는 버튼이 아래 줄로 내려간다 (시안 F) */
 .chat .form-error {
+  flex-wrap: wrap;
+  align-items: center;
   margin-bottom: 0;
+}
+
+.chat-error-body {
+  flex: 1 1 170px;
+  word-break: keep-all; /* "시도해" 처럼 낱말 중간에서 줄을 바꾸지 않는다 */
+}
+
+/* 오류 칸 글자색의 테두리 버튼. 높이는 다른 버튼처럼 44px (손가락으로 누르기 편한 크기) */
+.btn-retry {
+  margin-left: auto;
+  padding: 0 16px;
+  border-color: currentColor;
+  background: transparent;
+  color: var(--error-text);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+/* 잠겨 있을 때(.btn:disabled)는 마우스를 올려도 색이 그대로다 */
+.btn-retry:not(:disabled):hover {
+  background: var(--surface);
 }
 
 /* 후속 버튼 (더 쉽게 · 예시 하나 더 · 핵심만) */
