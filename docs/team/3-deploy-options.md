@@ -140,8 +140,10 @@
    - [ ] Redeploy 후에도 계정·대화가 남아 있음 (Volume 확인)
    - [ ] Deploy Logs 에 키·질문 원문이 없음
 
-새 배포가 실패(Crashed)하면 Railway 는 이전 배포를 계속 띄워 둬요. 사이트는 살아 있어도 새 설정은 적용되지 않은 상태이니
-실패한 배포의 Deploy Logs 마지막 줄로 원인을 찾아요. 설정 검사 오류에는 입력값이 찍힐 수 있으니 공유할 때 키를 가려요.
+새 배포가 실패하거나 Crashed 상태가 되면 **사이트도 중단될 수 있어요.** Volume 을 쓰는 서비스는 배포를 동시에 실행하지 않아서
+재배포 중 잠시 멈출 수 있고, 이전 배포가 계속 실행된다고 보장할 수 없어요 ([Volume 서비스 healthcheck](https://docs.railway.com/deployments/healthchecks#services-with-attached-volumes)).
+실패한 배포의 Deploy Logs 마지막 줄과 `/health` 를 확인하고, 설정을 고쳐 재배포하거나 이전 성공 배포로 Rollback 해요
+([배포 작업](https://docs.railway.com/deployments/deployment-actions)). 설정 검사 오류에는 입력값이 찍힐 수 있으니 로그를 공유할 때 키를 가려요.
 
 ### 업데이트 배포
 
@@ -158,7 +160,7 @@
 
 | 항목 | 결과 |
 |---|---|
-| 서비스 URL | https://codyssey-b7-1-term-project-production.up.railway.app |
+| 서비스 URL | https://codyssey-b7-1-term-project-production.up.railway.app (휴대폰 브라우저 접속 확인) |
 | 배포 커밋 | `c82a020`(#47) 으로 첫 배포 → #48 머지 후 자동 배포로 `24bf396` |
 | 운영 설정 적용 | Deploy Logs 시작 줄 `app_started ... env=production ai_provider=anthropic` · Python 3.12 · Southeast Asia · Replica 1 |
 | `/health` | `{"status":"ok","db":"ok"}` |
