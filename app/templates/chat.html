@@ -54,10 +54,13 @@
     <div class="chat-loading" id="chat-loading" role="status" aria-live="polite"></div>
 
     {# 오류 칸: 평소에는 숨겨 두고, 질문이 규칙에 맞지 않으면 안내 문구를, 요청이 실패하면 서버가 보낸
-       error.message 를 넣어 보여 준다 #}
-    <div class="form-error" id="chat-error" role="alert" tabindex="-1" hidden>
+       error.message 를 넣어 보여 준다. 요청이 실패했을 때는 오른쪽에 "다시 보내기" 버튼이 함께 보인다 (시안 F) #}
+    <div class="form-error chat-error" id="chat-error" role="alert" tabindex="-1" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
-      <span id="chat-error-text"></span>
+      <div class="chat-error-body">
+        <span id="chat-error-text"></span>
+      </div>
+      <button class="btn btn-retry" id="chat-retry" type="button" hidden>다시 보내기</button>
     </div>
 
     {# 후속 버튼: 첫 답을 받은 뒤에 보인다. 누르면 같은 대화에 버튼 문구를 그대로 질문으로 보낸다.

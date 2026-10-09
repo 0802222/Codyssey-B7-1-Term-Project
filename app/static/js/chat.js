@@ -1,21 +1,22 @@
 /*
- * 채팅 화면 (EE-12) — /chat
+ * 채팅 화면 (EE-12, EE-14) — /chat
  *
  * 1. 질문을 보내면, 첫 질문일 때 POST /api/conversations 로 대화를 만들고 그 id 를 이 화면이 들고 있다가
  *    이어지는 질문에 쓴다. 같은 대화로 보내야 서버가 앞의 질문·답변을 문맥으로 쓴다.
  * 2. POST /api/chat 에 { conversation_id, question, level, client_request_id } 를 보낸다 (API 명세 3장).
- *    client_request_id 는 요청마다 새로 만드는 UUID — 같은 요청이 두 번 가도 서버가 AI 를 두 번 부르지 않는다.
- * 3. 답을 기다리는 동안 보내기 버튼을 잠근다 (중복 전송 방지).
+ *    client_request_id 는 질문마다 새로 만드는 UUID — 같은 요청이 두 번 가도 서버가 AI 를 두 번 부르지 않는다.
+ * 3. 답을 기다리는 동안 보내기 버튼을 잠그고, 답변 자리에 "답변을 만드는 중" 을 보여 준다.
  * 4. 질문·답변은 textContent 로만 넣는다 — 답변에 <script> 가 섞여 와도 글자로만 보인다.
  * 5. 시각은 API 의 UTC(…Z)를 한국 시간(KST)으로 바꿔 보여 준다.
  * 6. 실패하면 서버가 보낸 error.message 를 오류 칸에 보여 주고, 입력한 질문은 지우지 않는다.
+ *    질문 말풍선은 남겨 두고 오류 칸의 "다시 보내기" 로 같은 질문을 다시 보낼 수 있다.
  *
  * 수준 값(easy·beginner·advanced)과 이름은 이 파일에 적지 않고 HTML 의 라디오 버튼에서 읽는다 —
  * app/web/router.py 의 CHAT_INPUT_RULES 한곳에서 정한다.
- * CSRF 토큰을 붙여 POST 하는 apiPost 는 api.js (로그아웃 버튼과 같이 쓴다).
+ * CSRF 토큰을 붙여 POST 하는 apiPost 는 api.js (로그아웃 버튼과 같이 쓴다). 401 이면 api.js 가 로그인 화면으로 보낸다.
  */
 
-import { UNKNOWN_ERROR_MESSAGE, apiPost, failureMessage } from "/static/js/api.js";
+import { apiPost, failureMessage } from "/static/js/api.js";
 
 const form = document.getElementById("chat-form");
 const questionInput = document.getElementById("question");
@@ -27,12 +28,15 @@ const loading = document.getElementById("chat-loading");
 const emptyState = document.getElementById("chat-empty");
 const errorBox = document.getElementById("chat-error");
 const errorText = document.getElementById("chat-error-text");
+const retryButton = document.getElementById("chat-retry");
 const followUps = document.getElementById("follow-ups");
 const followUpButtons = followUps.querySelectorAll("button[data-question]");
 const newChatButton = document.getElementById("new-chat");
 
 let conversationId = null; // 첫 질문 때 POST /api/conversations 로 받는다. 새로고침하면 새 대화로 시작한다
 let waiting = false; // 답을 기다리는 중인지
+// 답을 받지 못해 "다시 보내기" 를 기다리는 질문 요청 (없으면 null). 모양은 아래 sendQuestion 의 request
+let failed = null;
 
 /* ── 서버에 보내기 ── */
 
@@ -48,42 +52,42 @@ function newRequestId() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-// 서버가 실패를 알려 왔거나 서버에 닿지 못했을 때 던진다. message 는 화면에 보여 줄 문구
-class RequestFailed extends Error {}
-
-// 첫 질문이면 대화를 먼저 만들고, 질문을 보내 완료된 턴(명세 3장의 성공 응답)을 돌려준다
-async function askServer(question, level) {
+// 첫 질문이면 대화를 먼저 만들고, 질문 요청을 보낸다. 결과는 apiPost 의 { ok, status, offline, data } 그대로
+async function askServer(request) {
   if (conversationId === null) {
     const created = await apiPost("/api/conversations", {});
     if (!created.ok || !created.data?.id) {
-      throw new RequestFailed(failureMessage(created));
+      return created; // 대화를 만들지 못했다 — 질문은 아직 보내지 않았다
     }
     conversationId = created.data.id;
   }
-  const result = await apiPost("/api/chat", {
+  return apiPost("/api/chat", {
     conversation_id: conversationId,
-    question,
-    level,
-    client_request_id: newRequestId(), // 요청마다 새로 만든다. 실패한 질문을 다시 보낼 때도 새 값
+    question: request.question,
+    level: request.level.value,
+    client_request_id: request.requestId,
   });
-  // 성공 응답: { request_id, turn_id, conversation_id, level, question, answer, status, created_at }
-  if (!result.ok || result.data?.status !== "completed" || typeof result.data.answer !== "string") {
-    throw new RequestFailed(failureMessage(result));
-  }
-  return result.data;
+}
+
+// 성공 응답(명세 3장): { request_id, turn_id, conversation_id, level, question, answer, status, created_at }
+function isAnswer(result) {
+  return result.ok && result.data?.status === "completed" && typeof result.data.answer === "string";
 }
 
 /* ── 화면에 그리기 ── */
 
-// 오류 칸에 안내 문구를 글자로 넣어 보여 준다. role="alert" 라서 나타나는 순간 스크린리더가 읽는다
-function showError(message) {
+// 오류 칸에 안내 문구를 글자로 넣어 보여 준다. role="alert" 라서 나타나는 순간 스크린리더가 읽는다.
+// retry: 오류 칸 오른쪽에 "다시 보내기" 버튼을 보일지 (요청이 실패했을 때만. 입력 안내에는 없다)
+function showError(message, { retry = false } = {}) {
   errorText.textContent = message;
+  retryButton.hidden = !retry;
   errorBox.hidden = false;
 }
 
 function clearError() {
   errorBox.hidden = true;
   errorText.textContent = ""; // 입력칸의 aria-describedby 가 지난 오류를 읽지 않게 비운다
+  retryButton.hidden = true;
 }
 
 // 글자 수 안내 "0 / 2000". 최대 글자 수는 입력칸의 maxlength 에서 읽는다
@@ -204,36 +208,87 @@ function setWaiting(on) {
 
 /* ── 질문 보내기 ── */
 
-// 질문 하나를 보내고 답을 받아 붙인다. fromInput: 입력칸의 질문이면 답을 받은 뒤 입력칸을 비운다
-async function sendQuestion(question, { fromInput }) {
+// 새 질문 하나를 보낸다. fromInput: 입력칸의 질문이면 답을 받은 뒤 입력칸을 비운다.
+// 질문 요청 = { question, level: { value, label }, fromInput, requestId: client_request_id, item: 내 질문 말풍선 }
+function sendQuestion(question, { fromInput }) {
   if (waiting) return; // 이미 기다리는 중이면 무시한다 (Enter·클릭 연타)
-  clearError();
   const level = selectedLevel();
+  // 답을 못 받은 질문과 같은 질문(같은 글·같은 수준)을 다시 보내면 "다시 보내기" 와 같게 한다 — 말풍선을 또 붙이지 않는다
+  if (failed && failed.question === question && failed.level.value === level.value) {
+    failed.fromInput ||= fromInput;
+    resendFailed();
+    return;
+  }
+  dropFailed(); // 다른 질문을 보내면 답을 못 받은 앞 질문은 다시 보내지 않는 것으로 본다
+  const request = { question, level, fromInput, requestId: newRequestId(), item: null };
+  clearError();
+  request.item = addQuestion(question, level.label);
+  send(request);
+}
+
+// 답을 못 받은 질문을 다시 보낸다 (오류 칸의 "다시 보내기"). 같은 말풍선·질문·수준 그대로, 입력칸의 글도 그대로
+function resendFailed() {
+  if (waiting || !failed) return;
+  // 같은 키로 보내면 서버는 저장해 둔 실패를 그대로 돌려준다 (API 명세 3장 "다시 시도는 새 키로") → 새 키
+  failed.requestId = newRequestId();
+  send(failed);
+}
+
+// 질문 요청을 보내고 결과를 화면에 붙인다
+async function send(request) {
+  clearError();
   // 잠그는 버튼에 포커스가 있었으면 브라우저가 포커스를 뺀다. 잠금을 푼 뒤 그 자리로 돌려준다
   const focusedBefore = document.activeElement;
   setWaiting(true);
-  const questionItem = addQuestion(question, level.label);
+  let result;
   try {
-    const turn = await askServer(question, level.value);
-    addTurnTime(questionItem, turn.created_at);
-    addAnswer(turn.answer);
-    followUps.hidden = false; // 답이 있어야 "더 쉽게" 같은 후속 질문이 뜻이 있다
-    if (fromInput) {
-      questionInput.value = "";
-      updateCount();
-    }
-  } catch (error) {
-    // 답을 받지 못한 질문은 대화에서 뺀다 — 화면의 대화를 서버가 문맥으로 쓰는 완료된 턴과 맞춘다.
-    // 입력칸의 질문은 지우지 않았으니 그대로 다시 보낼 수 있다 (보낼 때마다 새 client_request_id)
-    questionItem.remove();
-    emptyState.hidden = thread.children.length > 0;
-    showError(error instanceof RequestFailed ? error.message : UNKNOWN_ERROR_MESSAGE);
-  } finally {
-    setWaiting(false);
-    if (document.activeElement === document.body && focusedBefore?.isConnected) {
-      focusedBefore.focus({ preventScroll: true });
-    }
+    result = await askServer(request);
+  } catch {
+    result = { ok: false, status: 0, offline: false, data: null }; // 예상하지 못한 오류 → 대체 문구
   }
+  setWaiting(false);
+  if (isAnswer(result)) {
+    showAnswer(request, result.data);
+    restoreFocus(focusedBefore);
+  } else {
+    showFailure(request, result);
+  }
+}
+
+// 답을 받았다: 질문 아래 시각, 답변 말풍선, 후속 버튼. 입력칸에서 보낸 질문이 그대로 남아 있으면 비운다
+// (실패한 뒤 입력칸의 글을 고쳐 두었으면 그 글은 둔다)
+function showAnswer(request, turn) {
+  failed = null;
+  addTurnTime(request.item, turn.created_at);
+  addAnswer(turn.answer);
+  followUps.hidden = false; // 답이 있어야 "더 쉽게" 같은 후속 질문이 뜻이 있다
+  if (request.fromInput && questionInput.value.trim() === request.question) {
+    questionInput.value = "";
+    updateCount();
+  }
+}
+
+// 답을 못 받았다: 질문 말풍선은 남기고(시안) 오류 칸에 서버 문구와 "다시 보내기" 를 보여 준다. 입력칸의 글은 그대로
+function showFailure(request, result) {
+  failed = request;
+  showError(failureMessage(result), { retry: true });
+  retryButton.focus(); // Enter 한 번이면 다시 보낸다. 오류 칸은 role="alert" 라 스크린리더가 읽는다
+}
+
+// 다시 보내지 않기로 한 질문(다른 질문을 보냄, 새 대화, 입력 안내)은 말풍선을 대화에서 뺀다 —
+// 화면의 대화를 서버가 문맥으로 쓰는 완료된 턴과 맞춘다
+function dropFailed() {
+  if (!failed) return;
+  failed.item.remove();
+  failed = null;
+  emptyState.hidden = thread.children.length > 0;
+}
+
+// 잠금이 풀리면 포커스를 원래 자리로. 그 자리가 없거나 숨었으면(다시 보내기 버튼) 입력칸으로
+function restoreFocus(before) {
+  if (document.activeElement !== document.body) return;
+  const visible = before && before !== document.body && before.isConnected && before.getClientRects().length > 0;
+  (visible ? before : questionInput).focus({ preventScroll: true });
 }
 
 // 보내기 전 검사: 앞뒤 공백을 뺀 질문이 1~최대 글자인지. 문제가 있으면 안내 문구, 없으면 ""
@@ -248,10 +303,10 @@ function findQuestionProblem(question) {
 form.addEventListener("submit", (event) => {
   event.preventDefault(); // 브라우저 기본 전송(페이지 이동)을 막는다 → 입력한 글이 그대로 남는다
   if (waiting) return;
-  clearError();
   const question = questionInput.value.trim(); // 앞뒤 공백은 빼고 보낸다 (서버도 같은 기준으로 다시 본다)
   const problem = findQuestionProblem(question);
   if (problem) {
+    dropFailed(); // 오류 칸에는 한 번에 한 가지 — 입력 안내가 뜨면 답을 못 받은 앞 질문은 다시 보내지 않는다
     showError(problem); // 서버에 보내지 않는다. 입력한 글은 그대로 둔다
     questionInput.focus(); // 고칠 곳으로 포커스 (Enter 로 보냈으면 이미 여기)
     return;
@@ -273,6 +328,7 @@ questionInput.addEventListener("input", updateCount);
 // 만든다 — 누르기만 하고 묻지 않으면 빈 대화가 생기지 않는다. 지난 대화는 서버에 저장돼 있고, 입력칸의 글은 둔다
 newChatButton.addEventListener("click", () => {
   if (waiting) return;
+  failed = null; // 답을 못 받은 질문도 지난 대화와 함께 화면에서 빠진다
   conversationId = null;
   thread.replaceChildren();
   emptyState.hidden = false;
@@ -289,6 +345,9 @@ for (const button of followUpButtons) {
   });
 }
 
+// 오류 칸의 "다시 보내기": 답을 못 받은 질문을 같은 말풍선 그대로 다시 보낸다
+retryButton.addEventListener("click", resendFailed);
+
 // 붙여 넣기: 브라우저는 maxlength 를 넘는 뒷부분을 말없이 잘라 넣는다. 질문이 잘린 채 보내지지 않게,
 // 붙여 넣은 뒤의 길이가 최대를 넘으면 넣지 않고 안내한다 (가입·로그인 칸과 같은 방식)
 questionInput.addEventListener("paste", (event) => {
@@ -297,6 +356,7 @@ questionInput.addEventListener("paste", (event) => {
   const replaced = questionInput.selectionEnd - questionInput.selectionStart; // 고른 글은 붙여 넣는 글로 바뀐다
   if (questionInput.value.length - replaced + pasted.length > questionInput.maxLength) {
     event.preventDefault();
+    dropFailed(); // 오류 칸에는 한 번에 한 가지 (보내기 전 입력 안내와 같다)
     showError(`질문은 ${questionInput.maxLength}자까지 입력할 수 있어요.`);
   }
 });

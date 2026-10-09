@@ -281,17 +281,20 @@ def test_chat_script_shows_times_in_korea_time():
     assert 'new Date(t).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })' in script("chat.js")
 
 
-def test_chat_script_makes_new_uuid_for_every_request():
+def test_chat_script_makes_new_uuid_for_every_question():
     source = script("chat.js")
     ask = source[source.index("async function askServer") : source.index("/* ── 화면에 그리기")]
+    question = source[source.index("function sendQuestion") : source.index("function resendFailed")]
 
     # crypto.randomUUID 가 없으면(HTTP 주소) getRandomValues 로 UUID v4 를 만든다
     assert 'typeof crypto.randomUUID === "function"' in source
     assert "crypto.getRandomValues(new Uint8Array(16))" in source
     assert "(bytes[6] & 0x0f) | 0x40" in source  # 버전 4
     assert "(bytes[8] & 0x3f) | 0x80" in source  # 변형 10xx
-    # 질문 요청을 만들 때마다 새로 만든다 (한 번 만든 값을 다시 쓰지 않는다)
-    assert "client_request_id: newRequestId()," in ask
+    # 새 질문마다 새로 만들고, 보낼 때는 질문 요청에 담아 둔 값을 쓴다
+    # (다시 보낼 때 같은 값을 쓸지는 EE-14 테스트)
+    assert "requestId: newRequestId()," in question
+    assert "client_request_id: request.requestId," in ask
 
 
 def test_chat_script_calls_the_spec_apis_in_order():
