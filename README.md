@@ -124,7 +124,7 @@ AGENTS.md             # AI 코딩 도구용 규칙
 | | 입력 검증 | 빈 질문, 2,000자 초과, 잘못된 값 차단 | B 서버 검증<br>C 화면 입력 제한 | `POST /api/chat` | 🟨 | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
 | | 서버 로그 | 요청·AI 호출·DB 저장을 요청 ID 로 묶어 기록 | L 요청 로그<br>B AI 호출 로그<br>A DB 저장 로그 | 서버 로그 | 🟨 | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
 | | 상태 확인 | 서버·DB 정상 여부 | L | `GET /health` | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
-| **배포·협업** | 외부 배포 | 공개 URL, 재시작해도 기록 유지 | L | 서비스 URL | ⬜ | |
+| **배포·협업** | 외부 배포 | 공개 URL, 재시작해도 기록 유지 | L | 서비스 URL | 🟨 | [EE-22](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/29) |
 | | 자동 검사 (CI) | PR 마다 코드 검사·테스트 자동 실행 | L | GitHub Actions | 🟨 | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
 
 ⬜ 미착수 · 🟨 일부 완료 · ✅ 완료 — 기능을 머지할 때 상태와 PR 번호를 함께 적습니다.
@@ -236,7 +236,11 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | `AI_MODEL` | 사용할 AI 모델 |
 | `AI_TIMEOUT_SECONDS` | AI 응답 최대 대기 시간 (기본 30초) |
 
-서버 배포 방법과 서비스 URL 은 배포 후 추가합니다.
+### 배포
+
+- **서비스 URL:** https://codyssey-b7-1-term-project-production.up.railway.app
+- **배포된 커밋:** `24bf396` (2026-10-09, #48 머지 후 자동 배포)
+- Railway + Volume 에 배포합니다. 설정 절차·업데이트 방법·주의점은 [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차)을 봅니다.
 
 ---
 
