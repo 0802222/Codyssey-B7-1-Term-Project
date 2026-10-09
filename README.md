@@ -131,9 +131,9 @@ AGENTS.md             # AI 코딩 도구용 규칙
 
 EE-13 서버 구현과 Fake 기반 검증은 [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43)에서 진행했습니다.
 횟수 제한과 오류·중복 요청 검증은 [#44](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/44)에서 진행했습니다.
-EE-13·EE-16 서버 구현은 병합됐습니다. 수준별·후속 문맥의 실제 AI 샘플 10개와
+EE-13·EE-16 서버 구현은 병합됐습니다. 수준별·후속 문맥의 실제 AI 샘플 15개와
 프롬프트 보완 전후 검토 결과는 [EE-19 안내](app/chat/EE-19.md)에 모았습니다.
-지도 예시의 정확성에 남은 보완 사항도 함께 기록했습니다. EE-19는 PR 리뷰·병합 전이므로 🟨입니다.
+해요체·일반 텍스트 출력 보완과 이전 지도 예시·비유의 한계도 함께 기록했습니다. EE-19는 PR 리뷰·병합 전이므로 🟨입니다.
 처리 순서와 설명 자료는 [EE-13 안내](app/chat/EE-13.md)를 참고합니다.
 한도 집계 대상과 단일 worker·재시작 초기화 제한은 [EE-16 안내](app/chat/EE-16.md)에 설명했습니다.
 
