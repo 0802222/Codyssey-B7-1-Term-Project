@@ -12,7 +12,7 @@ from app.core.logging import log_event
 from app.db.models import ChatTurn, Conversation
 
 _DB_ERROR_MESSAGE = "데이터베이스 오류가 발생했어요. 잠시 후 다시 시도해 주세요."
-_DEFAULT_CONVERSATION_TITLE = "새 대화"
+DEFAULT_CONVERSATION_TITLE = "새 대화"
 _CONVERSATION_TITLE_MAX_LENGTH = 30
 
 
@@ -122,7 +122,7 @@ def create_pending_turn(
             .limit(1)
         ).first()
         if (
-            conversation.title == _DEFAULT_CONVERSATION_TITLE
+            conversation.title == DEFAULT_CONVERSATION_TITLE
             and has_existing_turn is None
         ):
             title = _title_from_question(question)
