@@ -14,11 +14,8 @@ const LOGOUT_OPTIONS = { redirectOn401: false }; // 401 = 이미 로그아웃된
 
 logoutButton.addEventListener("click", async () => {
   logoutButton.disabled = true; // 보내는 동안 다시 누르지 못하게
-  let result = await apiPost("/api/auth/logout", undefined, LOGOUT_OPTIONS);
-  if (result.data?.error?.code === "CSRF_REJECTED") {
-    // 다른 탭에서 다시 로그인해 토큰이 바뀐 경우. apiPost 가 예전 토큰을 지웠으니 새 토큰으로 한 번 더 보낸다
-    result = await apiPost("/api/auth/logout", undefined, LOGOUT_OPTIONS);
-  }
+  // 토큰이 낡았으면(403 CSRF_REJECTED — 다른 탭에서 다시 로그인) apiPost 가 새 토큰으로 한 번 더 보낸다
+  const result = await apiPost("/api/auth/logout", undefined, LOGOUT_OPTIONS);
   if (result.status === 204 || result.status === 401) {
     forgetCsrfToken();
     location.replace("/"); // 방금 페이지를 방문 기록에서 빼서 뒤로 가기로 돌아오지 않게

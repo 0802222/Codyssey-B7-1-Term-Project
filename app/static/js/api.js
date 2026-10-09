@@ -51,8 +51,8 @@ export async function getCsrfToken() {
   }
 }
 
-// 보관한 토큰을 지운다. 로그아웃할 때, 그리고 토큰이 틀렸다는 답(403 CSRF_REJECTED)을 받았을 때 —
-// 다른 탭에서 다시 로그인하면 세션과 함께 토큰이 바뀌는데 이 탭에는 예전 토큰이 남아 있어서다
+// 보관한 토큰을 지운다. 로그아웃할 때, 로그인이 풀렸을 때, 그리고 토큰이 틀렸다는 답(403 CSRF_REJECTED)을
+// 받았을 때 — 다른 탭에서 다시 로그인하면 세션과 함께 토큰이 바뀌는데 이 탭에는 예전 토큰이 남아 있어서다
 export function forgetCsrfToken() {
   try {
     sessionStorage.removeItem(CSRF_TOKEN_KEY);
@@ -72,7 +72,12 @@ export function goToLogin() {
 // 결과는 { ok, status, offline, data } — 서버에 닿지 못했으면 offline 이 true, status 는 0.
 // 401 이면 로그인 화면으로 이동하고 결과를 돌려주지 않는다. 401 을 직접 다루는 곳(로그아웃)은 { redirectOn401: false }
 export async function apiPost(url, body, { redirectOn401 = true } = {}) {
-  const result = await sendPost(url, body);
+  let result = await sendPost(url, body);
+  if (result.data?.error?.code === "CSRF_REJECTED") {
+    // 토큰이 낡았다(다른 탭에서 다시 로그인해 바뀜). 서버는 이 검사에서 거절하고 요청을 처리하지 않았으니(질문 저장·
+    // AI 호출 없음), sendPost 가 예전 토큰을 지운 뒤 새 토큰(GET /api/auth/me)으로 같은 요청을 한 번만 다시 보낸다
+    result = await sendPost(url, body);
+  }
   if (result.status === 401 && redirectOn401) {
     goToLogin();
     // 끝나지 않는 Promise: 다음 페이지를 불러오는 동안 화면이 오류를 띄우지 않고 기다리는 모습 그대로 넘어간다
@@ -104,7 +109,7 @@ async function sendPost(url, body) {
   }
   const data = response.status === 204 ? null : await readJson(response);
   if (data?.error?.code === "CSRF_REJECTED") {
-    forgetCsrfToken(); // 다음 요청은 /api/auth/me 에서 새 토큰을 받는다
+    forgetCsrfToken(); // 다음에 보낼 때는 /api/auth/me 에서 새 토큰을 받는다
   }
   return { ok: response.ok, status: response.status, offline: false, data };
 }
