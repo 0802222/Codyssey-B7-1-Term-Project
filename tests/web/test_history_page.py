@@ -366,3 +366,49 @@ def test_messages_the_chat_screen_adds_when_opening_a_conversation_use_the_team_
     for message in added:
         assert message in source, message
         assert re.search(r"(요|세요)\.$", message), message
+
+
+# ── 스타일 (휴대폰에서 누르기·좁은 폭) ──
+
+CSS = (JS_DIR.parent / "css" / "style.css").read_text(encoding="utf-8")
+
+
+def rule(selector: str, css: str = CSS) -> str:
+    """css 에서 `selector {` 로 시작하는 첫 규칙의 선언들"""
+    begin = css.index(f"\n{selector} {{") + len(selector) + 3
+    return css[begin : css.index("}", begin)]
+
+
+def mobile_css() -> str:
+    return between(CSS, "@media (max-width: 520px) {", "\n}\n")
+
+
+def test_touch_targets_are_at_least_44px():
+    # 손가락으로 누르기 편한 크기 — 목록 카드는 넉넉하게, 접힌 실패 묶음 버튼은 다른 버튼과 같게
+    item = int(re.search(r"min-height: (\d+)px;", rule(".history-item")).group(1))
+    assert item >= 44
+    assert "min-height: 44px;" in rule(".missing-group summary")
+
+
+def test_long_titles_wrap_instead_of_overflowing():
+    # 끊을 곳이 없는 긴 제목(주소·영문)이 좁은 화면에서 가로로 넘치지 않게
+    for selector in (".history-item-title", ".detail-title"):
+        assert "overflow-wrap: anywhere;" in rule(selector), selector
+        # 한국어는 낱말 중간에서 줄을 바꾸지 않는다
+        assert "word-break: keep-all;" in rule(selector), selector
+
+
+def test_empty_status_line_takes_no_space():
+    # 상태 줄은 스크린리더가 읽도록 늘 두지만, 비어 있으면 자리를 차지하지 않는다
+    assert "margin-bottom: 0;" in rule(".history-status:empty")
+
+
+def test_unanswered_turns_look_different_from_answers():
+    assert "border-style: dashed;" in rule(".msg-missing .bubble")
+
+
+def test_narrow_screens_fill_width_with_the_main_buttons():
+    mobile = mobile_css()
+
+    assert ".history-more .btn,\n  .detail-end .btn {\n    width: 100%;" in mobile
+    assert ".history-item {" in mobile
