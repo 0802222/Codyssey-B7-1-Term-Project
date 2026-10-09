@@ -12,6 +12,20 @@ from app.core.logging import log_event
 from app.db.models import ChatTurn, Conversation
 
 _DB_ERROR_MESSAGE = "데이터베이스 오류가 발생했어요. 잠시 후 다시 시도해 주세요."
+_DEFAULT_CONVERSATION_TITLE = "새 대화"
+_CONVERSATION_TITLE_MAX_LENGTH = 30
+
+
+def _title_from_question(question: str) -> str:
+    title = (
+        question.replace("\r\n", " ")
+        .replace("\r", " ")
+        .replace("\n", " ")
+        .strip()
+    )
+    if len(title) > _CONVERSATION_TITLE_MAX_LENGTH:
+        return f"{title[:_CONVERSATION_TITLE_MAX_LENGTH]}…"
+    return title
 
 
 def _db_error() -> AppError:
@@ -103,9 +117,24 @@ def create_pending_turn(
         question=question,
         status="pending",
     )
-    conversation.updated_at = datetime.now(UTC)
-
     try:
+        has_existing_turn = session.exec(
+            select(ChatTurn.id)
+            .where(
+                ChatTurn.conversation_id == conversation_id,
+                ChatTurn.user_id == user_id,
+            )
+            .limit(1)
+        ).first()
+        if (
+            conversation.title == _DEFAULT_CONVERSATION_TITLE
+            and has_existing_turn is None
+        ):
+            title = _title_from_question(question)
+            if title:
+                conversation.title = title
+        conversation.updated_at = datetime.now(UTC)
+
         session.add(turn)
         session.add(conversation)
         session.commit()
@@ -384,4 +413,3 @@ def list_chats_for_user(
         session.rollback()
 
         raise _db_error() from None
-    

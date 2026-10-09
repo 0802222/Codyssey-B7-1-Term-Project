@@ -16,7 +16,7 @@ from app.conversations.repository import (
     list_conversations_for_user,
 )
 from app.core.errors import AppError, ErrorCode
-from app.db.models import User
+from app.db.models import ChatTurn, Conversation, User
 from app.db.session import init_db
 
 BASE_TIME = datetime(2020, 1, 1, tzinfo=UTC)
@@ -132,6 +132,138 @@ def test_create_pending_turn_requires_conversation_owner(
 
         assert exc_info.value.status_code == 404
         assert exc_info.value.code == ErrorCode.CONVERSATION_NOT_FOUND
+
+
+def test_first_pending_turn_sets_default_conversation_title(engine, user):
+    with Session(engine) as session:
+        conversation = create_conversation(
+            session=session,
+            user_id=user.id,
+            title="새 대화",
+        )
+
+        turn = create_pending_turn(
+            session=session,
+            conversation_id=conversation.id,
+            user_id=user.id,
+            client_request_id=uuid4(),
+            request_id="request-1",
+            level="easy",
+            question="첫 질문입니다",
+        )
+
+        session.expire_all()
+        saved_conversation = session.get(Conversation, conversation.id)
+        saved_turn = session.get(ChatTurn, turn.id)
+
+        assert saved_conversation.title == "첫 질문입니다"
+        assert saved_turn.status == "pending"
+
+
+def test_second_pending_turn_keeps_first_question_title(engine, user):
+    with Session(engine) as session:
+        conversation = create_conversation(
+            session=session,
+            user_id=user.id,
+            title="새 대화",
+        )
+
+        create_pending_turn(
+            session=session,
+            conversation_id=conversation.id,
+            user_id=user.id,
+            client_request_id=uuid4(),
+            request_id="request-1",
+            level="easy",
+            question="첫 질문",
+        )
+        create_pending_turn(
+            session=session,
+            conversation_id=conversation.id,
+            user_id=user.id,
+            client_request_id=uuid4(),
+            request_id="request-2",
+            level="easy",
+            question="두 번째 질문으로 바꾸면 안 됨",
+        )
+
+        assert session.get(Conversation, conversation.id).title == "첫 질문"
+
+
+def test_second_pending_turn_keeps_default_title_if_first_question_matches_it(
+    engine,
+    user,
+):
+    with Session(engine) as session:
+        conversation = create_conversation(
+            session=session,
+            user_id=user.id,
+            title="새 대화",
+        )
+
+        for request_id, question in (
+            ("request-1", "새 대화"),
+            ("request-2", "두 번째 질문"),
+        ):
+            create_pending_turn(
+                session=session,
+                conversation_id=conversation.id,
+                user_id=user.id,
+                client_request_id=uuid4(),
+                request_id=request_id,
+                level="easy",
+                question=question,
+            )
+
+        assert session.get(Conversation, conversation.id).title == "새 대화"
+
+
+def test_multiline_first_question_replaces_newlines_with_spaces(engine, user):
+    with Session(engine) as session:
+        conversation = create_conversation(
+            session=session,
+            user_id=user.id,
+            title="새 대화",
+        )
+
+        create_pending_turn(
+            session=session,
+            conversation_id=conversation.id,
+            user_id=user.id,
+            client_request_id=uuid4(),
+            request_id="request-1",
+            level="easy",
+            question="첫 줄\r\n둘째 줄\n셋째 줄",
+        )
+
+        assert session.get(Conversation, conversation.id).title == "첫 줄 둘째 줄 셋째 줄"
+
+
+def test_long_first_question_is_truncated_with_ellipsis(engine, user):
+    question = "가" * 31
+
+    with Session(engine) as session:
+        conversation = create_conversation(
+            session=session,
+            user_id=user.id,
+            title="새 대화",
+        )
+
+        create_pending_turn(
+            session=session,
+            conversation_id=conversation.id,
+            user_id=user.id,
+            client_request_id=uuid4(),
+            request_id="request-1",
+            level="easy",
+            question=question,
+        )
+
+        title = session.get(Conversation, conversation.id).title
+
+        assert title == f"{'가' * 30}…"
+        assert len(title) == 31
+        assert "\n" not in title
 
 
 def test_complete_turn_changes_status_and_saves_answer(
