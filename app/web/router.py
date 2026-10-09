@@ -13,7 +13,6 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.auth.dependencies import OptionalUserDep
-from app.core.errors import not_implemented
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -85,6 +84,25 @@ CHAT_INPUT_RULES = ChatInputRules(
 )
 
 
+@dataclass(frozen=True)
+class HistoryRules:
+    """내 기록 화면의 값.
+
+    템플릿이 data- 속성으로 넣고 history.js 가 읽는다. 목록은 GET /api/me/conversations 를
+    page_size 개씩 불러온다(API 명세 2장: limit 기본 20·최대 100).
+    """
+
+    page_size: int
+    # 서버가 대화를 만들 때 붙이는 제목(app/conversations/router.py). 제목이 이것이거나 비어 있으면
+    # 화면은 그 대화의 첫 질문 앞부분을 제목 대신 보여 준다 — 서버가 제목을 채우면 그 제목을 쓴다
+    untitled: str
+    title_max_length: int  # 첫 질문으로 만든 제목의 최대 글자 수 (넘으면 뒤를 자르고 … 를 붙인다)
+
+
+# 값을 바꿀 때는 여기만 고친다
+HISTORY_RULES = HistoryRules(page_size=20, untitled="새 대화", title_max_length=40)
+
+
 # 모든 페이지는 user: OptionalUserDep 로 로그인 여부를 받아 logged_in 으로 넘긴다.
 # base.html 헤더가 그 값으로 "로그인" 메뉴 또는 "로그아웃" 버튼을 보여 준다
 
@@ -136,5 +154,22 @@ def chat_page(request: Request, user: OptionalUserDep):
 
 
 @router.get("/history")
-def history_page():
-    raise not_implemented("EE-17")
+def history_page(request: Request, user: OptionalUserDep):
+    # 로그인하지 않았으면 로그인 화면으로 보낸다(303).
+    # 기록을 읽는 API 도 서버가 다시 로그인과 대화의 주인을 확인한다
+    if user is None:
+        return RedirectResponse("/login", status_code=303)
+    # 주소에 conversation(대화 id)이 있으면 상세, 없으면 목록이 처음부터 보이게 그린다
+    # (스크립트가 고르기 전에 다른 칸이 잠깐 보이지 않게). id 검사와 불러오기는 history.js
+    detail = "conversation" in request.query_params
+    return templates.TemplateResponse(
+        request,
+        "history.html",
+        {
+            "active": "history",
+            "logged_in": user is not None,
+            "rules": CHAT_INPUT_RULES,
+            "history_rules": HISTORY_RULES,
+            "detail": detail,
+        },
+    )

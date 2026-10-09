@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}내 기록 — EasyExplain{% endblock %}
+
+{% block content %}
+{# 내 기록: 주소가 /history 면 대화 목록, /history?conversation=<대화 id> 면 그 대화의 상세를 보여 준다.
+   목록을 한 번에 불러오는 수와 제목 대신 첫 질문을 보여 줄 기준은 app/web/router.py 의 HISTORY_RULES —
+   스크립트가 아래 data- 속성으로 읽는다 #}
+<section class="history">
+  <div class="container history-panel" id="history"
+       data-page-size="{{ history_rules.page_size }}"
+       data-untitled="{{ history_rules.untitled }}"
+       data-title-max-length="{{ history_rules.title_max_length }}">
+    {# 화면 안에서 목록으로 돌아올 때 포커스를 둘 곳이라 tabindex="-1" (Tab 순서에는 들어가지 않는다) #}
+    <h1 class="history-heading" id="history-heading" tabindex="-1">내 기록</h1>
+
+    {# 수준 이름표: 기록의 level 값(easy 등)을 화면 이름으로 바꿀 때 스크립트가 읽는다. 값은 CHAT_INPUT_RULES #}
+    <ul id="level-names" hidden>
+      {% for level in rules.levels %}
+      <li data-level="{{ level.value }}">{{ level.label }}</li>
+      {% endfor %}
+    </ul>
+
+    {# ── 목록 (/history) ── #}
+    <div class="history-view" id="list-view"{% if detail %} hidden{% endif %}>
+      <p class="history-lead">지난 대화를 다시 보고, 이어서 질문할 수 있어요.</p>
+
+      {# role="status": 불러오는 중 안내를 스크린리더가 읽는다. 칸은 늘 두고 안의 글만 바꾼다 #}
+      <p class="history-status" id="list-status" role="status">{% if not detail %}기록을 불러오는 중이에요.{% endif %}</p>
+
+      {# 오류 칸: 서버가 보낸 error.message(못 받았으면 대체 문구)와 "다시 시도" #}
+      <div class="form-error history-error" id="list-error" role="alert" tabindex="-1" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <div class="history-error-body">
+          <span id="list-error-text"></span>
+          <p class="history-error-note" id="list-error-note"></p>
+        </div>
+        <button class="btn btn-retry" id="list-retry" type="button" hidden>다시 시도</button>
+      </div>
+
+      {# 대화가 하나도 없을 때 #}
+      <div class="history-empty" id="list-empty" hidden>
+        <img src="/static/img/mascot.svg" alt="" width="64" height="64">
+        <p class="history-empty-title">아직 대화가 없어요</p>
+        <p>채팅에서 궁금한 개념을 물어보면 여기에 기록이 쌓여요.</p>
+        <a class="btn btn-primary" href="/chat">질문하러 가기</a>
+      </div>
+
+      {# 대화 목록: 최근에 질문한 대화가 위 (서버가 정렬해 준 순서 그대로). 항목은 스크립트가 붙인다 #}
+      <ul class="conversation-list" id="conversation-list" aria-label="대화 목록" hidden></ul>
+
+      {# 다음 대화들을 불러온다. 더 있을 때만 보인다 #}
+      <div class="history-more">
+        <button class="btn btn-secondary" id="list-more" type="button" data-busy-label="불러오는 중…" hidden>더 보기</button>
+      </div>
+    </div>
+
+    {# ── 상세 (/history?conversation=<대화 id>) ── #}
+    <div class="history-view" id="detail-view"{% if not detail %} hidden{% endif %}>
+      {# 아이콘: Tabler Icons (MIT) 의 arrow-left #}
+      <div class="history-tools">
+        <a class="btn btn-secondary" id="back-to-list" href="/history">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></svg>목록으로
+        </a>
+        {# 이어서 질문: 이 대화로 채팅 화면을 연다 (/chat?conversation=<대화 id>). 대화를 불러온 뒤에 보인다 #}
+        <a class="btn btn-primary" id="continue-top" href="/chat" hidden>이어서 질문</a>
+      </div>
+
+      {# 대화 제목. 화면 안에서 상세로 넘어오면 포커스를 여기로 옮긴다 #}
+      <h2 class="detail-title" id="detail-title" tabindex="-1"></h2>
+      <p class="detail-meta" id="detail-meta"></p>
+
+      <p class="history-status" id="detail-status" role="status">{% if detail %}대화를 불러오는 중이에요.{% endif %}</p>
+
+      <div class="form-error history-error" id="detail-error" role="alert" tabindex="-1" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <div class="history-error-body">
+          <span id="detail-error-text"></span>
+          <p class="history-error-note" id="detail-error-note"></p>
+        </div>
+        <button class="btn btn-retry" id="detail-retry" type="button" hidden>다시 시도</button>
+      </div>
+
+      {# 질문·답변: 오래된 턴이 위 (서버가 정렬해 준 순서 그대로). 채팅 화면과 같은 말풍선 #}
+      <ol class="thread" id="detail-thread" aria-label="대화 내용"></ol>
+
+      <div class="detail-end">
+        <a class="btn btn-primary" id="continue-bottom" href="/chat" hidden>이어서 질문</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
