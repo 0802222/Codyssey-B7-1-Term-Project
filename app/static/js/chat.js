@@ -13,6 +13,7 @@
  * 7. 이어서 질문(EE-17): 내 기록의 "이어서 질문" 은 /chat?conversation=<대화 id> 로 연다. 그 대화의 지난 질문·답변
  *    (GET /api/conversations/{id} 의 완료된 턴)을 그려 두고 이어지는 질문을 같은 대화로 보낸다. 없는 대화·남의 대화·
  *    모양이 틀린 id 는 "대화를 찾을 수 없어요." 를 보여 주고 새 대화로 시작한다.
+ *    주소는 늘 지금 대화를 가리킨다(첫 질문으로 새 대화를 만들면 그 id, 새 대화를 누르면 /chat) — 새로고침해도 이어진다.
  *
  * 수준 값(easy·beginner·advanced)과 이름은 이 파일에 적지 않고 HTML 의 라디오 버튼에서 읽는다 —
  * app/web/router.py 의 CHAT_INPUT_RULES 한곳에서 정한다.
@@ -52,7 +53,8 @@ const followUpButtons = followUps.querySelectorAll("button[data-question]");
 const newChatButton = document.getElementById("new-chat");
 const levelRadios = document.querySelectorAll('input[name="level"]');
 
-let conversationId = null; // 첫 질문 때 POST /api/conversations 로 받는다. 새로고침하면 새 대화로 시작한다
+// 첫 질문 때 POST /api/conversations 로 받는다(또는 이어서 질문으로 연 대화). 바꾸면 syncAddress 로 주소도 맞춘다
+let conversationId = null;
 let waiting = false; // 답을 기다리는 중인지
 // 답을 받지 못해 "다시 보내기" 를 기다리는 질문 요청 (없으면 null). 모양은 아래 sendQuestion 의 request
 let failed = null;
@@ -82,6 +84,7 @@ async function askServer(request) {
       return created; // 대화를 만들지 못했다 — 질문은 아직 보내지 않았다
     }
     conversationId = created.data.id;
+    syncAddress(); // 주소를 /chat?conversation=<새 대화 id> 로 — 새로고침해도 이 대화가 이어진다
   }
   return apiPost("/api/chat", {
     conversation_id: conversationId,
@@ -378,6 +381,7 @@ function showFailure(request, result) {
     // 404: 대화가 서버에 없다(지워졌거나, 다른 탭에서 다른 계정으로 로그인함). 다시 보내면 새 대화를 만들게 하고,
     // 화면에서도 지난 대화를 빼고 이 질문만 남긴다 — 화면의 대화 = 서버가 문맥으로 쓰는 대화
     conversationId = null;
+    syncAddress();
     for (const item of [...thread.children]) {
       if (item !== request.item) item.remove();
     }
@@ -450,6 +454,7 @@ newChatButton.addEventListener("click", () => {
   if (isLocked()) return;
   failed = null; // 답을 못 받은 질문도 지난 대화와 함께 화면에서 빠진다
   conversationId = null;
+  syncAddress(); // 주소도 /chat 으로 — 새로고침했을 때 지난 대화가 다시 열리지 않게
   thread.replaceChildren();
   emptyState.hidden = false;
   followUps.hidden = true;
@@ -469,6 +474,13 @@ for (const button of followUpButtons) {
 retryButton.addEventListener("click", resendFailed);
 
 /* ── 이어서 질문 (EE-17) ── */
+
+// 주소를 지금 대화에 맞춘다: 대화가 있으면 /chat?conversation=<대화 id>, 없으면 /chat.
+// replaceState — 방문 기록을 늘리지 않고 주소만 바꾼다. 새로고침하면 주소의 대화를 다시 불러와 이어서 물을 수 있다
+function syncAddress() {
+  const url = conversationId === null ? "/chat" : `/chat?conversation=${encodeURIComponent(conversationId)}`;
+  history.replaceState(null, "", url);
+}
 
 // 수준 값(easy 등)의 화면 이름 — 라디오 버튼의 data-label (값과 이름은 CHAT_INPUT_RULES 한곳). 없는 값이면 값 그대로
 function levelName(value) {
@@ -515,7 +527,7 @@ function drawPastTurns(turns) {
 // 지난 대화를 열지 못했다: 안내하고 새 대화로 시작한다. 주소도 /chat 으로 바꿔 새로고침해도 같은 안내가 나오지 않게 한다
 function startOver(message, note) {
   conversationId = null;
-  history.replaceState(null, "", "/chat");
+  syncAddress();
   emptyState.hidden = false;
   showError(message, { note });
 }
@@ -542,6 +554,7 @@ async function openConversation(id) {
   setLocked(false);
   if (result.ok && Array.isArray(result.data?.turns)) {
     conversationId = id;
+    syncAddress();
     drawPastTurns(result.data.turns);
     return;
   }

@@ -247,9 +247,9 @@ export const offline = () => {
   throw new TypeError("Failed to fetch");
 };
 
-// 새 채팅 화면과 브라우저 전역(fetch·sessionStorage·location)을 흉내 내 설치한다.
-// reply(call, calls) 는 요청 하나에 대한 응답을 돌려주거나 offline() 처럼 던진다
-export function install(reply, { token = "token-1" } = {}) {
+// 새 채팅 화면과 브라우저 전역(fetch·sessionStorage·location·history)을 흉내 내 설치한다.
+// reply(call, calls) 는 요청 하나에 대한 응답을 돌려주거나 offline() 처럼 던진다. url: 화면을 연 주소
+export function install(reply, { token = "token-1", url = "/chat" } = {}) {
   const doc = chatPage();
   const storage = new Map(token ? [["csrf_token", token]] : []);
   const calls = [];
@@ -260,10 +260,29 @@ export function install(reply, { token = "token-1" } = {}) {
     setItem: (key, value) => storage.set(key, String(value)),
     removeItem: (key) => storage.delete(key),
   };
+  const address = { url };
   globalThis.location = {
     replaced: null,
-    replace(url) {
-      this.replaced = url;
+    replace(next) {
+      this.replaced = next;
+    },
+    get pathname() {
+      return new URL(address.url, "http://localhost").pathname;
+    },
+    get search() {
+      return new URL(address.url, "http://localhost").search;
+    },
+  };
+  // 화면이 주소를 바꾸면(replaceState·pushState) 그 주소를 순서대로 남긴다
+  globalThis.history = {
+    urls: [],
+    replaceState(_state, _title, next) {
+      address.url = next;
+      this.urls.push(next);
+    },
+    pushState(_state, _title, next) {
+      address.url = next;
+      this.urls.push(next);
     },
   };
   globalThis.fetch = async (url, init = {}) => {
