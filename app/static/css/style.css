@@ -507,9 +507,10 @@ img {
 
 /* 채팅은 글이 길어서 본문 폭(960px)보다 좁게 가운데에 둔다 */
 .chat-panel {
+  --chat-gap: 16px; /* 줄 사이 간격. 비어 있는 "답변을 만드는 중" 칸이 이만큼 되돌린다 */
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--chat-gap);
   max-width: 760px;
 }
 
@@ -674,9 +675,85 @@ img {
   font-size: 0.75rem;
 }
 
-/* 채팅의 오류 칸은 위아래 간격을 .chat-panel 의 gap 으로 맞춘다 */
+/* 답변을 만드는 중 (답을 기다리는 동안 답변 자리, 시안 F 의 점 세 개).
+   칸은 스크린리더가 읽도록 늘 있다. 비어 있을 때는 위의 간격만큼 되돌려 자리를 차지하지 않게 한다 */
+.chat-loading:empty {
+  margin-top: calc(-1 * var(--chat-gap));
+}
+
+.msg-loading .bubble {
+  color: var(--text-muted);
+}
+
+.loading-dots {
+  display: inline-flex;
+  gap: 5px;
+  margin-right: 8px;
+}
+
+.loading-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: loading-blink 1.2s infinite;
+}
+
+.loading-dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes loading-blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+
+  40% {
+    opacity: 1;
+  }
+}
+
+/* 운영체제에서 움직임 줄이기를 켰으면 깜빡이지 않고 흐린 점 세 개로 둔다 */
+@media (prefers-reduced-motion: reduce) {
+  .loading-dots i {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* 채팅의 오류 칸은 위아래 간격을 .chat-panel 의 gap 으로 맞춘다.
+   요청이 실패했을 때는 오른쪽에 "다시 보내기" 버튼이 붙고, 좁은 화면에서는 버튼이 아래 줄로 내려간다 (시안 F) */
 .chat .form-error {
+  flex-wrap: wrap;
+  align-items: center;
   margin-bottom: 0;
+}
+
+.chat-error-body {
+  flex: 1 1 170px;
+  word-break: keep-all; /* "시도해" 처럼 낱말 중간에서 줄을 바꾸지 않는다 */
+}
+
+/* 오류 칸 글자색의 테두리 버튼. 높이는 다른 버튼처럼 44px (손가락으로 누르기 편한 크기) */
+.btn-retry {
+  margin-left: auto;
+  padding: 0 16px;
+  border-color: currentColor;
+  background: transparent;
+  color: var(--error-text);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+/* 잠겨 있을 때(.btn:disabled)는 마우스를 올려도 색이 그대로다 */
+.btn-retry:not(:disabled):hover {
+  background: var(--surface);
 }
 
 /* 후속 버튼 (더 쉽게 · 예시 하나 더 · 핵심만) */

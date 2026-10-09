@@ -13,6 +13,9 @@
 
       {% if joined %}
       <p class="form-notice">가입이 끝났어요. 가입한 이메일과 비밀번호로 로그인해 주세요.</p>
+      {% elif expired %}
+      {# 채팅 중 API 가 401(세션 만료, 다른 탭에서 로그아웃)을 돌려주면 api.js 가 /login?expired=1 로 보낸다 #}
+      <p class="form-notice">로그인이 풀렸어요. 다시 로그인해 주세요.</p>
       {% endif %}
 
       {# 오류 칸: 평소에는 숨겨 두고, 입력이 규칙에 맞지 않으면 auth.js 의 안내 문구를,

@@ -281,17 +281,20 @@ def test_chat_script_shows_times_in_korea_time():
     assert 'new Date(t).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })' in script("chat.js")
 
 
-def test_chat_script_makes_new_uuid_for_every_request():
+def test_chat_script_makes_new_uuid_for_every_question():
     source = script("chat.js")
     ask = source[source.index("async function askServer") : source.index("/* ── 화면에 그리기")]
+    question = source[source.index("function sendQuestion") : source.index("function resendFailed")]
 
     # crypto.randomUUID 가 없으면(HTTP 주소) getRandomValues 로 UUID v4 를 만든다
     assert 'typeof crypto.randomUUID === "function"' in source
     assert "crypto.getRandomValues(new Uint8Array(16))" in source
     assert "(bytes[6] & 0x0f) | 0x40" in source  # 버전 4
     assert "(bytes[8] & 0x3f) | 0x80" in source  # 변형 10xx
-    # 질문 요청을 만들 때마다 새로 만든다 (한 번 만든 값을 다시 쓰지 않는다)
-    assert "client_request_id: newRequestId()," in ask
+    # 새 질문마다 새로 만들고, 보낼 때는 질문 요청에 담아 둔 값을 쓴다
+    # (다시 보낼 때 같은 값을 쓸지는 EE-14 테스트)
+    assert "requestId: newRequestId()," in question
+    assert "client_request_id: request.requestId," in ask
 
 
 def test_chat_script_calls_the_spec_apis_in_order():
@@ -325,12 +328,14 @@ def test_chat_script_sends_on_enter_but_not_while_composing_korean():
 
 def test_chat_script_locks_buttons_while_waiting():
     source = script("chat.js")
-    waiting = source[source.index("function setWaiting") : source.index("/* ── 질문 보내기")]
+    lock = source[source.index("function setLocked") : source.index("function isLocked")]
+    waiting = source[source.index("function setWaiting") : source.index("function startCooldown")]
 
-    for locked in ("sendButton", "newChatButton", "button"):
-        assert f"{locked}.disabled = on;" in waiting
-    assert "questionInput.readOnly = on;" in waiting  # 보낸 질문은 지우지 않고 남겨 둔다
-    assert "if (waiting) return;" in source
+    for locked in ("sendButton", "retryButton", "newChatButton", "button"):
+        assert f"{locked}.disabled = on;" in lock
+    assert "questionInput.readOnly = on;" in lock  # 보낸 질문은 지우지 않고 남겨 둔다
+    assert "setLocked(on);" in waiting  # 답을 기다리는 동안 (429 뒤 기다릴 때도 같은 잠금)
+    assert "if (isLocked()) return;" in source
 
 
 def test_follow_up_sends_button_phrase_to_same_conversation():
@@ -366,7 +371,9 @@ def test_api_script_shares_token_name_and_fallback_messages_with_auth_script():
 def test_logout_script_ends_session_and_goes_home():
     source = script("logout.js")
 
-    assert 'apiPost("/api/auth/logout")' in source  # X-CSRF-Token 은 apiPost 가 붙인다
+    # X-CSRF-Token 은 apiPost 가 붙인다. 401 은 로그인 화면이 아니라 아래에서 / 로 (이슈 #21)
+    assert 'apiPost("/api/auth/logout", undefined, LOGOUT_OPTIONS)' in source
+    assert "LOGOUT_OPTIONS = { redirectOn401: false };" in source
     assert "result.status === 204 || result.status === 401" in source  # 401 = 이미 세션이 끝남
     assert "forgetCsrfToken();" in source
     assert 'location.replace("/")' in source

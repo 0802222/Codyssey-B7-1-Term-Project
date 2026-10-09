@@ -104,8 +104,11 @@ def signup_page(request: Request, user: OptionalUserDep):
 
 @router.get("/login")
 def login_page(request: Request, user: OptionalUserDep):
-    # 가입하고 넘어오면(/login?joined=1) "가입이 끝났어요" 안내를 함께 보여 준다
+    # 가입하고 넘어오면(/login?joined=1) "가입이 끝났어요" 안내를,
+    # 질문하다 로그인이 풀려(API 401) 넘어오면(/login?expired=1, api.js) "로그인이 풀렸어요" 안내를
+    # 함께 보여 준다
     joined = request.query_params.get("joined") == "1"
+    expired = request.query_params.get("expired") == "1"
     return templates.TemplateResponse(
         request,
         "login.html",
@@ -113,6 +116,7 @@ def login_page(request: Request, user: OptionalUserDep):
             "active": "login",
             "logged_in": user is not None,
             "joined": joined,
+            "expired": expired,
             "rules": AUTH_INPUT_RULES,
         },
     )
