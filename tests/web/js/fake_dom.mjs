@@ -259,7 +259,7 @@ function historyPage({ detail }) {
   doc.body.append(
     el(
       "div",
-      { id: "history", dataset: { pageSize: "20", untitled: "새 대화", titleMaxLength: "40" } },
+      { id: "history", dataset: { pageSize: "20", untitled: "새 대화", titleMaxLength: "30" } },
       el("h1", { id: "history-heading" }, "내 기록"),
       el(
         "ul",

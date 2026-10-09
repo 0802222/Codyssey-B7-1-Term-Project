@@ -197,7 +197,7 @@ test("제목: 서버 제목이 있으면 그대로, \"새 대화\" 면 화면에
     titles: { 1: "서버가 정한 제목" },
     turns: {
       2: [turn(2, 20, "  API가\n\n뭐야?  ")],
-      3: [turn(3, 30, "가".repeat(39) + "🙂끝")],
+      3: [turn(3, 30, "가".repeat(29) + "🙂끝")],
       4: [turn(4, 40, "🙂".repeat(45))],
     },
   });
@@ -213,8 +213,8 @@ test("제목: 서버 제목이 있으면 그대로, \"새 대화\" 면 화면에
   // 1번은 서버 제목이 있어서 묻지 않는다
   assert.deepEqual(detailCalls(page.calls).map((call) => call.url), [2, 3, 4].map((n) => `/api/conversations/${uuid(n)}`));
   assert.equal(titlesShown()[1], "API가 뭐야?"); // 줄바꿈·연이은 공백은 한 칸
-  assert.equal(titlesShown()[2], `${"가".repeat(39)}🙂…`); // 40자 + …
-  assert.equal(titlesShown()[3], `${"🙂".repeat(40)}…`); // 이모지를 반으로 자르지 않는다
+  assert.equal(titlesShown()[2], `${"가".repeat(29)}🙂…`); // 30자 + …
+  assert.equal(titlesShown()[3], `${"🙂".repeat(30)}…`); // 이모지를 반으로 자르지 않는다
   assert.equal(titlesShown()[4], "새 대화"); // 아직 안 보인 항목은 그대로
   // 첫 쪽 20개 중 서버 제목이 있는 1번은 처음부터 지켜보지 않고, 보인 3개는 지켜보기를 그만뒀다
   assert.equal(watchedCount(), 20 - 1 - 3);
@@ -379,7 +379,7 @@ test("상세: <script>·<img onerror> 가 섞인 질문·답변·제목은 글�
 
   const bubbles = $("detail-thread").querySelectorAll(".bubble").map((bubble) => bubble.textContent);
   assert.deepEqual(bubbles, [attack, `답: ${attack}`]);
-  assert.equal($("detail-title").textContent, `${attack.slice(0, 40)}…`);
+  assert.equal($("detail-title").textContent, `${attack.slice(0, 30)}…`);
   const tags = document.root.descendants().map((element) => element.tagName);
   assert.equal(tags.includes("SCRIPT"), false);
   assert.equal(document.querySelectorAll("img").every((img) => img.className === "msg-mascot"), true);

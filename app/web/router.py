@@ -96,11 +96,13 @@ class HistoryRules:
     # 서버가 대화를 만들 때 붙이는 제목(app/conversations/router.py). 제목이 이것이거나 비어 있으면
     # 화면은 그 대화의 첫 질문 앞부분을 제목 대신 보여 준다 — 서버가 제목을 채우면 그 제목을 쓴다
     untitled: str
-    title_max_length: int  # 첫 질문으로 만든 제목의 최대 글자 수 (넘으면 뒤를 자르고 … 를 붙인다)
+    # 첫 질문으로 만든 제목의 최대 글자 수 (넘으면 뒤를 자르고 … 를 붙인다).
+    # #49 에서 서버가 채울 제목(예: 30자 + …)과 같은 길이 — 서버가 다른 값으로 정하면 함께 바꾼다
+    title_max_length: int
 
 
 # 값을 바꿀 때는 여기만 고친다
-HISTORY_RULES = HistoryRules(page_size=20, untitled="새 대화", title_max_length=40)
+HISTORY_RULES = HistoryRules(page_size=20, untitled="새 대화", title_max_length=30)
 
 
 # 모든 페이지는 user: OptionalUserDep 로 로그인 여부를 받아 logged_in 으로 넘긴다.

@@ -152,8 +152,9 @@ def test_history_script_is_served(client, name):
 
 
 def test_history_rules_are_the_agreed_values():
-    # 한 번에 20개(API limit 기본값), 서버가 붙이는 기본 제목 "새 대화", 첫 질문 제목은 40자까지
-    assert HISTORY_RULES == HistoryRules(page_size=20, untitled="새 대화", title_max_length=40)
+    # 한 번에 20개(API limit 기본값), 서버가 붙이는 기본 제목 "새 대화",
+    # 첫 질문 제목은 30자까지 (#49 에서 서버가 채울 제목의 예시 길이와 같게)
+    assert HISTORY_RULES == HistoryRules(page_size=20, untitled="새 대화", title_max_length=30)
     assert 1 <= HISTORY_RULES.page_size <= 100  # API 명세 2장: limit 최대 100
 
 
@@ -162,7 +163,7 @@ def test_page_passes_rule_values_to_the_script(list_html):
 
     assert attrs["data-page-size"] == "20"
     assert attrs["data-untitled"] == "새 대화"
-    assert attrs["data-title-max-length"] == "40"
+    assert attrs["data-title-max-length"] == "30"
 
 
 def test_page_follows_rule_values(logged_in_client, monkeypatch):
