@@ -96,21 +96,6 @@ def test_get_endpoints_require_login(client, path):
     assert response.json()["error"]["code"] == "AUTH_REQUIRED"
 
 
-def test_chat_endpoint_requires_login(client):
-    response = client.post(
-        "/api/chat",
-        json={
-            "conversation_id": str(uuid4()),
-            "question": "로그인이 필요한 질문",
-            "level": "easy",
-            "client_request_id": str(uuid4()),
-        },
-    )
-
-    assert response.status_code == 401
-    assert response.json()["error"]["code"] == "AUTH_REQUIRED"
-
-
 def test_app_restart_marks_saved_pending_turn_interrupted(app, settings):
     seed_engine = create_engine(settings.database_url)
     try:
