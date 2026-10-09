@@ -10,6 +10,8 @@
  *    (history.pushState) GET /api/conversations/{id} 의 턴을 서버가 정렬해 준 순서(오래된 것이 위)대로 채팅 화면과
  *    같은 말풍선으로 그린다. 주소에 대화 id 가 있어서 새로고침·뒤로 가기·주소 공유가 그대로 되고, 뒤로 가기로
  *    목록에 돌아오면 더 보기로 불러온 목록이 그대로 남아 있다. 주소의 id 는 UUID 모양인지 먼저 본다.
+ *    답을 받지 못한 턴(실패·중단·답을 만드는 중)은 질문 아래에 답이 없다는 안내를 "~해요" 로 보여 주고(원인 코드는
+ *    그대로 보여 주지 않는다), 질문 한도에 걸려 쌓인 실패처럼 연달아 2개 이상이면 하나로 접는다.
  * 4. 서버 글(제목·질문·답변)은 textContent 로만 넣는다 — <script> 가 섞여 와도 글자로만 보인다.
  * 5. 시각은 API 의 UTC 를 한국 시간(KST)으로 바꿔 보여 준다.
  *
@@ -321,7 +323,16 @@ function hasAnswer(turn) {
   return turn.status === "completed" && typeof turn.answer === "string";
 }
 
-// 턴 하나 → 내 질문 말풍선(아래 줄에 수준 · 한국 시간) + 답변 말풍선
+// 답이 없는 턴의 안내. 서버의 원인 코드(error_code)는 그대로 보여 주지 않고 사용자 말("~해요")로 바꾼다
+function missingNote(turn) {
+  if (turn.status === "pending") return "아직 답을 만드는 중이에요. 잠시 뒤 다시 열어 보세요.";
+  if (turn.status === "interrupted") return "답을 만드는 중에 멈춰서 답이 없어요.";
+  if (turn.error_code === "AI_TIMEOUT") return "응답이 늦어져 답을 받지 못했어요.";
+  if (turn.error_code === "RATE_LIMITED") return "질문 한도에 걸려 답을 받지 못했어요.";
+  return "오류가 나서 답을 받지 못했어요.";
+}
+
+// 턴 하나 → 내 질문 말풍선(아래 줄에 수준 · 한국 시간) + 답변 말풍선(답이 없으면 그 안내를 흐린 점선 말풍선으로)
 function turnItems(turn) {
   const meta = document.createElement("p");
   meta.className = "msg-meta";
@@ -331,11 +342,58 @@ function turnItems(turn) {
   const question = document.createElement("li");
   question.className = "msg msg-me";
   question.append(speaker("내 질문"), bubble(turn.question), meta);
-  if (!hasAnswer(turn)) return [question];
   const answer = document.createElement("li");
-  answer.className = "msg msg-ai";
-  answer.append(speaker("답변"), mascotImage(), bubble(turn.answer));
+  if (hasAnswer(turn)) {
+    answer.className = "msg msg-ai";
+    answer.append(speaker("답변"), mascotImage(), bubble(turn.answer));
+  } else {
+    answer.className = "msg msg-ai msg-missing";
+    answer.append(speaker("답변 없음"), mascotImage(), bubble(missingNote(turn)));
+  }
   return [question, answer];
+}
+
+// 답이 없는 턴이 이만큼 이어지면 하나로 접는다 — 질문 한도에 걸려 연달아 실패한 턴이 쌓인 경우 등.
+// 하나뿐인 실패(실패 뒤 다시 보내 성공 등)는 접지 않고 그대로 보여 준다
+const FOLD_FROM = 2;
+
+// 접힌 묶음: "답을 받지 못한 질문 N개". <details> 라 누르거나 키보드(Enter·Space)로 펼친다. 처음에는 접혀 있다
+function foldedTurns(turns) {
+  const summary = document.createElement("summary");
+  summary.textContent = `답을 받지 못한 질문 ${turns.length}개`;
+  const inner = document.createElement("ol");
+  inner.className = "thread";
+  inner.append(...turns.flatMap(turnItems));
+  const details = document.createElement("details");
+  details.append(summary, inner);
+  const item = document.createElement("li");
+  item.className = "missing-group";
+  item.append(details);
+  return item;
+}
+
+// 턴들(오래된 순) → 대화 칸에 넣을 항목들. 답이 없는 턴이 FOLD_FROM 개 이상 이어진 곳만 접는다
+function threadItems(turns) {
+  const items = [];
+  let missing = []; // 지금까지 이어진, 답이 없는 턴
+  const flush = () => {
+    if (missing.length >= FOLD_FROM) {
+      items.push(foldedTurns(missing));
+    } else {
+      items.push(...missing.flatMap(turnItems));
+    }
+    missing = [];
+  };
+  for (const turn of turns) {
+    if (hasAnswer(turn)) {
+      flush();
+      items.push(...turnItems(turn));
+    } else {
+      missing.push(turn);
+    }
+  }
+  flush();
+  return items;
 }
 
 /* ── 대화 상세 ── */
@@ -353,7 +411,7 @@ function drawDetail(id, { conversation, turns }) {
   const started = timeElement(conversation.created_at);
   if (started) detailMeta.append(" · 시작 ", started);
   if (turns.length === 0) detailPanel.say("이 대화에는 아직 질문이 없어요.");
-  thread.replaceChildren(...turns.flatMap(turnItems));
+  thread.replaceChildren(...threadItems(turns));
 }
 
 // 대화 하나를 불러와 보여 준다. moveFocus: 화면 안에서 넘어왔으면 제목으로 포커스를 옮긴다
