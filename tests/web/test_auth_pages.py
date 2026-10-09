@@ -251,6 +251,17 @@ def test_login_page_shows_notice_only_after_signup(client):
     assert notice not in client.get("/login?joined=0").text
 
 
+def test_login_page_explains_when_login_ended(client):
+    # 채팅 중 API 가 401 이면 api.js 가 /login?expired=1 로 보낸다 (EE-14)
+    notice = '<p class="form-notice">로그인이 풀렸어요. 다시 로그인해 주세요.</p>'
+
+    assert notice in client.get("/login?expired=1").text
+    assert notice not in client.get("/login").text
+    assert notice not in client.get("/login?expired=0").text
+    both = client.get("/login?joined=1&expired=1").text  # 안내는 한 번에 하나 (가입 안내가 먼저)
+    assert "가입이 끝났어요" in both and notice not in both
+
+
 @pytest.mark.parametrize("path", PATHS)
 def test_email_input_has_format_pattern_and_example(client, path):
     email = find_one(client.get(path).text, "input", id="email")
