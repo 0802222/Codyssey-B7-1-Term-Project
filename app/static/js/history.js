@@ -3,17 +3,24 @@
  *
  * 1. 대화 목록: GET /api/me/conversations?limit=20&offset=0 으로 내 대화를 불러와 서버가 정렬해 준 순서(최근에
  *    질문한 대화가 위)대로 붙인다. 더 있으면(has_more) "더 보기" 가 다음 20개를 이어 붙인다.
- * 2. 서버 글(제목 등)은 textContent 로만 넣는다 — <script> 가 섞여 와도 글자로만 보인다.
- * 3. 시각은 API 의 UTC 를 한국 시간(KST)으로 바꿔 보여 준다.
+ * 2. 제목: 서버가 대화를 만들 때 붙인 제목("새 대화")이 그대로면 그 대화의 첫 질문 앞부분을 대신 보여 준다.
+ *    첫 질문은 상세(GET /api/conversations/{id})에만 있어서, 화면에 보이는 항목만 한 번에 3개씩 불러온다.
+ *    서버가 제목을 채우면(첫 질문 일부 등 — DB 명세) 그 제목을 그대로 쓰고 상세를 묻지 않는다.
+ * 3. 서버 글(제목·질문)은 textContent 로만 넣는다 — <script> 가 섞여 와도 글자로만 보인다.
+ * 4. 시각은 API 의 UTC 를 한국 시간(KST)으로 바꿔 보여 준다.
  *
- * 한 번에 불러오는 수는 이 파일에 적지 않고 HTML 의 data- 속성에서 읽는다 — app/web/router.py 의 HISTORY_RULES.
+ * 한 번에 불러오는 수·제목 기준은 이 파일에 적지 않고 HTML 의 data- 속성에서 읽는다 — app/web/router.py 의 HISTORY_RULES.
  * 401 이면 api.js 의 apiGet 이 로그인 화면으로 보낸다.
  */
 
-import { apiGet, failureMessage } from "/static/js/api.js";
+import { apiGet, failureMessage, isUuid } from "/static/js/api.js";
 
 const page = document.getElementById("history");
 const PAGE_SIZE = Number(page.dataset.pageSize); // 목록을 한 번에 불러오는 대화 수
+const UNTITLED = page.dataset.untitled; // 서버가 대화를 만들 때 붙이는 제목 ("새 대화")
+const TITLE_MAX_LENGTH = Number(page.dataset.titleMaxLength); // 첫 질문으로 만든 제목의 최대 글자 수
+// 첫 질문을 알려고 상세를 동시에 몇 개까지 부를지 — 목록 한 쪽(20개)을 한꺼번에 묻지 않게 조금씩
+const TITLE_REQUESTS_AT_ONCE = 3;
 
 const list = document.getElementById("conversation-list");
 const emptyState = document.getElementById("list-empty");
@@ -75,6 +82,99 @@ function timeElement(t) {
   return time;
 }
 
+/* ── 제목 ── */
+
+const titles = new Map(); // 대화 id → 첫 질문으로 정한 제목 (한 번 정하면 다시 묻지 않는다)
+const titleElements = new Map(); // 대화 id → 목록 항목의 제목 칸
+
+// 서버가 제목을 채우지 않은 대화인지 — 대화를 만들 때 붙인 "새 대화" 그대로이거나 비어 있음
+function isUntitled(serverTitle) {
+  const title = (serverTitle ?? "").trim();
+  return title === "" || title === UNTITLED;
+}
+
+// 보여 줄 제목: 서버 제목이 있으면 그것, 없으면 첫 질문 앞부분, 질문도 없는 대화면 "새 대화"
+function displayTitle(serverTitle, firstQuestion) {
+  if (!isUntitled(serverTitle)) return serverTitle.trim();
+  if (typeof firstQuestion === "string" && firstQuestion.trim() !== "") return excerpt(firstQuestion);
+  return UNTITLED;
+}
+
+// 질문 앞부분: 줄바꿈·연이은 공백은 한 칸으로 줄이고, 최대 글자 수를 넘으면 자르고 … 를 붙인다.
+// 글자는 Array.from 으로 센다 — 이모지처럼 두 칸(UTF-16)짜리 글자를 반으로 자르지 않는다 (서버의 글자 수와 같은 기준)
+function excerpt(text) {
+  const oneLine = text.replace(/\s+/g, " ").trim();
+  const chars = Array.from(oneLine);
+  return chars.length > TITLE_MAX_LENGTH ? `${chars.slice(0, TITLE_MAX_LENGTH).join("")}…` : oneLine;
+}
+
+// 정한 제목을 기억하고 목록 항목에 넣는다
+function setTitle(id, title) {
+  titles.set(id, title);
+  const element = titleElements.get(id);
+  if (element) element.textContent = title;
+}
+
+// 상세 응답(명세 2장): { conversation: { id, title, created_at, updated_at }, turns: [턴, …] } — 턴은 오래된 순
+function isConversationDetail(result) {
+  return result.ok && Boolean(result.data?.conversation) && Array.isArray(result.data.turns);
+}
+
+const titleQueue = []; // 첫 질문을 불러올 대화 id (화면에 보인 순서)
+let titleRequests = 0; // 지금 보내 둔 상세 요청 수
+
+// 첫 턴의 질문으로 제목을 정한다. 못 불러오면(서버 오류·연결 끊김) 서버 제목("새 대화")을 그대로 둔다
+async function loadTitle(id) {
+  if (titles.has(id) || !isUuid(id)) return;
+  const result = await apiGet(`/api/conversations/${id}`);
+  if (isConversationDetail(result)) {
+    setTitle(id, displayTitle(result.data.conversation.title, result.data.turns[0]?.question));
+  }
+}
+
+// 줄 선 순서대로, 동시에 TITLE_REQUESTS_AT_ONCE 개까지만 보낸다. 하나가 끝나면 다음 것을 보낸다
+function pumpTitles() {
+  while (titleRequests < TITLE_REQUESTS_AT_ONCE && titleQueue.length > 0) {
+    const id = titleQueue.shift();
+    titleRequests += 1;
+    loadTitle(id).finally(() => {
+      titleRequests -= 1;
+      pumpTitles();
+    });
+  }
+}
+
+function queueTitle(id) {
+  titleQueue.push(id);
+  pumpTitles();
+}
+
+// 화면에 보이는(또는 곧 보일 — 위아래 200px) 항목만 첫 질문을 묻는다. 목록을 끝까지 내려 보지 않으면 아래 대화는
+// 묻지 않는다. IntersectionObserver 가 없는 브라우저에서는 바로 줄을 세운다 (그래도 동시에 3개씩)
+const waitingForTitle = new Map(); // 지켜보는 목록 항목 → 대화 id
+const titleObserver =
+  typeof IntersectionObserver === "function"
+    ? new IntersectionObserver(onItemsVisible, { rootMargin: "200px 0px" })
+    : null;
+
+function onItemsVisible(entries) {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    titleObserver.unobserve(entry.target);
+    queueTitle(waitingForTitle.get(entry.target));
+    waitingForTitle.delete(entry.target);
+  }
+}
+
+function watchForTitle(item, id) {
+  if (titleObserver === null) {
+    queueTitle(id);
+    return;
+  }
+  waitingForTitle.set(item, id);
+  titleObserver.observe(item);
+}
+
 /* ── 대화 목록 ── */
 
 let nextOffset = 0; // 다음에 불러올 위치 = 지금까지 받은 대화 수
@@ -87,11 +187,13 @@ function isConversationPage(result) {
   return result.ok && Array.isArray(result.data?.items) && typeof result.data.has_more === "boolean";
 }
 
-// 목록 항목 하나: 대화 상세로 가는 링크 (제목 + 최근에 질문한 시각 = 목록을 정렬한 기준 updated_at)
+// 목록 항목 하나: 대화 상세로 가는 링크 (제목 + 최근에 질문한 시각 = 목록을 정렬한 기준 updated_at).
+// 서버 제목이 "새 대화" 면 우선 그대로 보여 주고, 항목이 화면에 보이면 첫 질문을 불러와 바꾼다
 function addConversation(conversation) {
   const title = document.createElement("span");
   title.className = "history-item-title";
-  title.textContent = conversation.title;
+  title.textContent = titles.get(conversation.id) ?? displayTitle(conversation.title, null);
+  titleElements.set(conversation.id, title);
   const body = document.createElement("span");
   body.className = "history-item-body";
   body.append(title);
@@ -108,6 +210,9 @@ function addConversation(conversation) {
   item.append(link);
   list.append(item);
   shown.set(conversation.id, link);
+  if (isUntitled(conversation.title) && !titles.has(conversation.id)) {
+    watchForTitle(item, conversation.id);
+  }
   return link;
 }
 
