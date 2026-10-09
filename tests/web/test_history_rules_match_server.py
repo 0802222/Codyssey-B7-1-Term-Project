@@ -2,7 +2,7 @@
 
 화면(app/static/js/history.js, chat.js 의 이어서 질문)은 이렇게 기댄다.
 - 서버가 대화를 만들 때 붙이는 제목이 HISTORY_RULES.untitled("새 대화")면
-  첫 질문 앞부분으로 바꿔 보여 준다
+  첫 질문 앞부분으로 바꿔 보여 주고, 서버가 제목을 채우면(#49) 그 제목을 그대로 쓴다
 - 목록은 서버가 정렬해 준 순서(최근에 질문한 대화가 위) 그대로, limit·offset 으로 page_size 개씩
 - 상세의 턴은 오래된 순이고, 답이 없는 턴은 answer 가 null 이며 status·error_code 로 안내를 고른다
 - 시각에 UTC 표시(Z 또는 +00:00)가 있어야 브라우저의 new Date() 가 한국 시간으로 바르게 바꾼다
@@ -112,18 +112,29 @@ def test_screen_builds_the_list_address_this_way():
 # ── 제목 ──
 
 
-def test_new_conversation_gets_the_title_the_screen_replaces(me, ai):
-    # 서버가 제목을 채우게 되면(첫 질문 일부 등) 화면은 그 제목을 그대로 쓴다
-    # — 그때 이 테스트를 고친다
-    created = new_conversation(me)
-    assert ask(me, created["id"], "API가 뭐야?").status_code == 200
+def test_new_conversation_starts_with_the_title_the_screen_treats_as_untitled(me):
+    # 막 만든 대화(아직 질문 없음)의 제목. 화면은 이 제목이면 첫 질문 앞부분을 대신 보여 준다.
+    # #49(서버가 첫 질문으로 제목을 채움) 뒤에도 만들 때의 응답은 그대로다 (#49 완료 조건)
+    assert new_conversation(me)["title"] == HISTORY_RULES.untitled
 
-    assert created["title"] == HISTORY_RULES.untitled
-    item = list_page(me).json()["items"][0]
-    # 질문한 뒤에도 그대로 → 화면이 첫 질문으로 바꾼다
-    assert item["title"] == HISTORY_RULES.untitled
-    detail = me.client.get(f"/api/conversations/{created['id']}").json()
-    assert detail["turns"][0]["question"] == "API가 뭐야?"  # 화면이 제목 대신 쓰는 값
+
+def test_title_after_the_first_question_is_one_the_screen_can_show(me, ai):
+    # 첫 질문 뒤 제목은 둘 중 하나이고 화면은 둘 다 다룬다 — #49 전후 모두 통과한다
+    # - "새 대화" 그대로(#49 전): 화면이 상세의 첫 질문 앞부분을 대신 보여 준다
+    # - 첫 질문 앞부분(#49 뒤): 화면이 그 제목을 그대로 쓰고 상세를 묻지 않는다
+    question = "처음 배우는 사람이 자료구조와 알고리즘을 어떤 순서로 공부하면 좋을까요?"
+    conversation = new_conversation(me)["id"]
+    assert ask(me, conversation, question).status_code == 200
+    # 두 번째 질문은 제목을 바꾸지 않는다 (#49)
+    assert ask(me, conversation, "더 쉽게").status_code == 200
+
+    title = list_page(me).json()["items"][0]["title"]
+    detail = me.client.get(f"/api/conversations/{conversation}").json()
+    assert detail["conversation"]["title"] == title  # 목록과 상세가 같은 제목
+    assert detail["turns"][0]["question"] == question  # 화면이 제목 대신 쓰는 값
+    if title != HISTORY_RULES.untitled:
+        # 서버가 채운 제목은 첫 질문의 앞부분이어야 화면이 그대로 보여 줄 뜻이 있다
+        assert question.startswith(title.removesuffix("…")), title
 
 
 # ── 목록 ──
