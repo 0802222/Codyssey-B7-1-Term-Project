@@ -4,12 +4,16 @@
  * 상태를 바꾸는 요청(POST)에는 X-CSRF-Token 헤더가 필요하다 (API 명세 공통 규칙).
  * 로그인 화면(auth.js)이 로그인 응답의 csrf_token 을 이 탭의 sessionStorage 에 넣어 두고, 여기서 꺼낸다.
  * 없으면(새 탭, 저장소를 못 쓰는 브라우저) GET /api/auth/me 로 다시 받는다.
+ * 응답이 401(로그인이 끝남)이면 로그인 화면으로 보낸다 (EE-14).
  *
  * type="module" 로 불러서 이 파일의 이름은 다른 스크립트(auth.js 등)와 겹치지 않는다.
  */
 
 // auth.js 가 csrf_token 을 보관하는 이름과 같아야 한다
 export const CSRF_TOKEN_KEY = "csrf_token";
+
+// 401 일 때 가는 곳. expired=1 이면 로그인 화면이 "로그인이 풀렸어요" 안내를 띄운다 (app/web/router.py 의 login_page)
+export const LOGIN_AGAIN_URL = "/login?expired=1";
 
 // 서버의 오류 문구를 받지 못했을 때 보여 줄 문구 (auth.js 와 같은 문구)
 export const NETWORK_ERROR_MESSAGE = "서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.";
@@ -57,9 +61,28 @@ export function forgetCsrfToken() {
   }
 }
 
+// 로그인이 끝났을 때(만료, 다른 탭에서 로그아웃): 보관한 토큰을 지우고 로그인 화면으로 간다.
+// replace — 지금 페이지를 방문 기록에서 빼서, 뒤로 가기로 로그인이 풀린 화면에 돌아오지 않게
+export function goToLogin() {
+  forgetCsrfToken();
+  location.replace(LOGIN_AGAIN_URL);
+}
+
 // 로그인 뒤의 POST 요청: X-CSRF-Token 헤더 + 같은 출처의 세션 쿠키, body 가 있으면 JSON 으로 보낸다.
-// 결과는 { ok, status, offline, data } — 서버에 닿지 못했으면 offline 이 true, status 는 0
-export async function apiPost(url, body) {
+// 결과는 { ok, status, offline, data } — 서버에 닿지 못했으면 offline 이 true, status 는 0.
+// 401 이면 로그인 화면으로 이동하고 결과를 돌려주지 않는다. 401 을 직접 다루는 곳(로그아웃)은 { redirectOn401: false }
+export async function apiPost(url, body, { redirectOn401 = true } = {}) {
+  const result = await sendPost(url, body);
+  if (result.status === 401 && redirectOn401) {
+    goToLogin();
+    // 끝나지 않는 Promise: 다음 페이지를 불러오는 동안 화면이 오류를 띄우지 않고 기다리는 모습 그대로 넘어간다
+    return new Promise(() => {});
+  }
+  return result;
+}
+
+// POST 를 한 번 보내고 결과를 { ok, status, offline, data } 로 돌려준다 (apiPost 가 부른다)
+async function sendPost(url, body) {
   const headers = {};
   if (body !== undefined) {
     headers["Content-Type"] = "application/json";

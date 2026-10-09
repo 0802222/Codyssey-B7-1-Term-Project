@@ -366,7 +366,9 @@ def test_api_script_shares_token_name_and_fallback_messages_with_auth_script():
 def test_logout_script_ends_session_and_goes_home():
     source = script("logout.js")
 
-    assert 'apiPost("/api/auth/logout")' in source  # X-CSRF-Token 은 apiPost 가 붙인다
+    # X-CSRF-Token 은 apiPost 가 붙인다. 401 은 로그인 화면이 아니라 아래에서 / 로 (이슈 #21)
+    assert 'apiPost("/api/auth/logout", undefined, LOGOUT_OPTIONS)' in source
+    assert "LOGOUT_OPTIONS = { redirectOn401: false };" in source
     assert "result.status === 204 || result.status === 401" in source  # 401 = 이미 세션이 끝남
     assert "forgetCsrfToken();" in source
     assert 'location.replace("/")' in source
