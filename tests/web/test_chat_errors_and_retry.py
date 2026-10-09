@@ -212,8 +212,12 @@ def test_failed_question_stays_until_the_user_moves_on():
     assert "failed = request;" in failure  # 시안처럼 말풍선을 남기고 다시 보내기를 기다린다
     assert "failed.item.remove();" in drop  # 다시 보내지 않기로 하면 그때 뺀다
     assert "dropFailed();" in between(source, "function sendQuestion", "\n}\n")  # 다른 질문
-    assert "dropFailed();" in submit and "dropFailed();" in paste  # 입력 안내가 뜰 때
     assert "failed = null;" in new_chat
+    # 입력 안내(빈 질문·넘치는 붙여 넣기)는 보내지 않은 것이라 답을 못 받은 질문과
+    # 요청 번호를 지우지 않고 다시 보내기도 남긴다 (PR #47 리뷰 — 동작은 js/chat_retry.test.mjs)
+    for handler in (submit, paste):
+        assert "dropFailed()" not in handler
+        assert "{ retry: failed !== null }" in handler
 
 
 def test_validation_error_offers_no_retry_and_sends_focus_to_the_input():

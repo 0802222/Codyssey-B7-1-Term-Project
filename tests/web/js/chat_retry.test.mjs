@@ -204,3 +204,52 @@ test("성공(200) 헤더를 받았는데 본문을 못 읽으면 같은 요청 �
   assert.equal(server.aiCalls, 1); // 새 번호였다면 AI 를 두 번 부르고 완료 턴이 2개 생긴다
   assert.deepEqual(bubbles(), ["API가 뭐야?", "답변 1"]);
 });
+
+test("응답을 못 받은 뒤 넘치는 붙여 넣기를 막아도 요청 번호를 지켜, 그대로 보내면 같은 번호", async () => {
+  const server = fakeServer();
+  const { calls } = install(
+    serve((call, n) => {
+      const reply = server.chat(call.body);
+      return n === 1 ? offline() : reply;
+    }),
+  );
+  await loadChat();
+
+  await ask("API가 뭐야?");
+  const paste = $("question").dispatch("paste", { clipboardData: { getData: () => "가".repeat(2000) } });
+  assert.equal(paste.defaultPrevented, true); // 넣지 않는다 → 입력칸의 질문은 그대로
+  assert.equal($("question").value, "API가 뭐야?");
+  assert.equal($("chat-error-text").textContent, "질문은 2000자까지 입력할 수 있어요.");
+  assert.equal($("chat-retry").hidden, false); // 다시 보내기는 남는다
+  assert.deepEqual(bubbles(), ["API가 뭐야?"]); // 답을 못 받은 말풍선도 남는다
+
+  $("chat-form").dispatch("submit"); // 입력칸에 그대로 남은 같은 질문을 보낸다
+  await settle();
+  const [first, second] = keys(calls);
+  assert.equal(second, first);
+  assert.equal(server.aiCalls, 1);
+  assert.deepEqual(bubbles(), ["API가 뭐야?", "답변 1"]);
+});
+
+test("응답을 못 받은 뒤 빈 질문 안내가 떠도 요청 번호를 지켜, 질문을 되돌려 보내면 같은 번호", async () => {
+  const server = fakeServer();
+  const { calls } = install(
+    serve((call, n) => {
+      const reply = server.chat(call.body);
+      return n === 1 ? offline() : reply;
+    }),
+  );
+  await loadChat();
+
+  await ask("API가 뭐야?");
+  $("question").value = "   ";
+  $("chat-form").dispatch("submit"); // 보내지 않고 안내만
+  assert.equal($("chat-error-text").textContent, "질문을 입력해 주세요.");
+  assert.equal($("chat-retry").hidden, false);
+  assert.equal(chatCalls(calls).length, 1);
+
+  await ask("API가 뭐야?");
+  const [first, second] = keys(calls);
+  assert.equal(second, first);
+  assert.equal(server.aiCalls, 1);
+});

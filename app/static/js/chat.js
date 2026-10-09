@@ -387,8 +387,9 @@ function showFailure(request, result) {
   retryButton.focus(); // Enter 한 번이면 다시 보낸다. 오류 칸은 role="alert" 라 스크린리더가 읽는다
 }
 
-// 다시 보내지 않기로 한 질문(다른 질문을 보냄, 새 대화, 입력 안내)은 말풍선을 대화에서 뺀다 —
-// 화면의 대화를 서버가 문맥으로 쓰는 완료된 턴과 맞춘다
+// 다시 보내지 않기로 한 질문(다른 질문을 실제로 보냄, 새 대화)은 말풍선을 대화에서 뺀다 —
+// 화면의 대화를 서버가 문맥으로 쓰는 완료된 턴과 맞춘다. 입력 안내(빈 질문·넘치는 붙여 넣기)는 아무것도
+// 보내지 않은 것이라 빼지 않는다 — 요청 번호를 잃으면 같은 질문이 새 번호로 가서 중복 처리될 수 있다
 function dropFailed() {
   if (!failed) return;
   failed.item.remove();
@@ -418,8 +419,9 @@ form.addEventListener("submit", (event) => {
   const question = questionInput.value.trim(); // 앞뒤 공백은 빼고 보낸다 (서버도 같은 기준으로 다시 본다)
   const problem = findQuestionProblem(question);
   if (problem) {
-    dropFailed(); // 오류 칸에는 한 번에 한 가지 — 입력 안내가 뜨면 답을 못 받은 앞 질문은 다시 보내지 않는다
-    showError(problem); // 서버에 보내지 않는다. 입력한 글은 그대로 둔다
+    // 서버에 보내지 않는다. 입력한 글도, 답을 못 받은 앞 질문(failed)과 그 요청 번호도 그대로 둔다 —
+    // 지우면 같은 질문을 다시 보낼 때 새 번호가 되어, 서버가 이미 답한 질문을 한 번 더 처리할 수 있다
+    showError(problem, { retry: failed !== null });
     questionInput.focus(); // 고칠 곳으로 포커스 (Enter 로 보냈으면 이미 여기)
     return;
   }
@@ -468,7 +470,7 @@ questionInput.addEventListener("paste", (event) => {
   const replaced = questionInput.selectionEnd - questionInput.selectionStart; // 고른 글은 붙여 넣는 글로 바뀐다
   if (questionInput.value.length - replaced + pasted.length > questionInput.maxLength) {
     event.preventDefault();
-    dropFailed(); // 오류 칸에는 한 번에 한 가지 (보내기 전 입력 안내와 같다)
-    showError(`질문은 ${questionInput.maxLength}자까지 입력할 수 있어요.`);
+    // 넣지 않았으니 입력칸의 질문은 그대로다 — 답을 못 받은 앞 질문과 그 요청 번호도 그대로 둔다 (보내기 전 안내와 같다)
+    showError(`질문은 ${questionInput.maxLength}자까지 입력할 수 있어요.`, { retry: failed !== null });
   }
 });
