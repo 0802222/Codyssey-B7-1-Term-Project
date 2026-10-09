@@ -727,6 +727,12 @@ img {
   }
 }
 
+/* 이어서 질문: 지난 대화를 불러오는 동안 상태 칸에 넣는 안내 */
+.chat-opening {
+  color: var(--text-muted);
+  text-align: center;
+}
+
 /* 채팅의 오류 칸은 위아래 간격을 .chat-panel 의 gap 으로 맞춘다.
    요청이 실패했을 때는 오른쪽에 "다시 보내기" 버튼이 붙고, 좁은 화면에서는 버튼이 아래 줄로 내려간다 (시안 F) */
 .chat .form-error {

@@ -259,7 +259,8 @@ def test_rate_limit_locks_sending_and_shows_remaining_seconds():
     assert "const RATE_LIMIT_WAITS = [10, 20, 40, 60];" in source
     assert 'if (code === "RATE_LIMITED") {' in failure
     assert failure.index("startCooldown();") < failure.index("errorBox.focus();")
-    assert "return waiting || cooldownTimer !== null;" in source  # 기다리는 동안은 보내지 않는다
+    # 기다리는 동안은 보내지 않는다 (opening = 이어서 질문으로 지난 대화를 불러오는 중, EE-17)
+    assert "return waiting || opening || cooldownTimer !== null;" in source
     assert "setLocked(true);" in cooldown and "setLocked(false);" in cooldown
     assert "clearInterval(cooldownTimer);" in cooldown
     # 1초마다 바뀌는 숫자는 aria-hidden, 스크린리더용 문장은 처음 한 번

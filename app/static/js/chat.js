@@ -1,5 +1,5 @@
 /*
- * 채팅 화면 (EE-12, EE-14) — /chat
+ * 채팅 화면 (EE-12, EE-14, EE-17) — /chat
  *
  * 1. 질문을 보내면, 첫 질문일 때 POST /api/conversations 로 대화를 만들고 그 id 를 이 화면이 들고 있다가
  *    이어지는 질문에 쓴다. 같은 대화로 보내야 서버가 앞의 질문·답변을 문맥으로 쓴다.
@@ -10,13 +10,23 @@
  * 5. 시각은 API 의 UTC(…Z)를 한국 시간(KST)으로 바꿔 보여 준다.
  * 6. 실패하면 서버가 보낸 error.message 를 오류 칸에 보여 주고, 입력한 질문은 지우지 않는다.
  *    질문 말풍선은 남겨 두고 오류 칸의 "다시 보내기" 로 같은 질문을 다시 보낼 수 있다.
+ * 7. 이어서 질문(EE-17): 내 기록의 "이어서 질문" 은 /chat?conversation=<대화 id> 로 연다. 그 대화의 지난 질문·답변
+ *    (GET /api/conversations/{id} 의 완료된 턴)을 그려 두고 이어지는 질문을 같은 대화로 보낸다. 없는 대화·남의 대화·
+ *    모양이 틀린 id 는 "대화를 찾을 수 없어요." 를 보여 주고 새 대화로 시작한다.
  *
  * 수준 값(easy·beginner·advanced)과 이름은 이 파일에 적지 않고 HTML 의 라디오 버튼에서 읽는다 —
  * app/web/router.py 의 CHAT_INPUT_RULES 한곳에서 정한다.
  * CSRF 토큰을 붙여 POST 하는 apiPost 는 api.js (로그아웃 버튼과 같이 쓴다). 401 이면 api.js 가 로그인 화면으로 보낸다.
  */
 
-import { apiPost, failureMessage, outcomeUnknown } from "/static/js/api.js";
+import {
+  CONVERSATION_NOT_FOUND_MESSAGE,
+  apiGet,
+  apiPost,
+  failureMessage,
+  isUuid,
+  outcomeUnknown,
+} from "/static/js/api.js";
 
 // 질문 한도(429 RATE_LIMITED)에 걸린 뒤 보내기를 막는 시간(초). 서버가 언제 풀리는지 알려 주지 않아서 처음은 10초,
 // 연달아 걸리면 두 배씩 늘려 최대 60초 — 사용자 한도는 최근 60초 동안의 질문을 세므로 60초를 기다리면 반드시 풀린다
@@ -40,6 +50,7 @@ const retryButton = document.getElementById("chat-retry");
 const followUps = document.getElementById("follow-ups");
 const followUpButtons = followUps.querySelectorAll("button[data-question]");
 const newChatButton = document.getElementById("new-chat");
+const levelRadios = document.querySelectorAll('input[name="level"]');
 
 let conversationId = null; // 첫 질문 때 POST /api/conversations 로 받는다. 새로고침하면 새 대화로 시작한다
 let waiting = false; // 답을 기다리는 중인지
@@ -47,6 +58,7 @@ let waiting = false; // 답을 기다리는 중인지
 let failed = null;
 let rateLimitStreak = 0; // 연달아 받은 429 수 — 429 가 아닌 결과를 받으면 0
 let cooldownTimer = null; // 429 뒤 기다리는 동안 남은 시간을 고치는 타이머 (기다리는 중이 아니면 null)
+let opening = false; // 이어서 질문: 지난 대화를 불러오는 중인지 (그동안은 보내지 않는다)
 
 /* ── 서버에 보내기 ── */
 
@@ -216,9 +228,9 @@ function setLocked(on) {
   }
 }
 
-// 지금 보낼 수 없는지 (답을 기다리는 중이거나 429 뒤 기다리는 중) — Enter·클릭 연타도 여기서 막는다
+// 지금 보낼 수 없는지 (답을 기다리는 중, 지난 대화를 불러오는 중, 429 뒤 기다리는 중) — Enter·클릭 연타도 여기서 막는다
 function isLocked() {
-  return waiting || cooldownTimer !== null;
+  return waiting || opening || cooldownTimer !== null;
 }
 
 // 답을 기다리는 동안: 잠그고 보내기 버튼은 "기다리는 중…", 답변 자리에는 "답변을 만드는 중".
@@ -455,6 +467,98 @@ for (const button of followUpButtons) {
 
 // 오류 칸의 "다시 보내기": 답을 못 받은 질문을 같은 말풍선 그대로 다시 보낸다
 retryButton.addEventListener("click", resendFailed);
+
+/* ── 이어서 질문 (EE-17) ── */
+
+// 수준 값(easy 등)의 화면 이름 — 라디오 버튼의 data-label (값과 이름은 CHAT_INPUT_RULES 한곳). 없는 값이면 값 그대로
+function levelName(value) {
+  for (const radio of levelRadios) {
+    if (radio.value === value) return radio.dataset.label;
+  }
+  return value;
+}
+
+// 지난 대화를 불러오는 동안 상태 칸(role="status")에 안내를 넣는다 — 스크린리더가 한 번 읽는다
+function showOpening(on) {
+  if (!on) {
+    loading.replaceChildren();
+    return;
+  }
+  const line = document.createElement("p");
+  line.className = "chat-opening";
+  line.textContent = "지난 대화를 불러오는 중이에요.";
+  loading.replaceChildren(line);
+}
+
+// 불러온 지난 대화를 그린다. 답을 받은 턴(completed)만 그린다 — 화면의 대화를 서버가 문맥으로 쓰는 완료된 턴과
+// 맞춘다 (답을 못 받은 턴은 내 기록에서 볼 수 있다). 대화 칸은 aria-live 라서 지난 대화를 스크린리더가 한꺼번에
+// 읽지 않도록 그리는 동안 끄고, 브라우저가 화면에 반영한 뒤(두 번 그린 뒤) 다시 켠다 — 새 답변은 전처럼 읽는다
+function drawPastTurns(turns) {
+  const answered = turns.filter((turn) => turn.status === "completed" && typeof turn.answer === "string");
+  thread.setAttribute("aria-live", "off");
+  for (const turn of answered) {
+    const item = addQuestion(turn.question, levelName(turn.level));
+    addTurnTime(item, turn.created_at);
+    addAnswer(turn.answer);
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => thread.setAttribute("aria-live", "polite")));
+  emptyState.hidden = thread.children.length > 0;
+  if (answered.length === 0) return;
+  followUps.hidden = false; // 답이 있어야 "더 쉽게" 같은 후속 질문이 뜻이 있다
+  // 마지막으로 답을 받은 질문의 수준을 골라 둔다 — 이어서 물을 때 같은 눈높이로
+  const lastLevel = answered[answered.length - 1].level;
+  if ([...levelRadios].some((radio) => radio.value === lastLevel)) {
+    for (const radio of levelRadios) radio.checked = radio.value === lastLevel;
+  }
+}
+
+// 지난 대화를 열지 못했다: 안내하고 새 대화로 시작한다. 주소도 /chat 으로 바꿔 새로고침해도 같은 안내가 나오지 않게 한다
+function startOver(message, note) {
+  conversationId = null;
+  history.replaceState(null, "", "/chat");
+  emptyState.hidden = false;
+  showError(message, { note });
+}
+
+// 주소의 대화를 불러와 이어서 묻게 한다. 서버는 같은 대화의 완료된 최근 턴을 문맥으로 쓰므로 화면은 conversation_id 만
+// 이어 쓰면 된다. id 는 UUID 모양인지 먼저 본다 — 틀린 값은 요청 주소에 넣지 않는다 (다른 API 를 부를 수 있다)
+async function openConversation(id) {
+  if (!isUuid(id)) {
+    startOver(CONVERSATION_NOT_FOUND_MESSAGE, "새 대화로 시작해요.");
+    return;
+  }
+  opening = true;
+  setLocked(true);
+  emptyState.hidden = true;
+  showOpening(true);
+  let result;
+  try {
+    result = await apiGet(`/api/conversations/${id}`);
+  } catch {
+    result = { ok: false, status: 0, offline: false, data: null }; // 예상하지 못한 오류 → 대체 문구
+  }
+  opening = false;
+  showOpening(false);
+  setLocked(false);
+  if (result.ok && Array.isArray(result.data?.turns)) {
+    conversationId = id;
+    drawPastTurns(result.data.turns);
+    return;
+  }
+  // 없는 대화·남의 대화(서버가 똑같이 404)는 서버 문구 그대로. 그 밖의 실패(연결 끊김·서버 오류)도 새 대화로
+  // 시작하되, 내 기록에서 다시 열 수 있다고 알린다
+  const notFound = result.data?.error?.code === "CONVERSATION_NOT_FOUND";
+  startOver(
+    failureMessage(result),
+    notFound ? "새 대화로 시작해요." : "지난 대화를 불러오지 못해 새 대화로 시작해요. 내 기록에서 다시 열 수 있어요.",
+  );
+}
+
+// 이어서 질문으로 열었으면(주소에 conversation 이 있으면) 그 대화부터 불러온다
+const requestedConversation = new URLSearchParams(location.search).get("conversation");
+if (requestedConversation !== null) {
+  openConversation(requestedConversation);
+}
 
 // 붙여 넣기: 브라우저는 maxlength 를 넘는 뒷부분을 말없이 잘라 넣는다. 질문이 잘린 채 보내지지 않게,
 // 붙여 넣은 뒤의 길이가 최대를 넘으면 넣지 않고 안내한다 (가입·로그인 칸과 같은 방식)

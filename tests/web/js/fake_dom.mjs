@@ -161,6 +161,7 @@ function matches(element, selector) {
   if (selector === 'input[name="level"]:checked') {
     return element.tagName === "INPUT" && element.name === "level" && element.checked === true;
   }
+  if (selector === 'input[name="level"]') return element.tagName === "INPUT" && element.name === "level";
   if (selector === '[aria-hidden="true"]') return element.getAttribute("aria-hidden") === "true";
   throw new Error(`가짜 DOM 이 모르는 선택자: ${selector}`);
 }
@@ -183,6 +184,10 @@ class FakeDocument {
 
   querySelector(selector) {
     return this.root.querySelector(selector);
+  }
+
+  querySelectorAll(selector) {
+    return this.root.querySelectorAll(selector);
   }
 }
 

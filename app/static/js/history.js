@@ -12,8 +12,9 @@
  *    목록에 돌아오면 더 보기로 불러온 목록이 그대로 남아 있다. 주소의 id 는 UUID 모양인지 먼저 본다.
  *    답을 받지 못한 턴(실패·중단·답을 만드는 중)은 질문 아래에 답이 없다는 안내를 "~해요" 로 보여 주고(원인 코드는
  *    그대로 보여 주지 않는다), 질문 한도에 걸려 쌓인 실패처럼 연달아 2개 이상이면 하나로 접는다.
- * 4. 서버 글(제목·질문·답변)은 textContent 로만 넣는다 — <script> 가 섞여 와도 글자로만 보인다.
- * 5. 시각은 API 의 UTC 를 한국 시간(KST)으로 바꿔 보여 준다.
+ * 4. 이어서 질문: 상세의 "이어서 질문" 은 그 대화로 채팅 화면을 연다 (/chat?conversation=<id> — chat.js 가 불러온다).
+ * 5. 서버 글(제목·질문·답변)은 textContent 로만 넣는다 — <script> 가 섞여 와도 글자로만 보인다.
+ * 6. 시각은 API 의 UTC 를 한국 시간(KST)으로 바꿔 보여 준다.
  *
  * 한 번에 불러오는 수·제목 기준은 이 파일에 적지 않고 HTML 의 data- 속성에서 읽는다 — app/web/router.py 의 HISTORY_RULES.
  * 수준 이름(아주 쉽게 등)도 HTML 의 수준 이름표(#level-names)에서 읽는다 — CHAT_INPUT_RULES.
@@ -40,6 +41,7 @@ const backLink = document.getElementById("back-to-list");
 const detailTitle = document.getElementById("detail-title");
 const detailMeta = document.getElementById("detail-meta");
 const thread = document.getElementById("detail-thread");
+const continueLinks = [document.getElementById("continue-top"), document.getElementById("continue-bottom")];
 // 수준 값(easy 등) → 화면 이름(아주 쉽게 등)
 const levelNames = new Map(
   Array.from(document.getElementById("level-names").children, (item) => [item.dataset.level, item.textContent.trim()]),
@@ -399,6 +401,14 @@ function threadItems(turns) {
 /* ── 대화 상세 ── */
 
 let openedId = null; // 마지막으로 연 대화 — 목록으로 돌아오면 그 항목으로 포커스를 돌려준다
+
+// "이어서 질문" 링크(위·아래)가 이 대화로 채팅 화면을 열게 한다. null 이면 숨긴다 (불러오기 전·못 불러왔을 때)
+function setContinue(id) {
+  for (const link of continueLinks) {
+    link.hidden = id === null;
+    link.href = id === null ? "/chat" : `/chat?conversation=${encodeURIComponent(id)}`;
+  }
+}
 let detailTicket = 0; // 상세를 열 때마다 1씩 — 그사이 다른 화면으로 바뀌었으면 늦게 온 응답은 버린다
 
 // 불러온 대화를 그린다: 제목(목록 항목도 같이), "질문 N개 · 시작 <시각>", 턴들(오래된 순 = 서버 순서 그대로)
@@ -412,6 +422,7 @@ function drawDetail(id, { conversation, turns }) {
   if (started) detailMeta.append(" · 시작 ", started);
   if (turns.length === 0) detailPanel.say("이 대화에는 아직 질문이 없어요.");
   thread.replaceChildren(...threadItems(turns));
+  setContinue(id); // 질문이 없는 대화도 이어서(첫 질문부터) 물을 수 있다
 }
 
 // 대화 하나를 불러와 보여 준다. moveFocus: 화면 안에서 넘어왔으면 제목으로 포커스를 옮긴다
@@ -424,6 +435,7 @@ async function showDetail(id, { moveFocus }) {
   detailPanel.say("");
   detailMeta.replaceChildren();
   thread.replaceChildren();
+  setContinue(null);
   // 목록에서 왔으면 그 항목의 제목을 바로 보여 주고 포커스를 옮긴다. 제목을 모르면 불러온 뒤에 옮긴다
   const known = titles.get(id) ?? titleElements.get(id)?.textContent ?? "";
   detailTitle.textContent = known;
