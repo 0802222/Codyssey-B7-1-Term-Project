@@ -182,3 +182,25 @@ test("질문 한도(429)면 정한 시간 동안 보내기를 잠그고 남은 �
   const [first, second] = keys(calls);
   assert.notEqual(second, first);
 });
+
+// ── PR #47 리뷰(vivleon)에서 찾은 두 경로 ──
+
+test("성공(200) 헤더를 받았는데 본문을 못 읽으면 같은 요청 번호로 다시 보낸다", async () => {
+  const server = fakeServer();
+  const { calls } = install(
+    serve((call, n) => {
+      const reply = server.chat(call.body); // 서버는 답을 저장했다
+      return n === 1 ? brokenBody(200) : reply; // 본문을 받는 중에 연결이 끊겼다
+    }),
+  );
+  await loadChat();
+
+  await ask("API가 뭐야?");
+  assert.equal($("chat-error-text").textContent, "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요.");
+  await resend();
+
+  const [first, second] = keys(calls);
+  assert.equal(second, first);
+  assert.equal(server.aiCalls, 1); // 새 번호였다면 AI 를 두 번 부르고 완료 턴이 2개 생긴다
+  assert.deepEqual(bubbles(), ["API가 뭐야?", "답변 1"]);
+});

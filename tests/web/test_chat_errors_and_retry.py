@@ -135,11 +135,10 @@ def test_api_script_resends_once_with_a_new_token_when_csrf_is_rejected():
 
 
 def test_api_script_tells_when_the_server_may_have_processed_the_request():
-    # 연결이 끊겼거나 오류 JSON 이 아닌 응답이면 서버가 처리했는지 모른다
-    # → 화면은 같은 요청 번호로 다시 보낸다
-    assert (
-        "return result.offline || (!result.ok && !result.data?.error?.code);" in script("api.js")
-    )
+    # 서버가 오류 JSON 으로 실패를 알려 온 게 아니면 서버가 처리했는지 모른다
+    # (연결 끊김, JSON 이 아닌 응답, 200 인데 본문을 못 읽음) → 같은 요청 번호로 다시 보낸다
+    # 동작은 js/chat_retry.test.mjs
+    assert "return result.offline || !result.data?.error?.code;" in script("api.js")
 
 
 # ── chat.js: 답변을 만드는 중 ──
