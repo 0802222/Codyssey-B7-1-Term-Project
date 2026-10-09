@@ -328,12 +328,14 @@ def test_chat_script_sends_on_enter_but_not_while_composing_korean():
 
 def test_chat_script_locks_buttons_while_waiting():
     source = script("chat.js")
-    waiting = source[source.index("function setWaiting") : source.index("/* ── 질문 보내기")]
+    lock = source[source.index("function setLocked") : source.index("function isLocked")]
+    waiting = source[source.index("function setWaiting") : source.index("function startCooldown")]
 
-    for locked in ("sendButton", "newChatButton", "button"):
-        assert f"{locked}.disabled = on;" in waiting
-    assert "questionInput.readOnly = on;" in waiting  # 보낸 질문은 지우지 않고 남겨 둔다
-    assert "if (waiting) return;" in source
+    for locked in ("sendButton", "retryButton", "newChatButton", "button"):
+        assert f"{locked}.disabled = on;" in lock
+    assert "questionInput.readOnly = on;" in lock  # 보낸 질문은 지우지 않고 남겨 둔다
+    assert "setLocked(on);" in waiting  # 답을 기다리는 동안 (429 뒤 기다릴 때도 같은 잠금)
+    assert "if (isLocked()) return;" in source
 
 
 def test_follow_up_sends_button_phrase_to_same_conversation():

@@ -23,6 +23,13 @@ import { apiPost, failureMessage, outcomeUnknown } from "/static/js/api.js";
 // 기다리므로 그보다 넉넉히 길게 잡았다 — 서버 설정을 60초보다 길게 바꾸면 이 값도 늘린다
 const STALE_BUSY_MS = 60 * 1000;
 
+// 질문 한도(429 RATE_LIMITED)에 걸린 뒤 보내기를 막는 시간(초). 서버가 언제 풀리는지 알려 주지 않아서 처음은 10초,
+// 연달아 걸리면 두 배씩 늘려 최대 60초 — 사용자 한도는 최근 60초 동안의 질문을 세므로 60초를 기다리면 반드시 풀린다
+const RATE_LIMIT_WAITS = [10, 20, 40, 60];
+// 60초씩 기다려도 계속 걸리면 사용자 한도가 아니라 서비스 전체의 하루 한도다 (서버는 UTC 0시 = 한국 오전 9시에 초기화)
+const DAILY_LIMIT_NOTE =
+  "계속 이 안내가 나오면 오늘 서비스 전체의 질문 한도를 다 썼을 수 있어요. 한도는 매일 오전 9시에 다시 채워져요.";
+
 const form = document.getElementById("chat-form");
 const questionInput = document.getElementById("question");
 const sendButton = form.querySelector('button[type="submit"]');
@@ -43,6 +50,8 @@ let conversationId = null; // 첫 질문 때 POST /api/conversations 로 받는�
 let waiting = false; // 답을 기다리는 중인지
 // 답을 받지 못해 "다시 보내기" 를 기다리는 질문 요청 (없으면 null). 모양은 아래 sendQuestion 의 request
 let failed = null;
+let rateLimitStreak = 0; // 연달아 받은 429 수 — 429 가 아닌 결과를 받으면 0
+let cooldownTimer = null; // 429 뒤 기다리는 동안 남은 시간을 고치는 타이머 (기다리는 중이 아니면 null)
 
 /* ── 서버에 보내기 ── */
 
@@ -200,19 +209,64 @@ function selectedLevel() {
   return { value: radio.value, label: radio.dataset.label };
 }
 
-// 답을 기다리는 동안 보내기·후속·새 대화 버튼을 잠그고 보내기 버튼은 "기다리는 중…" 으로 바꾼다. 입력칸은
-// 읽기 전용으로 두어서, 보낸 질문이 그대로 남아 있다가 답을 받으면 비운다 (실패하면 남아 다시 보낼 수 있다).
-// 답변 자리에는 "답변을 만드는 중" 을 보여 준다
-function setWaiting(on) {
-  waiting = on;
+// 보내는 길을 잠그거나 푼다 — 답을 기다릴 때와 질문 한도(429) 뒤 기다릴 때 같이 쓴다.
+// 보내기·다시 보내기·후속·새 대화 버튼을 잠그고, 입력칸은 읽기 전용으로 둔다 (보낸 질문은 지우지 않는다)
+function setLocked(on) {
   sendButton.disabled = on;
-  sendButton.textContent = on ? sendButton.dataset.busyLabel : sendLabel;
+  retryButton.disabled = on;
   questionInput.readOnly = on;
   newChatButton.disabled = on; // 기다리는 중에 대화를 바꾸면 답이 어느 대화 것인지 꼬인다
   for (const button of followUpButtons) {
     button.disabled = on;
   }
+}
+
+// 지금 보낼 수 없는지 (답을 기다리는 중이거나 429 뒤 기다리는 중) — Enter·클릭 연타도 여기서 막는다
+function isLocked() {
+  return waiting || cooldownTimer !== null;
+}
+
+// 답을 기다리는 동안: 잠그고 보내기 버튼은 "기다리는 중…", 답변 자리에는 "답변을 만드는 중".
+// 입력칸의 질문은 남아 있다가 답을 받으면 비운다 (실패하면 남아 다시 보낼 수 있다)
+function setWaiting(on) {
+  waiting = on;
+  setLocked(on);
+  sendButton.textContent = on ? sendButton.dataset.busyLabel : sendLabel;
   showLoading(on);
+}
+
+// 질문 한도(429): 한도가 풀릴 시간을 주려고 정한 시간 동안 잠그고 오류 칸 아래 줄에 남은 시간을 보여 준다.
+// 1초마다 바뀌는 숫자는 스크린리더가 매번 읽지 않게 aria-hidden 으로 두고, 읽어 줄 문장은 처음에 한 번만 넣는다.
+// 다 기다리면 "이제 다시 보낼 수 있어요." 로 바꾼다 (오류 칸이 바뀌어 스크린리더가 한 번 더 읽는다)
+function startCooldown() {
+  rateLimitStreak += 1;
+  const seconds = RATE_LIMIT_WAITS[Math.min(rateLimitStreak, RATE_LIMIT_WAITS.length) - 1];
+  const until = Date.now() + seconds * 1000;
+  const spoken = document.createElement("span");
+  spoken.className = "visually-hidden";
+  spoken.textContent = `${seconds}초 뒤에 다시 보낼 수 있어요.`;
+  const shown = document.createElement("span");
+  shown.setAttribute("aria-hidden", "true");
+  const countdown = document.createElement("span");
+  countdown.append(spoken, shown);
+  errorNote.replaceChildren(countdown);
+  if (rateLimitStreak >= RATE_LIMIT_WAITS.length) {
+    errorNote.append(document.createElement("br"), DAILY_LIMIT_NOTE);
+  }
+  setLocked(true);
+  const tick = () => {
+    const left = Math.ceil((until - Date.now()) / 1000);
+    if (left > 0) {
+      shown.textContent = `${left}초 뒤에 다시 보낼 수 있어요.`;
+      return;
+    }
+    clearInterval(cooldownTimer);
+    cooldownTimer = null;
+    setLocked(false);
+    countdown.replaceChildren("이제 다시 보낼 수 있어요.");
+  };
+  cooldownTimer = setInterval(tick, 250);
+  tick();
 }
 
 /* ── 질문 보내기 ── */
@@ -221,7 +275,7 @@ function setWaiting(on) {
 // 질문 요청 = { question, level: { value, label }, fromInput, item: 내 질문 말풍선,
 //              requestId: client_request_id, sentAt: 그 번호를 처음 보낸 때, sameIdNext: 다시 보낼 때 같은 번호를 쓸지 }
 function sendQuestion(question, { fromInput }) {
-  if (waiting) return; // 이미 기다리는 중이면 무시한다 (Enter·클릭 연타)
+  if (isLocked()) return; // 기다리는 중이면 무시한다 (Enter·클릭 연타, 429 뒤 기다리는 동안)
   const level = selectedLevel();
   // 답을 못 받은 질문과 같은 질문(같은 글·같은 수준)을 다시 보내면 "다시 보내기" 와 같게 한다 — 말풍선을 또 붙이지 않는다
   if (failed && failed.question === question && failed.level.value === level.value) {
@@ -252,7 +306,7 @@ function sendQuestion(question, { fromInput }) {
 // - 서버가 실패를 알려 옴(AI 시간 초과·오류, 한도 초과 등) → 새 번호. 같은 번호면 서버가 저장한 실패를 그대로
 //   돌려준다 (API 명세 3장 "다시 시도는 클라이언트가 새 키로")
 function resendFailed() {
-  if (waiting || !failed) return;
+  if (isLocked() || !failed) return;
   if (!failed.sameIdNext) {
     failed.requestId = newRequestId();
     failed.sentAt = Date.now();
@@ -273,6 +327,9 @@ async function send(request) {
     result = { ok: false, status: 0, offline: false, data: null }; // 예상하지 못한 오류 → 대체 문구
   }
   setWaiting(false);
+  if (result.data?.error?.code !== "RATE_LIMITED") {
+    rateLimitStreak = 0; // 연달아 받은 429 만 센다 — 다른 결과가 오면 다음 429 는 다시 10초부터
+  }
   if (isAnswer(result)) {
     showAnswer(request, result.data);
     restoreFocus(focusedBefore);
@@ -322,6 +379,11 @@ function showFailure(request, result) {
     note = "다시 보내면 새 대화로 시작해요.";
   }
   showError(failureMessage(result), { retry: true, note });
+  if (code === "RATE_LIMITED") {
+    startCooldown(); // 한도가 풀릴 시간을 준다 — 그동안 보내기·다시 보내기가 잠긴다
+    errorBox.focus(); // 잠긴 버튼에는 포커스를 둘 수 없어서 오류 칸에 둔다. 다음 Tab 이 다시 보내기
+    return;
+  }
   retryButton.focus(); // Enter 한 번이면 다시 보낸다. 오류 칸은 role="alert" 라 스크린리더가 읽는다
 }
 
@@ -352,7 +414,7 @@ function findQuestionProblem(question) {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault(); // 브라우저 기본 전송(페이지 이동)을 막는다 → 입력한 글이 그대로 남는다
-  if (waiting) return;
+  if (isLocked()) return;
   const question = questionInput.value.trim(); // 앞뒤 공백은 빼고 보낸다 (서버도 같은 기준으로 다시 본다)
   const problem = findQuestionProblem(question);
   if (problem) {
@@ -377,7 +439,7 @@ questionInput.addEventListener("input", updateCount);
 // 새 대화: 화면의 대화와 conversation_id 를 비운다. 다음 질문 때 POST /api/conversations 로 새 대화를
 // 만든다 — 누르기만 하고 묻지 않으면 빈 대화가 생기지 않는다. 지난 대화는 서버에 저장돼 있고, 입력칸의 글은 둔다
 newChatButton.addEventListener("click", () => {
-  if (waiting) return;
+  if (isLocked()) return;
   failed = null; // 답을 못 받은 질문도 지난 대화와 함께 화면에서 빠진다
   conversationId = null;
   thread.replaceChildren();
@@ -401,7 +463,7 @@ retryButton.addEventListener("click", resendFailed);
 // 붙여 넣기: 브라우저는 maxlength 를 넘는 뒷부분을 말없이 잘라 넣는다. 질문이 잘린 채 보내지지 않게,
 // 붙여 넣은 뒤의 길이가 최대를 넘으면 넣지 않고 안내한다 (가입·로그인 칸과 같은 방식)
 questionInput.addEventListener("paste", (event) => {
-  if (waiting) return; // 읽기 전용이라 어차피 들어가지 않는다
+  if (isLocked()) return; // 읽기 전용이라 어차피 들어가지 않는다
   const pasted = (event.clipboardData?.getData("text") ?? "").replace(/\r\n?/g, "\n"); // 줄바꿈은 한 글자
   const replaced = questionInput.selectionEnd - questionInput.selectionStart; // 고른 글은 붙여 넣는 글로 바뀐다
   if (questionInput.value.length - replaced + pasted.length > questionInput.maxLength) {
