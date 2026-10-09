@@ -23,6 +23,7 @@ const sendButton = form.querySelector('button[type="submit"]');
 const sendLabel = sendButton.textContent;
 const countText = document.getElementById("question-count");
 const thread = document.getElementById("thread");
+const loading = document.getElementById("chat-loading");
 const emptyState = document.getElementById("chat-empty");
 const errorBox = document.getElementById("chat-error");
 const errorText = document.getElementById("chat-error-text");
@@ -120,17 +121,22 @@ function addQuestion(text, levelLabel) {
   return item;
 }
 
-// 답변: 전구 캐릭터 + 왼쪽 말풍선
-function addAnswer(text) {
+// 답변 말풍선 왼쪽의 전구 캐릭터
+function mascotImage() {
   const mascot = document.createElement("img");
   mascot.className = "msg-mascot";
   mascot.src = "/static/img/mascot.svg";
   mascot.alt = ""; // 꾸밈 그림이라 스크린리더가 읽지 않는다
   mascot.width = 38;
   mascot.height = 38;
+  return mascot;
+}
+
+// 답변: 전구 캐릭터 + 왼쪽 말풍선
+function addAnswer(text) {
   const item = document.createElement("li");
   item.className = "msg msg-ai";
-  item.append(speaker("답변"), mascot, createBubble(text));
+  item.append(speaker("답변"), mascotImage(), createBubble(text));
   thread.append(item);
   // 답이 화면보다 길면 답의 첫 줄부터, 짧으면 아래 입력 상자까지 보이게 스크롤한다
   if (item.offsetHeight > window.innerHeight * 0.6) {
@@ -139,6 +145,25 @@ function addAnswer(text) {
     form.scrollIntoView({ block: "nearest" });
   }
   return item;
+}
+
+// 답을 기다리는 동안 답변 자리에 "답변을 만드는 중" + 점 세 개(시안). role="status" 칸(chat-loading)에 넣으면
+// 스크린리더가 한 번 읽는다. 점은 꾸밈이라 aria-hidden, 깜빡임은 CSS 가 한다(움직임 줄이기 설정이면 멈춘다)
+function showLoading(on) {
+  if (!on) {
+    loading.replaceChildren(); // 비우면 자리도 차지하지 않는다 (.chat-loading:empty)
+    return;
+  }
+  const dots = document.createElement("span");
+  dots.className = "loading-dots";
+  dots.setAttribute("aria-hidden", "true");
+  dots.append(document.createElement("i"), document.createElement("i"), document.createElement("i"));
+  const bubble = createBubble("답변을 만드는 중");
+  bubble.prepend(dots);
+  const item = document.createElement("div");
+  item.className = "msg msg-ai msg-loading";
+  item.append(mascotImage(), bubble);
+  loading.replaceChildren(item);
 }
 
 // API 시각은 UTC(예: 2026-10-02T07:00:00Z). 화면에는 한국 시간으로 바꿔 보여 준다 (DB·API 는 UTC 그대로)
@@ -163,7 +188,8 @@ function selectedLevel() {
 }
 
 // 답을 기다리는 동안 보내기·후속·새 대화 버튼을 잠그고 보내기 버튼은 "기다리는 중…" 으로 바꾼다. 입력칸은
-// 읽기 전용으로 두어서, 보낸 질문이 그대로 남아 있다가 답을 받으면 비운다 (실패하면 남아 다시 보낼 수 있다)
+// 읽기 전용으로 두어서, 보낸 질문이 그대로 남아 있다가 답을 받으면 비운다 (실패하면 남아 다시 보낼 수 있다).
+// 답변 자리에는 "답변을 만드는 중" 을 보여 준다
 function setWaiting(on) {
   waiting = on;
   sendButton.disabled = on;
@@ -173,6 +199,7 @@ function setWaiting(on) {
   for (const button of followUpButtons) {
     button.disabled = on;
   }
+  showLoading(on);
 }
 
 /* ── 질문 보내기 ── */
