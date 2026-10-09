@@ -281,6 +281,13 @@ def test_logout_success(client, settings):
     assert auth_session is None
 
 
+def test_logout_without_login(client):
+    response = client.post("/api/auth/logout")
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTH_REQUIRED"
+
+
 def test_logout_blocks_access_after_logout(client, settings):
     _signup(client, settings)
     login_response = _login(client, settings)
