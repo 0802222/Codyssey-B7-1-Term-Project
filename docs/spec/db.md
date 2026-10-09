@@ -33,7 +33,7 @@ erDiagram
 |---|---|---|
 | id | UUID PK | |
 | user_id | int FK → users.id, index | 소유자 |
-| title | str | 첫 질문 일부. 30자 초과 시 앞 30자 뒤에 `…` 추가, 이후 질문은 미반영. |
+| title | str | 첫 질문을 제목으로 사용하며, 줄바꿈·탭·연속 공백은 한 칸으로 정리. 30자 초과 시 앞 30자 뒤에 `…`를 붙이고 이후 질문은 반영하지 않음. |
 | created_at / updated_at | datetime | |
 
 ## chat_turns — 질문·응답 한 쌍 (과제 "대화 로그")

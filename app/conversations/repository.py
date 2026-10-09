@@ -17,12 +17,7 @@ _CONVERSATION_TITLE_MAX_LENGTH = 30
 
 
 def _title_from_question(question: str) -> str:
-    title = (
-        question.replace("\r\n", " ")
-        .replace("\r", " ")
-        .replace("\n", " ")
-        .strip()
-    )
+    title = " ".join(question.split())
     if len(title) > _CONVERSATION_TITLE_MAX_LENGTH:
         return f"{title[:_CONVERSATION_TITLE_MAX_LENGTH]}…"
     return title

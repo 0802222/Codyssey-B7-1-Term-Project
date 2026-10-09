@@ -218,7 +218,7 @@ def test_second_pending_turn_keeps_default_title_if_first_question_matches_it(
         assert session.get(Conversation, conversation.id).title == "새 대화"
 
 
-def test_multiline_first_question_replaces_newlines_with_spaces(engine, user):
+def test_whitespace_in_first_question_is_collapsed_in_title(engine, user):
     with Session(engine) as session:
         conversation = create_conversation(
             session=session,
@@ -233,7 +233,7 @@ def test_multiline_first_question_replaces_newlines_with_spaces(engine, user):
             client_request_id=uuid4(),
             request_id="request-1",
             level="easy",
-            question="첫 줄\r\n둘째 줄\n셋째 줄",
+            question="첫 줄\r\n둘째\t 줄   셋째 줄",
         )
 
         assert session.get(Conversation, conversation.id).title == "첫 줄 둘째 줄 셋째 줄"
