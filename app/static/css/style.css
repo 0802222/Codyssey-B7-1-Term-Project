@@ -63,6 +63,8 @@ body {
   font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.6;
+  word-break: keep-all; /* 한국어는 띄어쓰기에서만 줄을 바꾼다 — "결과를" 이 "결/과를" 로 갈라지지 않게 */
+  overflow-wrap: break-word; /* 띄어쓰기 없이 긴 글(주소 등)은 넘치지 않게 그 자리에서 바꾼다 */
 }
 
 main {
