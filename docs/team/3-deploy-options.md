@@ -160,7 +160,7 @@
 
 | 항목 | 결과 |
 |---|---|
-| 서비스 URL | https://codyssey-b7-1-term-project-production.up.railway.app (휴대폰 브라우저 접속 확인) |
+| 서비스 URL | https://codyssey-b7-1-term-project-production.up.railway.app (휴대폰 와이파이·모바일 데이터 모두 접속 확인) |
 | 배포 커밋 | `c82a020`(#47) 으로 첫 배포 → #48 머지 후 자동 배포로 `24bf396` |
 | 운영 설정 적용 | Deploy Logs 시작 줄 `app_started ... env=production ai_provider=anthropic` · Python 3.12 · Southeast Asia · Replica 1 |
 | `/health` | `{"status":"ok","db":"ok"}` |
@@ -169,6 +169,28 @@
 | 보안 동작 (외부에서 요청) | 다른 사이트 Origin 가입 403 · 비로그인 `/api/chat` 401 · 비로그인 `/chat` → `/login` · `http://` → `https://` |
 | 겪은 문제 | `SITE_ORIGIN` 불일치로 가입 403 → 실제 주소로 수정. `DATABASE_URL` 모양 오류로 한 배포 실패 → 수정 후 정상 |
 | 발견한 버그 | 대화 제목이 항상 "새 대화" 로 저장됨 → #49 |
+
+#### 적용한 Railway 설정
+
+키 값은 문서에 쓰지 않아요. 확인 방법의 "대시보드" 는 팀장이 Railway 화면에서 직접 본 것이에요.
+
+| 구분 | 항목 | 값 | 확인 방법 |
+|---|---|---|---|
+| 서비스 | Region | Southeast Asia (Singapore) | 대시보드 |
+| | Replicas | 1 | 대시보드 |
+| | Volume Mount path | `/app/data` | 대시보드 · Redeploy 후 기록 유지 |
+| | Custom Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` | 대시보드 |
+| | Healthcheck Path | `/health` | 대시보드 |
+| | Wait for CI | 켜짐 | 대시보드 |
+| | 도메인 | `codyssey-b7-1-term-project-production.up.railway.app` (Generate Domain) | 외부 요청 |
+| 변수 | `RAILPACK_PYTHON_VERSION` | `3.12` | 대시보드 (python@3.12.14) |
+| | `APP_ENV` | `production` | Deploy Logs `env=production` |
+| | `DATABASE_URL` | `sqlite:////app/data/easyexplain.db` | 대시보드 |
+| | `SITE_ORIGIN` | `https://codyssey-b7-1-term-project-production.up.railway.app` | 대시보드 · 가입 성공 |
+| | `AI_PROVIDER` | `anthropic` | Deploy Logs `ai_provider=anthropic` |
+| | `ANTHROPIC_API_KEY` | (비밀 값, 문서에 쓰지 않음) | 실제 AI 답변 생성 |
+| | `COOKIE_SECURE` | `true` | 대시보드 · 운영 모드 기동 (`false` 면 기동 거부) |
+| | 그 밖의 값 (`AI_MODEL` 등) | 설정하지 않음 → `.env.example` 기본값 | |
 
 ---
 
