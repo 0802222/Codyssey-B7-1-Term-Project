@@ -239,7 +239,7 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 ### 배포
 
 - **서비스 URL:** https://codyssey-b7-1-term-project-production.up.railway.app
-- **배포된 커밋:** `c82a020` (2026-10-09, 1차 배포)
+- **배포된 커밋:** `24bf396` (2026-10-09, #48 머지 후 자동 배포)
 - Railway + Volume 에 배포합니다. 설정 절차·업데이트 방법·주의점은 [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차)을 봅니다.
 
 ---

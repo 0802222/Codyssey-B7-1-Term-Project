@@ -159,7 +159,8 @@
 | 항목 | 결과 |
 |---|---|
 | 서비스 URL | https://codyssey-b7-1-term-project-production.up.railway.app |
-| 배포 커밋 | `c82a020` (#47 머지 시점의 main) |
+| 배포 커밋 | `c82a020`(#47) 으로 첫 배포 → #48 머지 후 자동 배포로 `24bf396` |
+| 운영 설정 적용 | Deploy Logs 시작 줄 `app_started ... env=production ai_provider=anthropic` · Python 3.12 · Southeast Asia · Replica 1 |
 | `/health` | `{"status":"ok","db":"ok"}` |
 | 가입 → 로그인 → 질문 → 답변 | 실제 AI 답변, 같은 대화의 후속 질문에서 문맥 유지 확인 |
 | Redeploy 후 기록 유지 | 재배포 전 만든 대화 2개가 `GET /api/me/conversations` 에 그대로 남음 |
