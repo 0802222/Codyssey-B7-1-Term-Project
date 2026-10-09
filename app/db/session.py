@@ -4,12 +4,15 @@
     def handler(session: SessionDep): ...
 """
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, Request
 from sqlalchemy import Engine, event
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
+
+from app.db.models import ChatTurn
 
 
 def create_db_engine(database_url: str) -> Engine:
@@ -34,6 +37,19 @@ def init_db(engine: Engine) -> None:
     from app.db import models  # noqa: F401  (테이블 정의를 metadata 에 등록)
 
     SQLModel.metadata.create_all(engine)
+
+    # 프로세스가 종료될 때 처리 중이던 턴은 다시 AI에 보내지 않고 중단 상태로 복구한다.
+    with Session(engine) as session:
+        pending_turns = session.exec(
+            select(ChatTurn).where(ChatTurn.status == "pending")
+        ).all()
+        now = datetime.now(UTC)
+        for turn in pending_turns:
+            turn.status = "interrupted"
+            turn.completed_at = now
+        if pending_turns:
+            session.add_all(pending_turns)
+            session.commit()
 
 
 def get_session(request: Request):

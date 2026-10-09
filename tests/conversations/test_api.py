@@ -3,9 +3,11 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, create_engine, select
 
 from app.conversations.repository import complete_turn, create_pending_turn, fail_turn
+from app.db.models import ChatTurn, Conversation, User
+from app.db.session import init_db
 
 PASSWORD = "1234567890"
 
@@ -94,6 +96,62 @@ def test_get_endpoints_require_login(client, path):
     assert response.json()["error"]["code"] == "AUTH_REQUIRED"
 
 
+def test_chat_endpoint_requires_login(client):
+    response = client.post(
+        "/api/chat",
+        json={
+            "conversation_id": str(uuid4()),
+            "question": "로그인이 필요한 질문",
+            "level": "easy",
+            "client_request_id": str(uuid4()),
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTH_REQUIRED"
+
+
+def test_app_restart_marks_saved_pending_turn_interrupted(app, settings):
+    seed_engine = create_engine(settings.database_url)
+    try:
+        init_db(seed_engine)
+        with Session(seed_engine) as session:
+            user = User(email="restart@example.com", password_hash="hash")
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+
+            conversation = Conversation(user_id=user.id, title="재시작 테스트")
+            session.add(conversation)
+            session.commit()
+            session.refresh(conversation)
+
+            pending = ChatTurn(
+                conversation_id=conversation.id,
+                user_id=user.id,
+                client_request_id=uuid4(),
+                request_id="request-pending",
+                level="easy",
+                question="처리 중 질문",
+                status="pending",
+            )
+            session.add(pending)
+            session.commit()
+            pending_id = pending.id
+    finally:
+        seed_engine.dispose()
+
+    # TestClient 시작 시 앱 lifespan 이 init_db()를 실행한다.
+    with TestClient(app, raise_server_exceptions=False):
+        with Session(app.state.engine) as session:
+            recovered = session.exec(
+                select(ChatTurn).where(ChatTurn.id == pending_id)
+            ).one()
+
+    assert recovered.status == "interrupted"
+    assert recovered.completed_at is not None
+
+
 def test_create_conversation_requires_login(client):
     response = client.post("/api/conversations", json={})
 
@@ -149,6 +207,7 @@ def test_create_conversation_with_wrong_csrf(user_a):
 def test_create_conversation_db_failure_returns_503_and_logs(user_a, monkeypatch):
     client, headers, _ = user_a
     events = []
+    rollback_calls = 0
 
     def fake_log_event(name, **fields):
         events.append((name, fields))
@@ -156,9 +215,17 @@ def test_create_conversation_db_failure_returns_503_and_logs(user_a, monkeypatch
     def failing_commit(self):
         raise OperationalError("INSERT", {}, Exception("boom"))
 
+    original_rollback = Session.rollback
+
+    def track_rollback(self):
+        nonlocal rollback_calls
+        rollback_calls += 1
+        return original_rollback(self)
+
     # 로그인은 이미 끝났으므로 이 시점부터 commit 이 실패하게 한다.
     monkeypatch.setattr("app.conversations.repository.log_event", fake_log_event)
     monkeypatch.setattr(Session, "commit", failing_commit)
+    monkeypatch.setattr(Session, "rollback", track_rollback)
 
     response = client.post("/api/conversations", headers=headers, json={})
 
@@ -166,6 +233,12 @@ def test_create_conversation_db_failure_returns_503_and_logs(user_a, monkeypatch
     assert response.json()["error"]["code"] == "DB_ERROR"
     assert [name for name, _ in events] == ["db_save_failed"]
     assert events[0][1]["entity"] == "conversation"
+    assert events[0][1]["error_type"] == "OperationalError"
+    assert rollback_calls == 1
+
+    conversations = client.get("/api/me/conversations")
+    assert conversations.status_code == 200
+    assert conversations.json()["items"] == []
 
 
 def test_get_own_conversation_with_turns_oldest_first(user_a, settings):
