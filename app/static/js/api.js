@@ -114,6 +114,13 @@ async function sendPost(url, body) {
   return { ok: response.ok, status: response.status, offline: false, data };
 }
 
+// 서버가 요청을 처리했는지 알 수 없는 실패인지: 서버에 닿지 못했거나(연결 끊김) 우리 서버의 오류 JSON 이 아닌
+// 응답을 받았을 때(중간 프록시의 오류 페이지 등). 요청은 서버에 닿아 처리됐을 수도 있다.
+// 우리 서버가 오류 JSON({"error": {"code", …}}) 으로 답했으면 무엇이 실패했는지 서버가 알려 준 것이다
+export function outcomeUnknown(result) {
+  return result.offline || (!result.ok && !result.data?.error?.code);
+}
+
 // 실패한 apiPost 결과를 화면에 보여 줄 문구로: 서버가 보낸 error.message, 못 받았으면 대체 문구
 export function failureMessage(result) {
   if (result.offline) return NETWORK_ERROR_MESSAGE;

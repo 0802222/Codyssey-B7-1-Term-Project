@@ -16,7 +16,12 @@
  * CSRF 토큰을 붙여 POST 하는 apiPost 는 api.js (로그아웃 버튼과 같이 쓴다). 401 이면 api.js 가 로그인 화면으로 보낸다.
  */
 
-import { apiPost, failureMessage } from "/static/js/api.js";
+import { apiPost, failureMessage, outcomeUnknown } from "/static/js/api.js";
+
+// 같은 요청 번호로 다시 보냈는데 처음 보낸 지 이만큼 지나도 "처리 중"(409 CHAT_BUSY)이면, 서버가 처리하다 멈춰
+// 남은 표시(서버 재시작 등)로 보고 다음에는 새 번호로 보낸다. 서버는 AI 답을 최대 ai_timeout_seconds(기본 30초)만
+// 기다리므로 그보다 넉넉히 길게 잡았다 — 서버 설정을 60초보다 길게 바꾸면 이 값도 늘린다
+const STALE_BUSY_MS = 60 * 1000;
 
 const form = document.getElementById("chat-form");
 const questionInput = document.getElementById("question");
@@ -209,7 +214,8 @@ function setWaiting(on) {
 /* ── 질문 보내기 ── */
 
 // 새 질문 하나를 보낸다. fromInput: 입력칸의 질문이면 답을 받은 뒤 입력칸을 비운다.
-// 질문 요청 = { question, level: { value, label }, fromInput, requestId: client_request_id, item: 내 질문 말풍선 }
+// 질문 요청 = { question, level: { value, label }, fromInput, item: 내 질문 말풍선,
+//              requestId: client_request_id, sentAt: 그 번호를 처음 보낸 때, sameIdNext: 다시 보낼 때 같은 번호를 쓸지 }
 function sendQuestion(question, { fromInput }) {
   if (waiting) return; // 이미 기다리는 중이면 무시한다 (Enter·클릭 연타)
   const level = selectedLevel();
@@ -220,17 +226,33 @@ function sendQuestion(question, { fromInput }) {
     return;
   }
   dropFailed(); // 다른 질문을 보내면 답을 못 받은 앞 질문은 다시 보내지 않는 것으로 본다
-  const request = { question, level, fromInput, requestId: newRequestId(), item: null };
+  const request = {
+    question,
+    level,
+    fromInput,
+    item: null,
+    requestId: newRequestId(),
+    sentAt: Date.now(),
+    sameIdNext: false,
+  };
   clearError();
   request.item = addQuestion(question, level.label);
   send(request);
 }
 
-// 답을 못 받은 질문을 다시 보낸다 (오류 칸의 "다시 보내기"). 같은 말풍선·질문·수준 그대로, 입력칸의 글도 그대로
+// 답을 못 받은 질문을 다시 보낸다 (오류 칸의 "다시 보내기"). 같은 말풍선·질문·수준 그대로, 입력칸의 글도 그대로.
+// 요청 번호(client_request_id)는 앞의 실패가 어떤 것이었는지에 따라 정한다 (showFailure 의 sameIdNext):
+// - 응답을 못 받아 서버가 처리했는지 모름(연결 끊김, JSON 이 아닌 응답) → 같은 번호. 서버가 이미 답을 만들었으면
+//   AI 를 다시 부르지 않고 저장한 답을 돌려주고, 아직 만드는 중이면 409 CHAT_BUSY 를 돌려준다 (중복 호출·중복 턴 방지)
+// - 처리 중(409 CHAT_BUSY) → 같은 번호로 다시 묻는다. 처음 보낸 지 STALE_BUSY_MS 가 지나도 처리 중이면 새 번호
+// - 서버가 실패를 알려 옴(AI 시간 초과·오류, 한도 초과 등) → 새 번호. 같은 번호면 서버가 저장한 실패를 그대로
+//   돌려준다 (API 명세 3장 "다시 시도는 클라이언트가 새 키로")
 function resendFailed() {
   if (waiting || !failed) return;
-  // 같은 키로 보내면 서버는 저장해 둔 실패를 그대로 돌려준다 (API 명세 3장 "다시 시도는 새 키로") → 새 키
-  failed.requestId = newRequestId();
+  if (!failed.sameIdNext) {
+    failed.requestId = newRequestId();
+    failed.sentAt = Date.now();
+  }
   send(failed);
 }
 
@@ -271,6 +293,10 @@ function showAnswer(request, turn) {
 // 답을 못 받았다: 질문 말풍선은 남기고(시안) 오류 칸에 서버 문구와 "다시 보내기" 를 보여 준다. 입력칸의 글은 그대로
 function showFailure(request, result) {
   failed = request;
+  const code = result.data?.error?.code;
+  // 다시 보낼 때 같은 요청 번호를 쓸지 (규칙은 resendFailed 위)
+  request.sameIdNext =
+    outcomeUnknown(result) || (code === "CHAT_BUSY" && Date.now() - request.sentAt < STALE_BUSY_MS);
   showError(failureMessage(result), { retry: true });
   retryButton.focus(); // Enter 한 번이면 다시 보낸다. 오류 칸은 role="alert" 라 스크린리더가 읽는다
 }
