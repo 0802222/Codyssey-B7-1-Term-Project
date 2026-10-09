@@ -33,6 +33,7 @@ const loading = document.getElementById("chat-loading");
 const emptyState = document.getElementById("chat-empty");
 const errorBox = document.getElementById("chat-error");
 const errorText = document.getElementById("chat-error-text");
+const errorNote = document.getElementById("chat-error-note");
 const retryButton = document.getElementById("chat-retry");
 const followUps = document.getElementById("follow-ups");
 const followUpButtons = followUps.querySelectorAll("button[data-question]");
@@ -83,8 +84,10 @@ function isAnswer(result) {
 
 // 오류 칸에 안내 문구를 글자로 넣어 보여 준다. role="alert" 라서 나타나는 순간 스크린리더가 읽는다.
 // retry: 오류 칸 오른쪽에 "다시 보내기" 버튼을 보일지 (요청이 실패했을 때만. 입력 안내에는 없다)
-function showError(message, { retry = false } = {}) {
+// note: 서버 문구 아래에 화면이 덧붙이는 안내 ("~해요")
+function showError(message, { retry = false, note = "" } = {}) {
   errorText.textContent = message;
+  errorNote.textContent = note;
   retryButton.hidden = !retry;
   errorBox.hidden = false;
 }
@@ -92,6 +95,7 @@ function showError(message, { retry = false } = {}) {
 function clearError() {
   errorBox.hidden = true;
   errorText.textContent = ""; // 입력칸의 aria-describedby 가 지난 오류를 읽지 않게 비운다
+  errorNote.textContent = "";
   retryButton.hidden = true;
 }
 
@@ -292,12 +296,32 @@ function showAnswer(request, turn) {
 
 // 답을 못 받았다: 질문 말풍선은 남기고(시안) 오류 칸에 서버 문구와 "다시 보내기" 를 보여 준다. 입력칸의 글은 그대로
 function showFailure(request, result) {
-  failed = request;
   const code = result.data?.error?.code;
+  if (code === "VALIDATION_ERROR") {
+    // 422: 같은 질문은 다시 보내도 같은 결과라 다시 보내기 없이 고칠 곳(입력칸)으로 보낸다. 말풍선은 뺀다
+    failed = null;
+    request.item.remove();
+    emptyState.hidden = thread.children.length > 0;
+    showError(failureMessage(result), { note: "질문을 고쳐서 다시 보내 주세요." });
+    questionInput.focus();
+    return;
+  }
+  failed = request;
   // 다시 보낼 때 같은 요청 번호를 쓸지 (규칙은 resendFailed 위)
   request.sameIdNext =
     outcomeUnknown(result) || (code === "CHAT_BUSY" && Date.now() - request.sentAt < STALE_BUSY_MS);
-  showError(failureMessage(result), { retry: true });
+  let note = "";
+  if (code === "CONVERSATION_NOT_FOUND") {
+    // 404: 대화가 서버에 없다(지워졌거나, 다른 탭에서 다른 계정으로 로그인함). 다시 보내면 새 대화를 만들게 하고,
+    // 화면에서도 지난 대화를 빼고 이 질문만 남긴다 — 화면의 대화 = 서버가 문맥으로 쓰는 대화
+    conversationId = null;
+    for (const item of [...thread.children]) {
+      if (item !== request.item) item.remove();
+    }
+    followUps.hidden = true;
+    note = "다시 보내면 새 대화로 시작해요.";
+  }
+  showError(failureMessage(result), { retry: true, note });
   retryButton.focus(); // Enter 한 번이면 다시 보낸다. 오류 칸은 role="alert" 라 스크린리더가 읽는다
 }
 
