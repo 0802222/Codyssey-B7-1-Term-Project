@@ -2,7 +2,7 @@
 
 화면이 보내는 값은 서버가 받는 값이어야 한다. 질문 최대 글자 수와 level 값은 API 명세 3장,
 후속 버튼 문구와 수준 이름은 app/chat/prompts.py(EE-10)가 기준이다. 한쪽만 바뀌면 여기서 실패한다.
-(실제 POST /api/chat 은 EE-13 전까지 501 이라, 서버와 직접 맞춰 보는 테스트는 EE-14 에서 더한다)
+(실제 POST /api/chat 과 직접 맞춰 보는 테스트는 EE-14 의 test_chat_retry_rules_match_server.py)
 """
 
 from pathlib import Path
