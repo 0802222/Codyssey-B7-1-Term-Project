@@ -5,7 +5,7 @@
  * 색을 바꾸려면 변수만 고치면 된다. (글자 대비는 모두 4.5:1 이상, 테두리는 3:1 이상으로 계산해 정했다)
  *
  * 1. 디자인 값  2. 기본  3. 레이아웃  4. 헤더·메뉴  5. 푸터  6. 버튼  7. 소개 페이지
- * 8. 가입·로그인  9. 채팅  10. 내 기록  11. 모바일
+ * 8. 가입·로그인  9. 채팅  10. 내 기록  11. 모바일  12. 접근성
  */
 
 /* ===== 1. 디자인 값 ===== */
@@ -175,6 +175,10 @@ img {
   background: var(--accent-soft);
   color: var(--accent-text);
   font-weight: 500;
+  /* 연한 바탕색만으로는 지금 위치를 알아보기 어려워(흰 헤더와 대비 1.2:1) 밑줄도 긋는다. 고대비 모드에서도 남는다 */
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
 }
 
 /* ===== 5. 푸터 ===== */
@@ -1221,5 +1225,53 @@ img {
   .level-option svg {
     width: 16px;
     height: 16px;
+  }
+}
+
+/* ===== 12. 접근성 (EE-21) ===== */
+/* 본문으로 건너뛰기 (base.html 맨 앞의 링크). 평소에는 화면 위쪽 밖에 두고, Tab 으로 포커스가 오면 왼쪽 위에 나타난다.
+   hidden·display: none 으로 숨기면 Tab 으로 갈 수 없어서 자리만 화면 밖으로 옮긴다 */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px; /* 손가락으로 누르기 편한 크기 (다른 버튼과 같다) */
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 500;
+  text-decoration: none;
+  transform: translateY(calc(-100% - 16px));
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* 건너뛰기 링크로 본문(main)에 오면 2장의 포커스 테두리를 본문 안쪽에 그린다 — 본문은 화면 폭 가득이라
+   바깥에 그리면 양옆이 화면 밖으로 잘린다. 다음 Tab 에서 본문의 첫 컨트롤로 넘어가면 사라진다 */
+main:focus-visible {
+  outline-offset: -3px;
+}
+
+/* 내 기록 상세의 대화 제목(h2)은 불러오기 전·못 찾는 대화일 때 비어 있다. 빈 제목은 스크린리더가 이름 없는
+   "제목 2" 로 읽어서, 글이 없을 때는 숨긴다 (글이 들어오면 다시 보인다 — history.js 가 글을 넣은 뒤 포커스) */
+.detail-title:empty {
+  display: none;
+}
+
+/* 고대비 모드(Windows 고대비 등 — 브라우저가 글자·바탕·테두리 색을 사용자가 정한 몇 가지로 바꾼다)에서는 바탕색이
+   사라져 고른 수준이 다른 수준과 똑같아 보인다. 고른 수준만 시스템의 "선택" 색(Highlight)으로 칠한다 */
+@media (forced-colors: active) {
+  .level-option input:checked + span {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+    outline-color: CanvasText; /* 키보드 포커스 테두리도 시스템 글자색으로 (색을 직접 정한 칸이라 따로 적는다) */
   }
 }
