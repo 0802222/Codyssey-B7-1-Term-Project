@@ -20,6 +20,7 @@ Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝�
 | 실행·배포 방법, 환경 변수 | [5장](#5-실행-방법) · [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차) |
 | 역할과 개인별 작업 | [3장 팀·기능 표](#3-주요-기능과-역할-분담) (담당·PR 칸) |
 | 겪은 문제와 해결 | [트러블슈팅 기록](docs/team/4-troubleshooting.md) |
+| 확장성·장애·보안·LLM 품질 점검 | [퍼실리테이터 사전 질문 답변](docs/team/5-facilitator-questions.md) |
 
 <details>
 <summary><b>👥 팀원용 문서 안내 — 언제 무엇을 읽나요?</b></summary>
@@ -34,6 +35,7 @@ Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝�
 | ③ 평가 전 | [docs/team/eval/](docs/team/eval/) | 역할별 예상 질문·읽을 코드·실습 (**자기 파일만** 고침) |
 | 배포할 때 | [docs/team/3-deploy-options.md](docs/team/3-deploy-options.md) | 배포 방식 결정, Railway 설정 절차 |
 | 문제가 생겼을 때 | [docs/team/4-troubleshooting.md](docs/team/4-troubleshooting.md) | 겪은 문제와 해결 기록 |
+| ③ 평가 전 | [docs/team/5-facilitator-questions.md](docs/team/5-facilitator-questions.md) | 퍼실리테이터 사전 질문 답변·점검 (✅🟨❌) |
 | 읽지 않아도 됨 | `AGENTS.md`, `CLAUDE.md` | AI 코딩 도구가 읽는 규칙 (CONTRIBUTING 요약본) |
 
 </details>
