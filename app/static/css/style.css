@@ -1253,3 +1253,9 @@ img {
 main:focus-visible {
   outline-offset: -3px;
 }
+
+/* 내 기록 상세의 대화 제목(h2)은 불러오기 전·못 찾는 대화일 때 비어 있다. 빈 제목은 스크린리더가 이름 없는
+   "제목 2" 로 읽어서, 글이 없을 때는 숨긴다 (글이 들어오면 다시 보인다 — history.js 가 글을 넣은 뒤 포커스) */
+.detail-title:empty {
+  display: none;
+}
