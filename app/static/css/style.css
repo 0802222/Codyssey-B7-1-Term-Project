@@ -175,6 +175,10 @@ img {
   background: var(--accent-soft);
   color: var(--accent-text);
   font-weight: 500;
+  /* 연한 바탕색만으로는 지금 위치를 알아보기 어려워(흰 헤더와 대비 1.2:1) 밑줄도 긋는다. 고대비 모드에서도 남는다 */
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
 }
 
 /* ===== 5. 푸터 ===== */
