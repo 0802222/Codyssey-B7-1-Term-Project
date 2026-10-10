@@ -413,3 +413,19 @@ def test_narrow_screens_fill_width_with_the_main_buttons():
 
     assert ".history-more .btn,\n  .detail-end .btn {\n    width: 100%;" in mobile
     assert ".history-item {" in mobile
+
+
+def test_titles_that_receive_focus_keep_a_visible_focus_outline():
+    # 목록 ↔ 상세를 오갈 때 포커스가 가는 제목(h1·h2). 키보드 사용자가 포커스 위치를 볼 수 있게
+    # 테두리를 지우지 않는다 (PR #52 리뷰). 2장의 공통 :focus-visible 테두리를 쓰므로
+    # 키보드로 왔을 때만 보이고, 마우스로 누를 때는 브라우저가 그리지 않는다
+    rules = re.findall(r"([^{}]+)\{([^{}]*)\}", CSS)
+    for selectors, declarations in rules:
+        if ".history-heading" in selectors or ".detail-title" in selectors:
+            assert "outline: none" not in declarations, selectors.strip()
+            assert "outline: 0" not in declarations, selectors.strip()
+    assert ":focus-visible {\n  outline: 3px solid var(--accent);" in CSS
+    focused = rule(".history-heading:focus-visible,\n.detail-title:focus-visible")
+    assert "outline-offset: 4px;" in focused  # 글자 둘레에 둥글게 (줄 전체 상자가 아니라)
+    for selector in (".history-heading", ".detail-title"):
+        assert "width: fit-content;" in rule(selector), selector
