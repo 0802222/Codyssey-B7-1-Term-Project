@@ -5,7 +5,7 @@
 
 Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝트」** · 4인 팀
 
-> **현재 상태:** 앱 뼈대, 회원가입·로그인 API 까지 구현. 채팅·기록·배포는 진행 중입니다. 과제 요구사항별 근거와 진행 상태는 [7장](#7-과제-요구사항-근거).
+> **현재 상태:** 앱 뼈대, 회원가입·로그인 API 까지 구현. 채팅·기록·배포는 진행 중입니다. 과제 요구사항별 근거와 진행 상태는 [6장](#6-과제-요구사항과-제출-점검).
 
 <details>
 <summary><b>👥 팀원용 문서 안내 — 언제 무엇을 읽나요?</b></summary>
@@ -55,7 +55,7 @@ AI 를 직접 만드는 게 아니라, 이미 있는 AI(Claude)를 **우리 서�
 | ⑥ | 배포 | 평가 때 **외부에서 접속 가능한 URL** |
 | ⑦ | 협업 | 브랜치·PR 머지, **1인당 의미 있는 커밋 10개 이상** |
 
-과제 원문 항목마다 어디서 만족하는지는 [7장 과제 요구사항 근거](#7-과제-요구사항-근거)에 있습니다.
+과제 원문 항목마다 어디서 만족하는지는 [6장 과제 요구사항과 제출 점검](#6-과제-요구사항과-제출-점검)에 있습니다.
 
 ---
 
@@ -241,33 +241,9 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 
 ---
 
-## 6. 제출 체크리스트
+## 6. 과제 요구사항과 제출 점검
 
-**제출물**
-- [ ] GitHub 저장소 링크
-- [ ] 외부 네트워크에서 접속되는 서비스 URL
-- [ ] DB 확인 방법 (내 기록 API 또는 `scripts/check_logs.sql`)
-
-**README / 기술 문서에 들어갈 것**
-- [x] 프로젝트 개요 — 문제 정의, 대상 사용자, 핵심 시나리오 (1·3장)
-- [ ] 시스템 구조 — 아키텍처, 주요 컴포넌트 역할 (1·2장, 구조도 보강 예정)
-- [x] API 명세 — 요청·응답 예시 ([docs/spec/api.md](docs/spec/api.md), 구현하며 갱신)
-- [x] DB 구조 — 테이블·필드 설명 ([docs/spec/db.md](docs/spec/db.md), 구현하며 갱신)
-- [ ] 배포·실행 방법, 환경 변수 설정 (5장, 배포 방법 추가 예정)
-- [ ] 팀 역할과 개인별 작업 (3장 — 역할 배정, 기능 표의 담당·PR 칸)
-- [x] 민감정보 관리 — `.env.example` 제공, `.gitignore` 적용
-
-**평가 전 확인**
-- [ ] 1인당 의미 있는 커밋 10개 이상: `git shortlog -sne --no-merges origin/main`
-- [ ] 모든 기능이 PR 로 머지됨 (3장 기능 표의 PR 칸)
-- [ ] 각자 맡은 코드를 설명할 수 있음 → [docs/team/2-evaluation-example.md](docs/team/2-evaluation-example.md)
-- [ ] 서버 재시작 후에도 대화 기록 유지
-
----
-
-## 7. 과제 요구사항 근거
-
-과제 원문(B7-1) 항목마다 **어디서 만족하는지** 적습니다. 기능을 머지할 때 상태와 근거를 함께 갱신합니다.
+과제 원문(B7-1) 항목마다 **어디서 만족하는지(근거)와 진행 상태**를 적습니다. 기능을 머지할 때 상태와 근거를 함께 갱신합니다.
 ✅ 완료 · 🟨 일부 완료 · ⬜ 예정 (담당 이슈)
 
 ### 기능 요구사항 (원문 4장)
@@ -287,20 +263,35 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | 4-6 외부 접속 URL, 배포·환경 변수 문서 | Railway + Volume ([배포 방식 결정](docs/team/3-deploy-options.md)) · 실행 방법·환경 변수 5장 | 🟨 결정 ✅ [#34][p34] · 배포 [EE-22][i29] |
 | 4-7 브랜치 전략, 기능 단위 작업 브랜치 | `main` 보호 + 이슈별 `feat/ee-XX-…` 브랜치 ([CONTRIBUTING.md](CONTRIBUTING.md)) | ✅ |
 | 4-7 PR 기반 Merge | main 직접 커밋 금지. 승인 1명 + CI `test` 통과 후 Merge commit ([.github/workflows/ci.yml](.github/workflows/ci.yml)) | ✅ |
-| 4-7 1인 유의미한 커밋 10회, 역할·개인별 작업 요약 | 3장 역할·기능 표(담당·PR) · `git shortlog -sne --no-merges origin/main` | ⬜ [EE-24][i31] |
+| 4-7 1인 유의미한 커밋 10회 | `git shortlog -sne --no-merges origin/main` (아래 평가 전 확인) | ⬜ [EE-24][i31] |
+| 4-7 역할·개인별 작업 요약 (Git 이력과 일치) | 3장 역할·기능 표(담당·PR 칸) | 🟨 역할 ✅ · 개인별 요약 [EE-24][i31] |
 
-### 산출물 · 개발 환경 · 제약 사항 (원문 2·5·6장)
+### 제출물 · 개발 환경 · 제약 사항 (원문 2·5·6장)
 
 | 원문 요구사항 | 근거 | 상태 |
 |---|---|---|
-| README 기술 문서 7항목 | 6장 체크리스트 | 🟨 [EE-24][i31] |
+| GitHub 저장소 링크 | 공개 저장소, 주소는 5장 | ✅ |
+| 외부 접속 서비스 URL | 4-6 참고 | ⬜ [EE-22][i29] |
+| 문서: 프로젝트 개요 (문제 정의·대상 사용자·핵심 시나리오) | 1·3장 | ✅ |
+| 문서: 시스템 구조 (아키텍처·컴포넌트 역할) | 1·2장 | 🟨 구조도 보강 [EE-24][i31] |
+| 문서: API 명세 (요청·응답 예시) | [docs/spec/api.md](docs/spec/api.md) | ✅ 구현하며 갱신 |
+| 문서: DB 구조 (테이블·필드) | [docs/spec/db.md](docs/spec/db.md) | ✅ 구현하며 갱신 |
+| 문서: 배포·실행 방법, 환경 변수 이름·설정 방법 | 5장 (환경 변수 전체 목록) | 🟨 실행·환경 변수 ✅ · 배포 [EE-22][i29] |
+| 문서: 민감정보 관리 / 민감정보는 환경 변수로, `.env` 는 Git 제외 | [.env.example](.env.example), [.gitignore](.gitignore), 설정은 [app/core/config.py](app/core/config.py) 에서만 읽음 | ✅ |
 | DB 확인 가이드 (3가지 중 1개 이상) | 로그 조회 API(`GET /api/me/chats`) + 확인용 SQL(`scripts/check_logs.sql`). 관리자 화면은 비제공 (3장) | ⬜ [EE-11][i18] · [EE-20][i27] |
 | Python & FastAPI, SQLite | 4장 기술 스택 | ✅ |
 | 평가자가 DB 에 연결·조회 가능 | 배포 서버의 DB 에 확인용 SQL 실행 (`railway ssh`) | ⬜ [EE-20][i27] |
-| 민감정보는 환경 변수, `.env` 는 Git 제외, 예시 제공 | [.env.example](.env.example), [.gitignore](.gitignore), 설정은 [app/core/config.py](app/core/config.py) 에서만 읽음 | ✅ |
-| README 에 환경 변수 이름·설정 방법 | 5장 | ✅ |
 | AI 호출 타임아웃 설정, 실패 시 안내 | `AI_TIMEOUT_SECONDS` 기본 30초 ([app/core/config.py](app/core/config.py)) | 🟨 설정 ✅ · 적용 [EE-13][i20] · 안내 [EE-16][i23] |
 | 과제 목표: 각자 맡은 부분을 설명 | [평가 대비](docs/team/2-evaluation-example.md) | ⬜ [EE-24][i31] |
+
+### 평가 전 확인
+
+표의 근거를 **실제로 돌려 보는** 마지막 점검입니다.
+- [ ] 휴대폰 데이터(외부 네트워크)로 서비스 URL 접속 → 가입·로그인·질문·내 기록
+- [ ] 서버 재시작 후에도 대화 기록 유지
+- [ ] 1인당 의미 있는 커밋 10개 이상: `git shortlog -sne --no-merges origin/main`
+- [ ] 모든 기능이 PR 로 머지됨 (3장 기능 표의 PR 칸)
+- [ ] 각자 맡은 코드 설명 리허설 → [평가 대비](docs/team/2-evaluation-example.md)
 
 [i17]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/17
 [i18]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/18
