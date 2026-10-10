@@ -157,6 +157,29 @@ def test_create_conversation_success(user_a):
     assert data["created_at"]
 
 
+def test_first_chat_question_updates_title_of_api_created_conversation(user_a):
+    client, headers, _ = user_a
+    conversation = _create_conversation(client, headers)
+    question = "첫 질문으로 대화 제목을 정해요"
+
+    response = client.post(
+        "/api/chat",
+        headers=headers,
+        json={
+            "conversation_id": conversation["id"],
+            "question": question,
+            "level": "easy",
+            "client_request_id": str(uuid4()),
+        },
+    )
+
+    assert response.status_code == 200
+    detail = client.get(f"/api/conversations/{conversation['id']}")
+
+    assert detail.status_code == 200
+    assert detail.json()["conversation"]["title"] == question
+
+
 def test_created_conversation_appears_in_my_list(user_a):
     client, headers, _ = user_a
     created = _create_conversation(client, headers)
