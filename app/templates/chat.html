@@ -74,12 +74,14 @@
     </div>
 
     {# 질문 입력. method="post": 스크립트가 뜨기 전에 보내져도 질문이 주소(GET 쿼리)에 붙지 않게
-       novalidate: 브라우저 기본 말풍선 대신 위 오류 칸에 안내 문구를 보여 준다 (최종 검사는 서버) #}
+       novalidate: 브라우저 기본 말풍선 대신 위 오류 칸에 안내 문구를 보여 준다 (최종 검사는 서버)
+       aria-describedby 는 오류 칸 전체(chat-error)가 아니라 안의 글(chat-error-text·note)을 가리킨다 —
+       칸 전체를 가리키면 숨은 "다시 보내기" 버튼 글까지 질문 칸 설명으로 늘 읽힌다 #}
     <form class="composer" id="chat-form" method="post" novalidate>
       <label class="visually-hidden" for="question">질문</label>
       <textarea id="question" name="question" rows="2" required maxlength="{{ rules.question_max_length }}"
                 placeholder="궁금한 개념을 물어보세요" enterkeyhint="send"
-                aria-describedby="question-count question-keys chat-error"></textarea>
+                aria-describedby="question-count question-keys chat-error-text chat-error-note"></textarea>
       <p class="visually-hidden" id="question-keys">Enter 를 누르면 보내고, Shift 와 Enter 를 함께 누르면 줄을 바꿔요.</p>
       <div class="composer-row">
         <span class="composer-count" id="question-count">0 / {{ rules.question_max_length }}</span>
