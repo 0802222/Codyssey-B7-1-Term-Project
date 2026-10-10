@@ -39,11 +39,11 @@ API 의 비로그인 요청은 리다이렉트가 아니라 JSON 401 을 반환�
 | `GET /health` | - | 200 `{status: "ok", db: "ok"}` / 503 `DB_ERROR` | 공개 / L |
 
 ### 가입·로그인 입력 규칙 (실패 시 422 `VALIDATION_ERROR`)
-- `email`: 이메일 형식, 최대 254자. 앞뒤 공백 제거·소문자로 바꿔서 저장·비교한다
-- `password`: 10~128자. 앞뒤 공백을 지우지 않고 그대로 해시한다
+- `email`: 이메일 형식, 최대 100자. 앞뒤 공백 제거·소문자로 바꿔서 저장·비교한다
+- `password`: 8~64자, 영어(영문·숫자·기호와 공백, ASCII 32~126)만. 그 밖의 조건(대소문자·숫자·기호 섞기 등)은 없다. 앞뒤 공백을 지우지 않고 그대로 해시한다
 - 로그인 실패는 이메일이 없든 비밀번호가 틀리든 똑같이 401 `INVALID_CREDENTIALS`
 
-- `limit` 기본 20, 최대 100.
+- `limit` 기본 20·최대 100, `offset` 기본 0·0 이상.
 - 없는 대화와 남의 대화는 **똑같이** 404 `CONVERSATION_NOT_FOUND` (존재 여부를 알려 주지 않음).
 - 응답에 `password_hash`, `token_hash`, 다른 사람의 정보를 넣지 않는다.
 
@@ -132,7 +132,7 @@ API 의 비로그인 요청은 리다이렉트가 아니라 JSON 401 을 반환�
 | 로그인 사용자 (페이지) | `app.auth.dependencies.OptionalUserDep` → `CurrentUser` 또는 `None`. 오류를 내지 않음 | A | C (`None` 이면 `/login` 으로 303) |
 | CSRF 검증 | `app.auth.dependencies.CsrfDep` | A | B |
 | DB 세션 | `app.db.session.SessionDep` | L→A | A, B |
-| 대화 저장소 | `app.conversations` 의 저장소 함수 (EE-11 에서 확정) | A | B |
+| 대화 저장소 | `app.conversations.repository` 의 대화·turn 저장 및 조회 함수. `user_id`로 소유권을 확인하며, 없는 대화나 타인 대화는 404 `CONVERSATION_NOT_FOUND`, DB 오류는 503 `DB_ERROR`로 처리한다 | A | B |
 | AI provider 선택 | `app.chat.provider.get_ai_provider` → `AIProviderDep`. `settings.ai_provider` 로 fake / anthropic 선택 (EE-05 에서 작성). 테스트는 `app.dependency_overrides[get_ai_provider]` 로 타임아웃·오류를 내는 가짜로 바꿔 끼운다 | B | B |
 | AI 호출 | `app.chat.provider.AIProvider.generate_reply(messages, *, system, timeout_seconds, max_output_tokens) -> AIResult` | B | B |
 | AI 오류 | `AITimeoutError` / `AIUpstreamError` / `AIUnavailableError` | B | B |

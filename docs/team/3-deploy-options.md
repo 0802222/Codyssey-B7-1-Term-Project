@@ -99,19 +99,20 @@
 ## 8. Railway 설정 절차
 
 1단계(첫 배포) 때 팀장이 이 순서대로 해요. 화면 이름은 Railway 가 바꿀 수 있어요.
+첫 배포 뒤 코드만 바꿀 때는 아래 [업데이트 배포](#업데이트-배포)를 따라요.
 
 1. **프로젝트 만들기**: GitHub 로 로그인 → New Project → Deploy from GitHub repo → 이 저장소 선택
    (조직 저장소라 GitHub App 권한 승인이 필요할 수 있어요)
 2. **지역**: Service → Settings → Region 을 Southeast Asia (Singapore) 로
-3. **Volume**: 서비스 우클릭 → Attach Volume → Mount path `/app/data`
+3. **Volume**: 프로젝트 캔버스에서 서비스 카드 우클릭(또는 ⌘K → `volume`) → Attach Volume → Mount path `/app/data`
    (Railpack 은 코드를 `/app` 에 둬요. Volume 은 실행 중에만 붙어서, DB 는 빌드가 아니라 앱 시작 때 만들어요 — `app/main.py` 의 `lifespan`)
-4. **Variables** (Raw Editor 에 붙여 넣기, 키는 직접 입력)
+4. **Variables** (서비스의 Variables 탭 → Raw Editor 에 붙여 넣기, 키는 직접 입력 → 저장 후 Apply changes)
 
    ```
    RAILPACK_PYTHON_VERSION=3.12
    APP_ENV=production
    DATABASE_URL=sqlite:////app/data/easyexplain.db
-   SITE_ORIGIN=https://${{RAILWAY_PUBLIC_DOMAIN}}
+   SITE_ORIGIN=https://(6단계에서 만든 도메인)
    AI_PROVIDER=anthropic
    ANTHROPIC_API_KEY=(코디세이 키)
    COOKIE_SECURE=true
@@ -119,20 +120,77 @@
 
    - `RAILPACK_PYTHON_VERSION`: Railpack 은 `requires-python` 을 읽지 않고 기본 3.13 을 써요. 우리는 3.12 만 허용해요
    - `sqlite:////` 슬래시 **4개** = 절대 경로. 3개면 Volume 밖에 저장돼서 재배포 때 사라져요
+   - 값에 따옴표·앞뒤 공백을 넣지 않아요. `DATABASE_URL` 모양이 틀리면 `Could not parse SQLAlchemy URL` 로 앱이 안 떠요
+   - `SITE_ORIGIN` 은 도메인을 만든 **뒤** 실제 주소를 그대로 적어요 (`https://` 포함, 끝에 `/` 없이).
+     브라우저 주소와 한 글자라도 다르면 가입·로그인이 403 `CSRF_REJECTED` 가 돼요 (`app/auth/router.py`)
    - production 인데 `AI_PROVIDER=fake` 거나 `COOKIE_SECURE=false` 면 앱이 일부러 안 떠요 (`app/core/config.py`)
    - 나머지 값(`AI_MODEL` 등)은 `.env.example` 기본값을 그대로 써요
 5. **실행 설정** (Service → Settings)
-   - Custom Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"`
-     (Railpack 은 `main:app` 만 자동으로 찾아서, 우리 `app.main:app` 은 직접 적어요)
+   - Custom Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+     (Railpack 은 `main:app` 만 자동으로 찾아서, 우리 `app.main:app` 은 직접 적어요.
+     `--proxy-headers --forwarded-allow-ips="*"` 는 넣지 않아요. 앱이 클라이언트 IP·URL 을 쓰지 않고, `*` 는 모든 전달 헤더를 믿게 돼요)
    - Healthcheck Path: `/health`
-   - Replicas: 1
+   - Replicas: 1 (uvicorn worker 도 기본 1개 그대로). 처리 중 표시·질문 횟수 제한이 서버 메모리에 있어서 여러 개면 정확하지 않아요 (`app/chat/EE-16.md`)
    - Wait for CI: 켜기
 6. **도메인**: Settings → Networking → Generate Domain → `https://xxx.up.railway.app` (HTTPS 자동)
 7. **확인**
    - [ ] `/health` 가 `{"status":"ok","db":"ok"}`
+   - [ ] Deploy Logs 의 시작 줄이 `app_started ... env=production ai_provider=anthropic`
    - [ ] 휴대폰 데이터로 회원가입 → 로그인 유지 → 질문 → 답변
    - [ ] Redeploy 후에도 계정·대화가 남아 있음 (Volume 확인)
    - [ ] Deploy Logs 에 키·질문 원문이 없음
+
+새 배포가 실패하거나 Crashed 상태가 되면 **사이트도 중단될 수 있어요.** Volume 을 쓰는 서비스는 배포를 동시에 실행하지 않아서
+재배포 중 잠시 멈출 수 있고, 이전 배포가 계속 실행된다고 보장할 수 없어요 ([Volume 서비스 healthcheck](https://docs.railway.com/deployments/healthchecks#services-with-attached-volumes)).
+실패한 배포의 Deploy Logs 마지막 줄과 `/health` 를 확인하고, 설정을 고쳐 재배포하거나 이전 성공 배포로 Rollback 해요
+([배포 작업](https://docs.railway.com/deployments/deployment-actions)). 설정 검사 오류에는 입력값이 찍힐 수 있으니 로그를 공유할 때 키를 가려요.
+
+### 업데이트 배포
+
+- main 에 머지되면 Railway 가 자동으로 다시 배포해요 (Wait for CI 로 CI 통과 뒤에만)
+- **Volume 과 `DATABASE_URL` 은 건드리지 않아요.** DB 파일은 Volume 에 남아 있고, 코드만 바뀌어요
+- 배포 뒤 `/health` 와 Deploy Logs 의 `env=production` 을 확인하고, README 의 배포 커밋 SHA 를 갱신해요
+
+### 서비스 정리 주의
+
+- Railway **프로젝트나 Volume 을 삭제하면 DB 도 함께 삭제돼요.** 삭제·이전 전에 반드시 DB 파일을 백업해요
+  (백업 방법은 EE-20 #27 에서 정리)
+
+### 1차 배포 기록 (2026-10-09)
+
+| 항목 | 결과 |
+|---|---|
+| 서비스 URL | https://codyssey-b7-1-term-project-production.up.railway.app (휴대폰 와이파이·모바일 데이터 모두 접속 확인) |
+| 배포 커밋 | `c82a020`(#47) 으로 첫 배포 → #48 머지 후 자동 배포로 `24bf396` |
+| 운영 설정 적용 | Deploy Logs 시작 줄 `app_started ... env=production ai_provider=anthropic` · Python 3.12 · Southeast Asia · Replica 1 |
+| `/health` | `{"status":"ok","db":"ok"}` |
+| 가입 → 로그인 → 질문 → 답변 | 실제 AI 답변, 같은 대화의 후속 질문에서 문맥 유지 확인 |
+| Redeploy 후 기록 유지 | 재배포 전 만든 대화 2개가 `GET /api/me/conversations` 에 그대로 남음 |
+| 보안 동작 (외부에서 요청) | 다른 사이트 Origin 가입 403 · 비로그인 `/api/chat` 401 · 비로그인 `/chat` → `/login` · `http://` → `https://` |
+| 겪은 문제 | `SITE_ORIGIN` 불일치로 가입 403 → 실제 주소로 수정. `DATABASE_URL` 모양 오류로 한 배포 실패 → 수정 후 정상 |
+| 발견한 버그 | 대화 제목이 항상 "새 대화" 로 저장됨 → #49 |
+
+#### 적용한 Railway 설정
+
+키 값은 문서에 쓰지 않아요. 확인 방법의 "대시보드" 는 팀장이 Railway 화면에서 직접 본 것이에요.
+
+| 구분 | 항목 | 값 | 확인 방법 |
+|---|---|---|---|
+| 서비스 | Region | Southeast Asia (Singapore) | 대시보드 |
+| | Replicas | 1 | 대시보드 |
+| | Volume Mount path | `/app/data` | 대시보드 · Redeploy 후 기록 유지 |
+| | Custom Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` | 대시보드 |
+| | Healthcheck Path | `/health` | 대시보드 |
+| | Wait for CI | 켜짐 | 대시보드 |
+| | 도메인 | `codyssey-b7-1-term-project-production.up.railway.app` (Generate Domain) | 외부 요청 |
+| 변수 | `RAILPACK_PYTHON_VERSION` | `3.12` | 대시보드 (python@3.12.14) |
+| | `APP_ENV` | `production` | Deploy Logs `env=production` |
+| | `DATABASE_URL` | `sqlite:////app/data/easyexplain.db` | 대시보드 |
+| | `SITE_ORIGIN` | `https://codyssey-b7-1-term-project-production.up.railway.app` | 대시보드 · 가입 성공 |
+| | `AI_PROVIDER` | `anthropic` | Deploy Logs `ai_provider=anthropic` |
+| | `ANTHROPIC_API_KEY` | (비밀 값, 문서에 쓰지 않음) | 실제 AI 답변 생성 |
+| | `COOKIE_SECURE` | `true` | 대시보드 · 운영 모드 기동 (`false` 면 기동 거부) |
+| | 그 밖의 값 (`AI_MODEL` 등) | 설정하지 않음 → `.env.example` 기본값 | |
 
 ---
 

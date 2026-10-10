@@ -1,7 +1,10 @@
 from datetime import UTC, datetime, timedelta
 
+from fastapi import Request
 from sqlmodel import Session, create_engine, select
 
+from app.auth.dependencies import require_csrf
+from app.core.errors import AppError
 from app.db.models import AuthSession, User
 
 
@@ -129,7 +132,7 @@ def test_login_rejects_invalid_password_length(client, settings):
         headers={"Origin": settings.site_origin},
         json={
             "email": "test@example.com",
-            "password": "123456789",
+            "password": "1234567",
         },
     )
 
@@ -145,7 +148,7 @@ def test_login_rejects_too_long_password(client, settings):
         headers={"Origin": settings.site_origin},
         json={
             "email": "test@example.com",
-            "password": "a" * 129,
+            "password": "a" * 65,
         },
     )
 
@@ -158,8 +161,46 @@ def test_login_rejects_too_long_email(client, settings):
         "/api/auth/login",
         headers={"Origin": settings.site_origin},
         json={
-            "email": ("a" * 243) + "@example.com",
+            "email": ("a" * 89) + "@example.com",
             "password": "1234567890",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_login_accepts_8_char_password(client, settings):
+    client.post(
+        "/api/auth/signup",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": "short@example.com",
+            "password": "abcd1234",
+        },
+    )
+
+    response = client.post(
+        "/api/auth/login",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": "short@example.com",
+            "password": "abcd1234",
+        },
+    )
+
+    assert response.status_code == 200
+
+
+def test_login_rejects_non_english_password(client, settings):
+    _signup(client, settings)
+
+    response = client.post(
+        "/api/auth/login",
+        headers={"Origin": settings.site_origin},
+        json={
+            "email": "test@example.com",
+            "password": "비밀번호1234",
         },
     )
 
@@ -240,6 +281,13 @@ def test_logout_success(client, settings):
     assert auth_session is None
 
 
+def test_logout_without_login(client):
+    response = client.post("/api/auth/logout")
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTH_REQUIRED"
+
+
 def test_logout_blocks_access_after_logout(client, settings):
     _signup(client, settings)
     login_response = _login(client, settings)
@@ -284,6 +332,47 @@ def test_logout_with_wrong_csrf(client, settings):
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "CSRF_REJECTED"
+
+
+def test_logout_with_non_ascii_csrf(client, settings):
+    _signup(client, settings)
+    _login(client, settings)
+
+    engine = create_engine(settings.database_url)
+
+    with Session(engine) as session:
+        auth_session = session.exec(
+            select(AuthSession)
+        ).first()
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/auth/logout",
+        "headers": [
+            (
+                b"x-csrf-token",
+                "가나다".encode(),
+            ),
+        ],
+    }
+
+    request = Request(scope)
+    request.state.auth_session = auth_session
+
+    user = type(
+        "CurrentUser",
+        (),
+        {"id": auth_session.user_id, "email": "test@example.com"},
+    )()
+
+    try:
+        require_csrf(request, user)
+    except AppError as error:
+        assert error.status_code == 403
+        assert error.code == "CSRF_REJECTED"
+    else:
+        raise AssertionError("CSRF 검증이 거부되어야 합니다.")
 
 
 def test_login_cookie_attributes(client, settings):

@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
+from app.chat.anthropic_provider import AnthropicProvider
 from app.chat.fake_provider import FakeAIProvider, FakeMode
 from app.chat.provider import (
     AIProviderDep,
@@ -17,7 +18,7 @@ PROBE_PATH = "/_test/ai-provider"
 
 
 def add_provider_probe(app):
-    # 채팅 API(EE-13) 를 구현하지 않고 FastAPI 의존성 연결만 검증한다.
+    # 채팅 처리와 별도로 FastAPI의 provider 의존성 연결만 검증한다.
     @app.post(PROBE_PATH)
     async def provider_probe(provider: AIProviderDep) -> AIResult | dict[str, str]:
         try:
@@ -28,7 +29,7 @@ def add_provider_probe(app):
                 max_output_tokens=40,
             )
         except AIProviderError as exc:
-            # HTTP 오류 매핑(EE-16) 대신 주입한 provider 의 예외 종류만 관찰한다.
+            # HTTP 오류 매핑과 별도로 주입한 provider의 예외 종류만 관찰한다.
             return {"provider_error": type(exc).__name__}
 
 
@@ -55,9 +56,7 @@ def test_app_settings_select_fake_provider(provider_app):
 
 def test_dependency_override_injects_another_provider(provider_app):
     class TestProvider:
-        async def generate_reply(
-            self, messages, *, system, timeout_seconds, max_output_tokens
-        ):
+        async def generate_reply(self, messages, *, system, timeout_seconds, max_output_tokens):
             assert messages == [ChatMessage(role="user", content="테스트 질문")]
             assert system == "테스트용 시스템 프롬프트"
             return AIResult(
@@ -108,7 +107,7 @@ def test_dependency_does_not_expose_provider_or_mode_in_openapi(provider_app):
     assert "requestBody" not in operation
 
 
-def test_anthropic_setting_refuses_fake_success_until_ee13(settings):
+def test_app_settings_select_anthropic_provider(settings, monkeypatch):
     anthropic_settings = Settings(
         _env_file=None,
         app_env="test",
@@ -118,12 +117,20 @@ def test_anthropic_setting_refuses_fake_success_until_ee13(settings):
     )
     app = create_app(anthropic_settings)
     add_provider_probe(app)
+    calls = []
+
+    async def reply(self, messages, **kwargs):
+        assert self._settings is anthropic_settings
+        calls.append(messages)
+        return AIResult(text="게이트웨이 응답", model=anthropic_settings.ai_model)
+
+    monkeypatch.setattr(AnthropicProvider, "generate_reply", reply)
+    assert isinstance(get_ai_provider(anthropic_settings), AnthropicProvider)
 
     with TestClient(app) as client:
         response = client.post(PROBE_PATH)
 
-    assert response.status_code == 501
-    error = response.json()["error"]
-    assert error["code"] == "NOT_IMPLEMENTED"
-    assert "EE-13" in error["message"]
-    assert error["request_id"] == response.headers["X-Request-ID"]
+    assert response.status_code == 200
+    assert response.json()["text"] == "게이트웨이 응답"
+    assert response.json()["model"] == anthropic_settings.ai_model
+    assert len(calls) == 1
