@@ -7,6 +7,7 @@ pytest 는 JS 를 실행하지 못해서 Node 의 기본 테스트 도구(node:t
   저장한 답을 돌려주므로, AI 호출 수로 중복 호출이 생겼는지 알 수 있다
 - history.test.mjs: 내 기록의 목록·더 보기·제목 대체·상세·실패 턴·주소 전환 (EE-17)
 - chat_resume.test.mjs: 채팅의 이어서 질문과 주소 맞추기 (EE-17)
+- auth_form.test.mjs: 가입·로그인 오류 안내 뒤 버튼 잠금 해제 (EE-21 — auth.js 를 node:vm 으로 실행)
 
 CI(ubuntu-latest)에는 node 가 있어 실행된다. node 가 없는 컴퓨터에서는 이 테스트만 건너뛴다(skip).
 """
