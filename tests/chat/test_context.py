@@ -267,7 +267,9 @@ def test_other_users_large_content_does_not_use_the_character_budget():
     ]
 
 
-@pytest.mark.parametrize("question", [" \n더 쉽게\t ", "긴 질문" * 4000])
+@pytest.mark.parametrize(
+    "question", [" \n더 쉽게\t ", "긴 질문" * 4000], ids=["blank-padded", "long"]
+)
 def test_current_question_is_preserved_without_trimming_or_truncation(question):
     messages = build_messages(
         (), user_id=1, conversation_id=CONVERSATION_ID, question=question,

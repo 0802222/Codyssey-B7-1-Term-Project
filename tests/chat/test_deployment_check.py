@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import stat
 from uuid import uuid4
 
@@ -71,7 +72,10 @@ class DeployedAPI:
                 self.ai_calls += 1
                 if self.output is not None:
                     self.checkpoint_statuses.append(
-                        [case["status"] for case in json.loads(self.output.read_text())["cases"]]
+                        [
+                            case["status"]
+                            for case in json.loads(self.output.read_text(encoding="utf-8"))["cases"]
+                        ]
                     )
                 if self.ai_calls == self.client_timeout_on:
                     raise httpx.ReadTimeout(PRIVATE, request=request)
@@ -155,7 +159,7 @@ def test_levels_followups_replay_and_actual_stored_answers_are_checked(tmp_path)
     assert replay["request_id"] != replay["body_request_id"]
     assert report["logout_status"] == "completed"
     assert all(value.startswith("not_") for value in report["server_runtime"].values())
-    assert json.loads(output.read_text()) == report
+    assert json.loads(output.read_text(encoding="utf-8")) == report
     # 다음 요청을 하기 전에 지금까지의 완료·현재 미확인 상태가 파일에 남는다.
     assert api.checkpoint_statuses == [
         ["unconfirmed"],
@@ -172,7 +176,7 @@ def test_credentials_cookie_debug_fields_and_exception_text_are_not_exported(tmp
     previous_disable = logging.root.manager.disable
     with caplog.at_level(logging.DEBUG):
         collect(api, output)
-    text = output.read_text() + caplog.text
+    text = output.read_text(encoding="utf-8") + caplog.text
     for secret in [
         PRIVATE,
         "PRIVATE-CSRF-MARKER",
@@ -186,7 +190,9 @@ def test_credentials_cookie_debug_fields_and_exception_text_are_not_exported(tmp
         assert secret not in text
     assert api.credentials["email"].startswith("ee23-")
     assert api.credentials["email"].endswith("@example.com")
-    assert stat.S_IMODE(output.stat().st_mode) == 0o600
+    # Windows의 st_mode로는 POSIX 권한이나 NTFS ACL 보호를 검증할 수 없다.
+    if os.name == "posix":
+        assert stat.S_IMODE(output.stat().st_mode) == 0o600
     assert logging.root.manager.disable == previous_disable
 
 
@@ -215,8 +221,8 @@ def test_client_read_timeout_is_unconfirmed_not_server_ai_timeout(tmp_path):
     assert report["failure"] == {"reason": "CLIENT_TIMEOUT", "error_code": None}
     assert report["cases"][-1]["status"] == "unconfirmed"
     assert api.ai_calls == 3
-    assert "AI_TIMEOUT" not in output.read_text()
-    assert PRIVATE not in output.read_text()
+    assert "AI_TIMEOUT" not in output.read_text(encoding="utf-8")
+    assert PRIVATE not in output.read_text(encoding="utf-8")
 
 
 def test_storage_mismatch_prevents_completion(tmp_path):
@@ -289,7 +295,7 @@ def test_recovery_checks_one_easy_question_storage_replay_and_health(tmp_path):
         check["step"] for check in report["checks"] if check["step"].startswith("health:")
     ] == ["health:before", "health:after"]
     assert report["server_runtime"]["deploy_commit"] == "not_verified"
-    assert json.loads(output.read_text()) == report
+    assert json.loads(output.read_text(encoding="utf-8")) == report
 
 
 @pytest.mark.parametrize(
@@ -343,7 +349,7 @@ def test_timeout_message_must_match_contract(tmp_path):
     assert report["failure"]["reason"] == "TIMEOUT_RESPONSE_MISMATCH"
     assert report["collection_status"] == "incomplete"
     assert report["cases"][0]["storage_verified"] is False
-    assert PRIVATE not in output.read_text()
+    assert PRIVATE not in output.read_text(encoding="utf-8")
 
 
 def test_server_timeout_without_matching_stored_failure_is_unconfirmed(tmp_path):
@@ -375,7 +381,7 @@ def test_existing_output_is_preserved_without_any_http_request(tmp_path, options
     with pytest.raises(FileExistsError):
         collect(api, output, **options)
     assert api.requests == []
-    assert output.read_text() == "original evidence"
+    assert output.read_text(encoding="utf-8") == "original evidence"
 
 
 @pytest.mark.parametrize(
@@ -419,7 +425,7 @@ def test_redirect_is_not_followed_or_secret_response_saved(tmp_path):
     )
     assert report["collection_status"] == "incomplete"
     assert len(requests) == 1
-    assert PRIVATE not in output.read_text()
+    assert PRIVATE not in output.read_text(encoding="utf-8")
 
 
 def test_cli_requires_live_without_creating_output(tmp_path, monkeypatch, capsys):
