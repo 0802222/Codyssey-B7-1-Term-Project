@@ -56,5 +56,7 @@ app.dependency_overrides[get_ai_provider] = lambda: FakeAIProvider(mode=FakeMode
 수집 도구는 수동 실행할 때만 실제 AI를 호출하며, 자동 테스트와 품질 검토를 구분합니다.
 
 배포 서버의 실제 답변·저장·시간 초과·운영 로그·키 한도 검증은 [EE-23](EE-23.md)에 기록합니다.
+기존 수준별 5건 기록은 보존하고, 최종 재배포 뒤 남은 검증만 추가합니다.
+시간 초과는 `--expect-timeout`, 정상 설정 복구 후에는 `--check-recovery`로 각각 신규 질문 1건만 확인합니다.
 
 검증 명령: `uv run pytest tests/chat`, `uv run pytest`, `uv run ruff check .`.

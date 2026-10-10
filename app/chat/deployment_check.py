@@ -181,16 +181,27 @@ def collect_samples(
     output: Path,
     *,
     expect_timeout: bool = False,
+    check_recovery: bool = False,
     timeout_seconds: float = 60,
     transport: httpx.BaseTransport | None = None,
 ) -> dict:
     """자동 재전송 없이, 공개 가능한 증빙만 단계별로 저장한다."""
+    if expect_timeout and check_recovery:
+        raise ValueError("시간 초과와 복구 검증은 따로 실행해 주세요.")
     base_url = _base_url(base_url)
     if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
         raise ValueError("HTTP 대기 시간은 0보다 커야 합니다.")
+    # 이미 확인한 수준별 질문은 반복하지 않고, 복구 후 정상 질문 한 건만 확인한다.
+    plan = SAMPLE_PLAN[:1] if expect_timeout or check_recovery else SAMPLE_PLAN
+    scenario = "levels_and_followups"
+    if expect_timeout:
+        scenario = "timeout"
+    elif check_recovery:
+        scenario = "recovery"
     report = {
         "source": "mock_http" if transport is not None else "remote_http",
-        "scenario": "timeout" if expect_timeout else "levels_and_followups",
+        "scenario": scenario,
+        "max_new_questions": len(plan),
         "base_url": base_url,
         "collection_status": "incomplete",
         "quality_review": "not_performed",
@@ -243,7 +254,6 @@ def collect_samples(
                 client.headers["X-CSRF-Token"] = csrf
                 logged_in = True
                 conversations = {}
-                plan = SAMPLE_PLAN[:1] if expect_timeout else SAMPLE_PLAN
                 for case_id, alias, level, question in plan:
                     if alias not in conversations:
                         conversation = _send(
@@ -365,21 +375,34 @@ def collect_samples(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="EE-23 배포 API 수준별 질문 5개·저장·중복 확인")
+    parser = argparse.ArgumentParser(
+        description="EE-23 배포 API 확인: 기본 질문 5개, 시간 초과·복구 질문 1개"
+    )
     parser.add_argument("--live", action="store_true", help="실제 배포 AI 호출을 명시적으로 허용")
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument(
+    scenario = parser.add_mutually_exclusive_group()
+    scenario.add_argument(
         "--expect-timeout",
         action="store_true",
         help="운영자가 시간 초과 조건을 준비한 서버에서 한 질문만 확인",
+    )
+    scenario.add_argument(
+        "--check-recovery",
+        action="store_true",
+        help="운영 설정을 복구한 서버에서 정상 질문 한 건·저장·같은 키 재전송·health 확인",
     )
     args = parser.parse_args(argv)
     if not args.live:
         print("실제 배포를 확인하려면 --live를 지정해 주세요.", file=sys.stderr)
         return 1
     try:
-        report = collect_samples(args.base_url, args.output, expect_timeout=args.expect_timeout)
+        report = collect_samples(
+            args.base_url,
+            args.output,
+            expect_timeout=args.expect_timeout,
+            check_recovery=args.check_recovery,
+        )
     except (OSError, ValueError, KeyboardInterrupt):
         print("수집을 중단했습니다. 배포 주소와 새로운 출력 경로를 확인해 주세요.", file=sys.stderr)
         return 1

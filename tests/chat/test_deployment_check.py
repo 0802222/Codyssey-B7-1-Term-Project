@@ -135,6 +135,8 @@ def test_levels_followups_replay_and_actual_stored_answers_are_checked(tmp_path)
 
     assert report["collection_status"] == "completed"
     assert report["source"] == "mock_http"
+    assert report["scenario"] == "levels_and_followups"
+    assert report["max_new_questions"] == 5
     assert report["quality_review"] == "not_performed"
     assert api.ai_calls == 5
     assert len(api.chat_bodies) == 6
@@ -229,10 +231,11 @@ def test_storage_mismatch_prevents_completion(tmp_path):
     assert api.ai_calls == 2
 
 
-def test_replay_cannot_silently_create_another_turn(tmp_path):
+@pytest.mark.parametrize("options", [{}, {"check_recovery": True}])
+def test_replay_cannot_silently_create_another_turn(tmp_path, options):
     api = DeployedAPI()
     api.extra_replay_turn = True
-    report = collect(api, tmp_path / "duplicate.json")
+    report = collect(api, tmp_path / "duplicate.json", **options)
 
     assert report["failure"]["reason"] == "REPLAY_CREATED_TURN"
     assert report["collection_status"] == "incomplete"
@@ -246,6 +249,7 @@ def test_controlled_timeout_checks_message_failure_storage_replay_and_health(tmp
 
     assert report["collection_status"] == "completed"
     assert report["scenario"] == "timeout"
+    assert report["max_new_questions"] == 1
     assert len(report["cases"]) == 1
     case = report["cases"][0]
     assert case["status"] == "failed"
@@ -259,6 +263,63 @@ def test_controlled_timeout_checks_message_failure_storage_replay_and_health(tmp
     assert [
         check["http_status"] for check in report["checks"] if check["step"].startswith("health:")
     ] == [200, 200]
+
+
+def test_recovery_checks_one_easy_question_storage_replay_and_health(tmp_path):
+    api = DeployedAPI()
+    output = tmp_path / "recovery.json"
+    report = collect(api, output, check_recovery=True)
+
+    assert report["collection_status"] == "completed"
+    assert report["scenario"] == "recovery"
+    assert report["max_new_questions"] == 1
+    assert api.ai_calls == 1
+    assert len(api.chat_bodies) == 2
+    assert api.chat_bodies[0] == api.chat_bodies[1]
+    assert len(report["cases"]) == 1
+    case = report["cases"][0]
+    assert case["level"] == "easy"
+    assert case["question"] == SAMPLE_PLAN[0][3]
+    assert case["status"] == "completed"
+    assert case["storage_verified"] is True
+    assert case["replay_verified"] is True
+    assert case["stored_turn_count"] == 1
+    assert case["replay_ai_call_count"] == "server_logs_required"
+    assert [
+        check["step"] for check in report["checks"] if check["step"].startswith("health:")
+    ] == ["health:before", "health:after"]
+    assert report["server_runtime"]["deploy_commit"] == "not_verified"
+    assert json.loads(output.read_text()) == report
+
+
+@pytest.mark.parametrize(
+    ("failure_setting", "reason"),
+    [
+        ("fail_on", "HTTP_ERROR"),
+        ("client_timeout_on", "CLIENT_TIMEOUT"),
+        ("corrupt_history_on", "STORED_TURN_MISMATCH"),
+    ],
+)
+def test_recovery_failure_stops_without_retry(tmp_path, failure_setting, reason):
+    api = DeployedAPI()
+    setattr(api, failure_setting, 1)
+    report = collect(api, tmp_path / "failed-recovery.json", check_recovery=True)
+
+    assert report["collection_status"] == "incomplete"
+    assert report["failure"]["reason"] == reason
+    assert report["cases"][0]["storage_verified"] is False
+    assert api.ai_calls == 1
+    assert len(api.chat_bodies) == 1
+    assert report["logout_status"] == "completed"
+
+
+def test_timeout_and_recovery_are_rejected_before_creating_output_or_request(tmp_path):
+    api = DeployedAPI()
+    output = tmp_path / "not-created" / "conflicting.json"
+    with pytest.raises(ValueError, match="따로 실행"):
+        collect(api, output, expect_timeout=True, check_recovery=True)
+    assert api.requests == []
+    assert not output.parent.exists()
 
 
 def test_timeout_scenario_stops_on_success_without_running_five_more_questions(tmp_path):
@@ -306,12 +367,13 @@ def test_invalid_wait_time_is_rejected_without_creating_output(tmp_path, timeout
     assert not output.exists()
 
 
-def test_existing_output_is_preserved_without_any_http_request(tmp_path):
+@pytest.mark.parametrize("options", [{}, {"expect_timeout": True}, {"check_recovery": True}])
+def test_existing_output_is_preserved_without_any_http_request(tmp_path, options):
     api = DeployedAPI()
     output = tmp_path / "existing.json"
     output.write_text("original evidence")
     with pytest.raises(FileExistsError):
-        collect(api, output)
+        collect(api, output, **options)
     assert api.requests == []
     assert output.read_text() == "original evidence"
 
@@ -372,18 +434,42 @@ def test_cli_requires_live_without_creating_output(tmp_path, monkeypatch, capsys
     assert not output.exists()
 
 
-def test_cli_forwards_timeout_scenario_and_reports_incomplete_safely(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize(
+    ("mode", "expect_timeout", "check_recovery"),
+    [("--expect-timeout", True, False), ("--check-recovery", False, True)],
+)
+def test_cli_forwards_scenario_and_reports_incomplete_safely(
+    tmp_path, monkeypatch, capsys, mode, expect_timeout, check_recovery
+):
     calls = []
 
-    def stopped(base_url, output, *, expect_timeout):
-        calls.append((base_url, output, expect_timeout))
+    def stopped(base_url, output, *, expect_timeout, check_recovery):
+        calls.append((base_url, output, expect_timeout, check_recovery))
         return {"collection_status": "incomplete"}
 
     monkeypatch.setattr(deployment_check, "collect_samples", stopped)
     output = tmp_path / "cli.json"
     result = deployment_check.main(
-        ["--live", "--base-url", BASE_URL, "--output", str(output), "--expect-timeout"]
+        ["--live", "--base-url", BASE_URL, "--output", str(output), mode]
     )
     assert result == 1
-    assert calls == [(BASE_URL, output, True)]
+    assert calls == [(BASE_URL, output, expect_timeout, check_recovery)]
     assert "완료되지" in capsys.readouterr().err
+
+
+def test_cli_rejects_combined_scenarios_without_calling_collector(tmp_path, monkeypatch, capsys):
+    def forbidden(*args, **kwargs):
+        pytest.fail("모드가 함께 지정되면 HTTP 수집을 시작하면 안 됨")
+
+    monkeypatch.setattr(deployment_check, "collect_samples", forbidden)
+    output = tmp_path / "conflicting.json"
+    with pytest.raises(SystemExit) as error:
+        deployment_check.main(
+            [
+                "--live", "--base-url", BASE_URL, "--output", str(output),
+                "--expect-timeout", "--check-recovery",
+            ]
+        )
+    assert error.value.code == 2
+    assert "--check-recovery" in capsys.readouterr().err
+    assert not output.exists()
