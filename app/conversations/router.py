@@ -6,12 +6,13 @@ from fastapi import APIRouter, Query
 
 from app.auth.dependencies import CsrfDep, CurrentUserDep
 from app.conversations.repository import (
-    create_conversation as create_conversation_record,
-)
-from app.conversations.repository import (
+    DEFAULT_CONVERSATION_TITLE,
     get_conversation_turns_for_user,
     list_chats_for_user,
     list_conversations_for_user,
+)
+from app.conversations.repository import (
+    create_conversation as create_conversation_record,
 )
 from app.db.session import SessionDep
 
@@ -27,7 +28,7 @@ def create_conversation(
     conversation = create_conversation_record(
         session=session,
         user_id=user.id,
-        title="새 대화",
+        title=DEFAULT_CONVERSATION_TITLE,
     )
 
     return {
