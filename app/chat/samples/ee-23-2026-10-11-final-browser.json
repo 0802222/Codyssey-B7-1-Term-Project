@@ -1,0 +1,17 @@
+{
+  "deployment_reference": "03f84e6aa550c2aecbe25efa1bd87949d3ce31d6",
+  "source": "Chrome browser UI on public deployment",
+  "observed_at": "2026-10-10T15:19:07.985Z",
+  "new_ai_questions": 0,
+  "synthetic_account_created": true,
+  "credentials_saved": false,
+  "signup_redirect": "/login?joined=1",
+  "login_redirect": "/chat",
+  "authenticated_history": "empty state confirmed: 아직 대화가 없어요",
+  "nonempty_history_and_title_verified": false,
+  "physical_phone_verified": false,
+  "screenshot": "ee-23-2026-10-11-final-history.png",
+  "logout_confirmed": true,
+  "logout_redirect": "/",
+  "logout_observed_at": "2026-10-10T15:21:35.155Z"
+}
