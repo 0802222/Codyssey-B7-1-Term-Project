@@ -59,9 +59,23 @@ def test_clear_new_questions_get_an_explanation_and_missing_context_is_not_inven
     prompt = build_system_prompt(level)
 
     assert "새 대화라도 질문이 명확하면 바로 설명한다" in prompt
-    assert "이전 내용을 가리키는데 문맥이 없거나 질문이 모호하면" in prompt
+    assert "현재 질문과 전달받은 문맥을 함께 확인해도 설명 대상이 불분명할 때만" in prompt
     assert "확인 질문 하나" in prompt
     assert "전달받지 않은 예전 내용을 아는 척하지 않는다" in prompt
+
+
+@pytest.mark.parametrize("level", ["easy", "beginner", "advanced"])
+def test_short_repeated_questions_are_explained_at_the_current_level(level):
+    # 지침 포함 여부만 확인하며 실제 AI의 해석은 실제 답변으로 별도 검증한다.
+    prompt = build_system_prompt(level)
+
+    assert "이미 설명한 주제를 다시 묻거나 설명 수준을 바꿔 묻더라도" in prompt
+    assert "현재 설명 수준으로 다시 설명한다" in prompt
+    assert "이전 답변의 난이도·말투나 이전 턴의 “더 쉽게” 요청보다" in prompt
+    assert "서버가 지정한 현재 설명 수준을 우선한다" in prompt
+    assert "질문이 짧거나 이전 질문과 같다는 이유만으로 모호하다고 판단하지 않는다" in prompt
+    assert "현재 질문과 전달받은 문맥에서 설명 대상이 확인되면 바로 설명한다" in prompt
+    assert "전달받은 문맥이 있는데 이전 대화 내용을 전달받지 못했다고 말하지 않는다" in prompt
 
 
 @pytest.mark.parametrize("level", ["easy", "beginner", "advanced"])
@@ -82,6 +96,14 @@ def test_beginner_explains_topic_specific_terms_and_flow_beyond_an_analogy():
     assert "뜻을 풀고" in guidance
     assert "작은 예시로 작동 흐름을 설명" in guidance
     assert "비유만 반복하지 않는다" in guidance
+
+
+def test_advanced_explains_mechanisms_now_instead_of_offering_them_later():
+    guidance = LEVEL_GUIDANCE["advanced"]
+
+    assert "이전 비유를 요약하거나" in guidance
+    assert "더 깊은 설명을 나중에 제공하겠다는 제안으로 대신하지 않고" in guidance
+    assert "이번 답변에서 원리와 전제·한계를 설명한다" in guidance
 
 
 @pytest.mark.parametrize("level", ["easy", "beginner", "advanced"])

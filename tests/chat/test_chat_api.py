@@ -285,6 +285,36 @@ def test_level_switch_uses_the_current_request(chat_client, provider, payload):
         assert f"{label}:" in provider.calls[-1]["system"]
 
 
+def test_repeated_short_question_keeps_context_when_switching_to_advanced(
+    chat_client, provider, payload
+):
+    # 모의 답변 품질이 아니라, #54의 3턴에 실제로 전달되는 문맥과 수준을 확인한다.
+    turns = [
+        ("easy", "도커?", "첫 요청의 모의 답변"),
+        ("easy", "더 쉽게", "두 번째 요청의 모의 답변"),
+        ("advanced", "도커?", "세 번째 요청의 모의 답변"),
+    ]
+    for level, question, answer in turns:
+        provider.text = answer
+        payload.update(level=level, question=question, client_request_id=str(uuid4()))
+        response = chat_client.post("/api/chat", json=payload)
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "completed"
+        assert f"현재 설명 수준은 {level}이다" in provider.calls[-1]["system"]
+
+    first_pair = [("user", "도커?"), ("assistant", turns[0][2])]
+    second_pair = [("user", "더 쉽게"), ("assistant", turns[1][2])]
+    assert len(provider.calls) == 3
+    assert [len(call["messages"]) for call in provider.calls] == [1, 3, 5]
+    assert provider.calls[0]["messages"] == [("user", "도커?")]
+    assert provider.calls[1]["messages"] == first_pair + [("user", "더 쉽게")]
+    assert provider.calls[2]["messages"] == first_pair + second_pair + [("user", "도커?")]
+    assert "전공자:" in provider.calls[2]["system"]
+    assert "아주 쉽게:" not in provider.calls[2]["system"]
+    assert "현재 설명 수준으로 다시 설명한다" in provider.calls[2]["system"]
+
+
 def test_context_contains_only_completed_turns_in_this_conversation(
     chat_client, provider, payload, seed_turn
 ):

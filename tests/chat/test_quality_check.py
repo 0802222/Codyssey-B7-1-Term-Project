@@ -6,11 +6,13 @@ import logging
 
 import pytest
 from pydantic import SecretStr
+from sqlmodel import select
 
 from app.chat import quality_check
 from app.chat.fake_provider import FakeAIProvider
 from app.chat.provider import AIResult, AITimeoutError
 from app.core.config import Settings
+from app.db.models import ChatTurn
 
 
 class SpyProvider:
@@ -69,6 +71,8 @@ def test_plan_uses_three_independent_conversations_then_two_followups(quality_se
     report = asyncio.run(quality_check.collect_samples(quality_settings, provider, output))
 
     assert report["collection_status"] == "completed"
+    assert report["scenario"] == "levels-and-followups"
+    assert report["new_question_limit"] == 5
     assert len(provider.calls) == 5
     assert [case["conversation_alias"] for case in report["cases"]] == ["A", "B", "C", "C", "C"]
     assert [case["level"] for case in report["cases"]] == [
@@ -101,11 +105,77 @@ def test_plan_uses_three_independent_conversations_then_two_followups(quality_se
     assert json.loads(output.read_text(encoding="utf-8")) == report
 
 
-def test_report_records_actual_input_models_usage_and_safe_metadata(quality_settings, tmp_path):
+def test_repeat_question_uses_same_conversation_and_current_level(
+    quality_settings, tmp_path, monkeypatch
+):
+    provider = SpyProvider()
+    output = tmp_path / "repeat-question.json"
+    stored_history = []
+    answer_question = quality_check.answer_question
+
+    async def capture_completed_turns(request, **kwargs):
+        response = await answer_question(request, **kwargs)
+        turns = kwargs["session"].exec(select(ChatTurn).order_by(ChatTurn.id)).all()
+        stored_history.append(
+            [
+                {
+                    "conversation_id": turn.conversation_id,
+                    "level": turn.level,
+                    "question": turn.question,
+                    "answer": turn.answer,
+                    "status": turn.status,
+                }
+                for turn in turns
+            ]
+        )
+        return response
+
+    monkeypatch.setattr(quality_check, "answer_question", capture_completed_turns)
+    report = asyncio.run(
+        quality_check.collect_samples(quality_settings, provider, output, repeat_question=True)
+    )
+
+    assert report["collection_status"] == "completed"
+    assert report["scenario"] == "repeat-question"
+    assert report["new_question_limit"] == 3
+    assert len(provider.calls) == 3
+    assert [case["conversation_alias"] for case in report["cases"]] == ["R", "R", "R"]
+    assert [case["level"] for case in report["cases"]] == ["easy", "easy", "advanced"]
+    assert [case["question"] for case in report["cases"]] == ["도커?", "더 쉽게", "도커?"]
+    assert [len(call["messages"]) for call in provider.calls] == [1, 3, 5]
+    assert "현재 설명 수준은 easy이다" in provider.calls[0]["system"]
+    assert "현재 설명 수준은 easy이다" in provider.calls[1]["system"]
+    assert "현재 설명 수준은 advanced이다" in provider.calls[2]["system"]
+    assert len({turn["conversation_id"] for turn in stored_history[-1]}) == 1
+    assert [len(turns) for turns in stored_history] == [1, 2, 3]
+    assert all(turn["status"] == "completed" for turn in stored_history[-1])
+    # 마지막 질문에 전달한 문맥은 앞서 DB에 완료 저장된 질문·답변 쌍이다.
+    expected_messages = []
+    for turn in stored_history[1]:
+        expected_messages.extend(
+            [
+                {"role": "user", "content": turn["question"]},
+                {"role": "assistant", "content": turn["answer"]},
+            ]
+        )
+    expected_messages.append({"role": "user", "content": "도커?"})
+    assert report["cases"][-1]["sent_messages"] == expected_messages
+    assert provider.calls[-1]["messages"] == expected_messages
+    assert json.loads(output.read_text(encoding="utf-8")) == report
+
+
+@pytest.mark.parametrize("repeat_question", [False, True])
+def test_report_records_actual_input_models_usage_and_safe_metadata(
+    quality_settings, tmp_path, repeat_question
+):
     provider = SpyProvider()
     output = tmp_path / "samples.json"
 
-    report = asyncio.run(quality_check.collect_samples(quality_settings, provider, output))
+    report = asyncio.run(
+        quality_check.collect_samples(
+            quality_settings, provider, output, repeat_question=repeat_question
+        )
+    )
 
     assert report["requested_model"] == "requested-model"
     assert report["gateway_hostname"] == "gateway.example"
@@ -147,36 +217,53 @@ def test_each_completed_case_is_checkpointed_before_the_next_call(quality_settin
         (RuntimeError("PRIVATE-PROVIDER-ERROR-MARKER"), "INTERNAL_ERROR", "RuntimeError"),
     ],
 )
+@pytest.mark.parametrize(("repeat_question", "fail_on"), [(False, 3), (True, 2)])
 def test_failure_stops_without_retry_and_preserves_completed_samples(
-    quality_settings, tmp_path, caplog, error, code, error_type
+    quality_settings, tmp_path, caplog, error, code, error_type, repeat_question, fail_on
 ):
     provider = SpyProvider()
-    provider.fail_on = 3
+    provider.fail_on = fail_on
     provider.error = error
     output = tmp_path / "samples.json"
 
     with caplog.at_level(logging.INFO, logger="easyexplain"):
-        report = asyncio.run(quality_check.collect_samples(quality_settings, provider, output))
+        report = asyncio.run(
+            quality_check.collect_samples(
+                quality_settings, provider, output, repeat_question=repeat_question
+            )
+        )
 
     assert report["collection_status"] == "incomplete"
-    assert len(provider.calls) == 3
-    assert [sample["status"] for sample in report["cases"]] == ["completed", "completed", "failed"]
-    assert [sample["answer"] for sample in report["cases"]] == ["수집 답변 1", "수집 답변 2", None]
+    assert len(provider.calls) == fail_on
+    assert [sample["status"] for sample in report["cases"]] == ["completed"] * (fail_on - 1) + [
+        "failed"
+    ]
+    assert [sample["answer"] for sample in report["cases"]] == [
+        f"수집 답변 {index}" for index in range(1, fail_on)
+    ] + [None]
     assert report["cases"][-1]["error"] == {"code": code, "type": error_type}
     assert json.loads(output.read_text(encoding="utf-8")) == report
     assert "PRIVATE-PROVIDER-ERROR-MARKER" not in output.read_text(encoding="utf-8") + caplog.text
     assert "API가 무엇인지 설명해줘." not in caplog.text
+    assert "도커?" not in caplog.text
     assert "수집 답변" not in caplog.text
 
 
-def test_existing_output_is_preserved_without_calling_ai(quality_settings, tmp_path):
+@pytest.mark.parametrize("repeat_question", [False, True])
+def test_existing_output_is_preserved_without_calling_ai(
+    quality_settings, tmp_path, repeat_question
+):
     output = tmp_path / "existing.json"
     original = '{"keep": true}\n'
     output.write_text(original, encoding="utf-8")
     provider = SpyProvider()
 
     with pytest.raises(FileExistsError):
-        asyncio.run(quality_check.collect_samples(quality_settings, provider, output))
+        asyncio.run(
+            quality_check.collect_samples(
+                quality_settings, provider, output, repeat_question=repeat_question
+            )
+        )
 
     assert provider.calls == []
     assert output.read_text(encoding="utf-8") == original
@@ -206,21 +293,20 @@ def test_collection_respects_configured_zero_context(quality_settings, tmp_path)
     assert [len(call["messages"]) for call in provider.calls] == [1, 1, 1, 1, 1]
 
 
-def test_cli_without_live_does_not_read_settings_or_call_provider(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize("repeat_question", [False, True])
+def test_cli_without_live_does_not_read_settings_or_call_provider(
+    tmp_path, monkeypatch, capsys, repeat_question
+):
     def forbidden_settings(*args, **kwargs):
         raise AssertionError("Settings를 읽으면 안 된다")
 
     monkeypatch.setattr(quality_check, "Settings", forbidden_settings)
     output = tmp_path / "guarded.json"
 
-    result = quality_check.main(
-        [
-            "--env-file",
-            str(tmp_path / "unread.env"),
-            "--output",
-            str(output),
-        ]
-    )
+    args = ["--env-file", str(tmp_path / "unread.env"), "--output", str(output)]
+    if repeat_question:
+        args.append("--repeat-question")
+    result = quality_check.main(args)
 
     assert result == 1
     assert "--live" in capsys.readouterr().err
@@ -243,7 +329,10 @@ def cli_env(tmp_path, monkeypatch):
     return env_file
 
 
-def test_cli_forces_anthropic_selection_and_writes_samples(cli_env, tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize(("repeat_question", "count"), [(False, 5), (True, 3)])
+def test_cli_forces_anthropic_selection_and_writes_samples(
+    cli_env, tmp_path, monkeypatch, capsys, repeat_question, count
+):
     provider = SpyProvider()
     selected = []
 
@@ -254,21 +343,17 @@ def test_cli_forces_anthropic_selection_and_writes_samples(cli_env, tmp_path, mo
     monkeypatch.setattr(quality_check, "get_ai_provider", select)
     output = tmp_path / "live-simulated.json"
 
-    result = quality_check.main(
-        [
-            "--live",
-            "--env-file",
-            str(cli_env),
-            "--output",
-            str(output),
-        ]
-    )
+    args = ["--live", "--env-file", str(cli_env), "--output", str(output)]
+    if repeat_question:
+        args.append("--repeat-question")
+    result = quality_check.main(args)
 
     assert result == 0
     assert selected == ["anthropic"]
-    assert len(provider.calls) == 5
+    assert len(provider.calls) == count
     assert json.loads(output.read_text(encoding="utf-8"))["provider"] == "anthropic"
     console = capsys.readouterr()
+    assert f"샘플 {count}개" in console.out
     assert "별도로 검토" in console.out
     assert "UNUSED-CLI-TEST-PLACEHOLDER" not in console.out + console.err
     assert str(cli_env) not in output.read_text(encoding="utf-8")

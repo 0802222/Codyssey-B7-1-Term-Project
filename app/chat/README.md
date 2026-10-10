@@ -54,5 +54,6 @@ app.dependency_overrides[get_ai_provider] = lambda: FakeAIProvider(mode=FakeMode
 
 실제 답변의 수준 차이·후속 문맥·정의와 예시를 검토한 기록은 [EE-19](EE-19.md)에 모았습니다.
 수집 도구는 수동 실행할 때만 실제 AI를 호출하며, 자동 테스트와 품질 검토를 구분합니다.
+같은 질문을 수준만 바꿔 다시 묻는 사례의 보완과 검증은 [#54 안내](ISSUE-54.md)를 참고합니다.
 
 검증 명령: `uv run pytest tests/chat`, `uv run pytest`, `uv run ruff check .`.
