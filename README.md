@@ -7,6 +7,20 @@ Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝�
 
 > **현재 상태:** 필수 기능 구현과 외부 배포 완료. DB 확인 SQL(EE-20)과 제출 점검(EE-24)이 남았습니다. 과제 요구사항별 근거와 진행 상태는 [6장](#6-과제-요구사항과-제출-점검).
 
+### 🧭 평가자 길 안내
+
+| 확인할 내용 | 바로 가기 |
+|---|---|
+| 서비스 URL | https://codyssey-b7-1-term-project-production.up.railway.app |
+| 과제 요구사항별 근거와 상태 | [6장](#6-과제-요구사항과-제출-점검) |
+| 시스템 구조 (아키텍처·컴포넌트) | [1장 구조도](#1-과제-소개) · [2장 폴더 구조](#2-폴더-구조) |
+| API 명세 (요청·응답 예시, 오류 코드) | [docs/spec/api.md](docs/spec/api.md) |
+| DB 구조 (테이블·필드) | [docs/spec/db.md](docs/spec/db.md) |
+| DB 확인 방법 | 내 기록 API·화면(`/history`) · [확인용 SQL](scripts/check_logs.sql) · [7장](#7-db-확인백업복구) |
+| 실행·배포 방법, 환경 변수 | [5장](#5-실행-방법) · [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차) |
+| 역할과 개인별 작업 | [3장 팀·기능 표](#3-주요-기능과-역할-분담) (담당·PR 칸) |
+| 겪은 문제와 해결 | [트러블슈팅 기록](docs/team/4-troubleshooting.md) |
+
 <details>
 <summary><b>👥 팀원용 문서 안내 — 언제 무엇을 읽나요?</b></summary>
 
@@ -16,7 +30,10 @@ Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝�
 | ② 착수할 때 + 매번 | [CONTRIBUTING.md](CONTRIBUTING.md) | 처음 할 일·뼈대 둘러보기, **매번 하는 루틴 11단계**, 역할별 안내 |
 | 매번 | [작업 보드](https://github.com/orgs/easy-explain/projects/1) | 24개 작업 이슈와 진행 상황 (내 작업: `assignee:@me`) |
 | 작업 중 수시로 | [docs/spec/api.md](docs/spec/api.md) · [docs/spec/db.md](docs/spec/db.md) | API 명세, DB 구조 (바꾸려면 PR 먼저) |
-| ③ 평가 전 | [docs/team/2-evaluation-example.md](docs/team/2-evaluation-example.md) | 예상 진행 대본, 내 코드 설명 준비 |
+| ③ 평가 전 | [docs/team/2-evaluation-example.md](docs/team/2-evaluation-example.md) | 예상 진행 대본, 공통 질문 |
+| ③ 평가 전 | [docs/team/eval/](docs/team/eval/) | 역할별 예상 질문·읽을 코드·실습 (**자기 파일만** 고침) |
+| 배포할 때 | [docs/team/3-deploy-options.md](docs/team/3-deploy-options.md) | 배포 방식 결정, Railway 설정 절차 |
+| 문제가 생겼을 때 | [docs/team/4-troubleshooting.md](docs/team/4-troubleshooting.md) | 겪은 문제와 해결 기록 |
 | 읽지 않아도 됨 | `AGENTS.md`, `CLAUDE.md` | AI 코딩 도구가 읽는 규칙 (CONTRIBUTING 요약본) |
 
 </details>
@@ -45,15 +62,15 @@ AI 를 직접 만드는 게 아니라, 이미 있는 AI(Claude)를 **우리 서�
 
 ### 반드시 지켜야 할 요구사항
 
-| # | 요구사항 | 쉽게 말하면 |
-|---|---|---|
-| ① | 웹 UI | 질문을 입력하고 같은 화면에서 답을 봄 |
-| ② | 인증 | 회원가입·로그인, **로그인한 사람만** 챗봇 사용 |
-| ③ | AI 처리 | AI 호출은 **서버에서만**, **이전 대화를 기억** |
-| ④ | 대화 기록 | 질문·답변·사용자·시각을 DB 에 쌓고 **사용자별로 조회** |
-| ⑤ | 안정성 | 서버 로그, AI 실패·지연에도 **서버가 안 죽고 안내**, 입력 검증 |
-| ⑥ | 배포 | 평가 때 **외부에서 접속 가능한 URL** |
-| ⑦ | 협업 | 브랜치·PR 머지, **1인당 의미 있는 커밋 10개 이상** |
+| # | 요구사항 | 쉽게 말하면 | 구현 위치 | 확인 테스트 |
+|---|---|---|---|---|
+| ① | 웹 UI | 질문을 입력하고 같은 화면에서 답을 봄 | [chat.html](app/templates/chat.html) · [chat.js](app/static/js/chat.js) | [test_chat_page.py](tests/web/test_chat_page.py) · [test_chat_js_behavior.py](tests/web/test_chat_js_behavior.py) |
+| ② | 인증 | 회원가입·로그인, **로그인한 사람만** 챗봇 사용 | [app/auth/](app/auth/) | [tests/auth/](tests/auth/) · [통합: 실패 경로](tests/integration/test_failure_paths.py) |
+| ③ | AI 처리 | AI 호출은 **서버에서만**, **이전 대화를 기억** | [service.py](app/chat/service.py) · [context.py](app/chat/context.py) | [test_chat_api.py](tests/chat/test_chat_api.py) · [test_context.py](tests/chat/test_context.py) |
+| ④ | 대화 기록 | 질문·답변·사용자·시각을 DB 에 쌓고 **사용자별로 조회** | [models.py](app/db/models.py) · [app/conversations/](app/conversations/) | [tests/conversations/](tests/conversations/) · [통합: 전체 흐름](tests/integration/test_user_journey.py) |
+| ⑤ | 안정성 | 서버 로그, AI 실패·지연에도 **서버가 안 죽고 안내**, 입력 검증 | [errors.py](app/core/errors.py) · [logging.py](app/core/logging.py) · [service.py](app/chat/service.py) | [통합: 실패 경로](tests/integration/test_failure_paths.py) · [통합: 요청 로그](tests/integration/test_request_logs.py) |
+| ⑥ | 배포 | 평가 때 **외부에서 접속 가능한 URL** | Railway + Volume ([5장](#5-실행-방법)) | [배포 기록](docs/team/3-deploy-options.md#8-railway-설정-절차) · [배포 AI 검증](app/chat/EE-23.md) |
+| ⑦ | 협업 | 브랜치·PR 머지, **1인당 의미 있는 커밋 10개 이상** | [CONTRIBUTING.md](CONTRIBUTING.md) · [ci.yml](.github/workflows/ci.yml) | PR 목록 · `git shortlog -sne --no-merges origin/main` |
 
 과제 원문 항목마다 어디서 만족하는지는 [6장 과제 요구사항과 제출 점검](#6-과제-요구사항과-제출-점검)에 있습니다.
 
