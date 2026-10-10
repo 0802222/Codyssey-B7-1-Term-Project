@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="/static/css/style.css">
   {# 로그인했으면 헤더의 로그아웃 버튼을 움직이는 스크립트. type="module" 은 defer 처럼 HTML 을 다 읽은 뒤 실행된다 #}
   {% if logged_in %}<script type="module" src="/static/js/logout.js"></script>{% endif %}
+  {# 본문으로 건너뛰기 링크가 주소(#main)·방문 기록을 바꾸지 않고 포커스만 본문으로 옮기게 한다 (모든 페이지) #}
+  <script type="module" src="/static/js/skip-link.js"></script>
   {# 페이지별 스크립트. defer(또는 type="module")로 HTML 을 다 읽은 뒤 실행되게 한다 #}
   {% block scripts %}{% endblock %}
 </head>
