@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import stat
 from uuid import uuid4
 
@@ -189,7 +190,9 @@ def test_credentials_cookie_debug_fields_and_exception_text_are_not_exported(tmp
         assert secret not in text
     assert api.credentials["email"].startswith("ee23-")
     assert api.credentials["email"].endswith("@example.com")
-    assert stat.S_IMODE(output.stat().st_mode) == 0o600
+    # Windows의 st_mode로는 POSIX 권한이나 NTFS ACL 보호를 검증할 수 없다.
+    if os.name == "posix":
+        assert stat.S_IMODE(output.stat().st_mode) == 0o600
     assert logging.root.manager.disable == previous_disable
 
 
