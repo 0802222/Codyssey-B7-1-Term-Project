@@ -1,0 +1,46 @@
+{
+  "deployment_reference": "03f84e6aa550c2aecbe25efa1bd87949d3ce31d6",
+  "deployment_reference_source": "team lead message and GitHub deployment 6982619783; runtime commit is not exposed by public HTTP",
+  "source": "remote_http",
+  "new_ai_questions": 0,
+  "authenticated_history_verified": false,
+  "physical_phone_verified": false,
+  "observations": [
+    {
+      "observed_at": "2026-10-10T15:16:16.281503+00:00",
+      "path": "/health",
+      "http_status": 200,
+      "x_request_id": "f5c675e1524b4cdb82a1dde32da22d3d",
+      "body": {
+        "status": "ok",
+        "db": "ok"
+      }
+    },
+    {
+      "observed_at": "2026-10-10T15:16:16.401766+00:00",
+      "path": "/login",
+      "http_status": 200,
+      "x_request_id": "e8225d9cd1fb48c0b27ef3f886c10224"
+    },
+    {
+      "observed_at": "2026-10-10T15:16:16.528986+00:00",
+      "path": "/chat",
+      "http_status": 303,
+      "x_request_id": "dcbca65caf7f4590a18d68f97fb2f006",
+      "location": "/login"
+    },
+    {
+      "observed_at": "2026-10-10T15:16:16.641409+00:00",
+      "path": "/history",
+      "http_status": 303,
+      "x_request_id": "ed0463a5cf334af892d124b358b8c04d",
+      "location": "/login"
+    },
+    {
+      "observed_at": "2026-10-10T15:16:16.744160+00:00",
+      "path": "/guide",
+      "http_status": 404,
+      "x_request_id": "a33317bf751c477787c7af9abe18a3ca"
+    }
+  ]
+}
