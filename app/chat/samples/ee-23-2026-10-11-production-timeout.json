@@ -1,0 +1,121 @@
+{
+  "source": "remote_http",
+  "scenario": "timeout",
+  "max_new_questions": 1,
+  "base_url": "https://codyssey-b7-1-term-project-production.up.railway.app",
+  "collection_status": "completed",
+  "quality_review": "not_performed",
+  "started_at": "2026-10-10T15:46:38.446882+00:00",
+  "finished_at": "2026-10-10T15:46:42.354357+00:00",
+  "http_timeout_seconds": 60,
+  "server_runtime": {
+    "provider": "not_verified",
+    "model": "not_exposed",
+    "deploy_commit": "not_verified",
+    "server_logs": "not_verified",
+    "gateway_quota": "not_verified"
+  },
+  "checks": [
+    {
+      "step": "health:before",
+      "started_at": "2026-10-10T15:46:38.478499+00:00",
+      "http_status": 200,
+      "request_id": "c5c0b110c1ab4832b1779bbb024660c7",
+      "elapsed_seconds": 0.303,
+      "body_request_id": null
+    },
+    {
+      "step": "signup",
+      "started_at": "2026-10-10T15:46:38.781287+00:00",
+      "http_status": 201,
+      "request_id": "037aa0c17a5b4f08b51782abed4be342",
+      "elapsed_seconds": 0.198,
+      "body_request_id": null
+    },
+    {
+      "step": "login",
+      "started_at": "2026-10-10T15:46:38.979363+00:00",
+      "http_status": 200,
+      "request_id": "1fcf8a99d708418ab7dab2142ee52ba0",
+      "elapsed_seconds": 0.257,
+      "body_request_id": null
+    },
+    {
+      "step": "conversation:A",
+      "started_at": "2026-10-10T15:46:39.236685+00:00",
+      "http_status": 201,
+      "request_id": "a042f0b0734944e1be255781183c7917",
+      "elapsed_seconds": 0.164,
+      "body_request_id": null
+    },
+    {
+      "step": "chat:A-easy",
+      "started_at": "2026-10-10T15:46:39.403816+00:00",
+      "http_status": 504,
+      "request_id": "f5a25126364a4a9a877b905b429fd279",
+      "elapsed_seconds": 2.372,
+      "body_request_id": "f5a25126364a4a9a877b905b429fd279",
+      "error_code": "AI_TIMEOUT"
+    },
+    {
+      "step": "history:A-easy",
+      "started_at": "2026-10-10T15:46:41.776400+00:00",
+      "http_status": 200,
+      "request_id": "9a1146cc38324dea9bfcbb84d59cf9d7",
+      "elapsed_seconds": 0.119,
+      "body_request_id": null
+    },
+    {
+      "step": "replay:A-easy",
+      "started_at": "2026-10-10T15:46:41.895852+00:00",
+      "http_status": 504,
+      "request_id": "0fa810d8b08c4625b7d7ec72b9b0ab54",
+      "elapsed_seconds": 0.115,
+      "body_request_id": "0fa810d8b08c4625b7d7ec72b9b0ab54",
+      "error_code": "AI_TIMEOUT"
+    },
+    {
+      "step": "history:A-easy",
+      "started_at": "2026-10-10T15:46:42.011128+00:00",
+      "http_status": 200,
+      "request_id": "a92f93d219094e649c0aa998471718ce",
+      "elapsed_seconds": 0.121,
+      "body_request_id": null
+    },
+    {
+      "step": "health:after",
+      "started_at": "2026-10-10T15:46:42.132924+00:00",
+      "http_status": 200,
+      "request_id": "2e139a0c4b38413ca39cdc6746baaf49",
+      "elapsed_seconds": 0.104,
+      "body_request_id": null
+    },
+    {
+      "step": "logout",
+      "started_at": "2026-10-10T15:46:42.236898+00:00",
+      "http_status": 204,
+      "request_id": "bbb54cdb2edb407785170779b11f8236",
+      "elapsed_seconds": 0.117,
+      "body_request_id": null
+    }
+  ],
+  "cases": [
+    {
+      "id": "A-easy",
+      "conversation_alias": "A",
+      "conversation_id": "8ec8e339-6221-47e3-a67c-6b8ce3b866fa",
+      "level": "easy",
+      "question": "API가 무엇인지 설명해줘.",
+      "answer": null,
+      "status": "failed",
+      "storage_verified": true,
+      "error_code": "AI_TIMEOUT",
+      "request_id": "f5a25126364a4a9a877b905b429fd279",
+      "turn_id": 18,
+      "stored_turn_count": 1,
+      "replay_verified": true,
+      "replay_ai_call_count": "server_logs_required"
+    }
+  ],
+  "logout_status": "completed"
+}
