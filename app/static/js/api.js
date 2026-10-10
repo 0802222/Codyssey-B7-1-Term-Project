@@ -1,5 +1,5 @@
 /*
- * 로그인 뒤 서버 API 를 부를 때 같이 쓰는 함수 — 채팅(chat.js)과 로그아웃(logout.js)이 import 한다.
+ * 로그인 뒤 서버 API 를 부를 때 같이 쓰는 함수 — 채팅(chat.js)·로그아웃(logout.js)·내 기록(history.js)이 import 한다.
  *
  * 상태를 바꾸는 요청(POST)에는 X-CSRF-Token 헤더가 필요하다 (API 명세 공통 규칙).
  * 로그인 화면(auth.js)이 로그인 응답의 csrf_token 을 이 탭의 sessionStorage 에 넣어 두고, 여기서 꺼낸다.
@@ -85,6 +85,35 @@ export async function apiPost(url, body, { redirectOn401 = true } = {}) {
   }
   return result;
 }
+
+// 로그인 뒤의 GET 요청 (내 기록 조회 등). 읽기만 하는 요청이라 CSRF 토큰은 붙이지 않는다.
+// 결과는 apiPost 와 같은 { ok, status, offline, data }. 401 이면 로그인 화면으로 이동하고 결과를 돌려주지 않는다.
+// cache: "no-store" — 브라우저에 저장해 둔 예전 응답이 아니라 늘 서버의 지금 기록을 받는다
+export async function apiGet(url) {
+  let response;
+  try {
+    response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+  } catch {
+    return { ok: false, status: 0, offline: true, data: null }; // 인터넷 끊김, 서버 꺼짐
+  }
+  if (response.status === 401) {
+    goToLogin();
+    return new Promise(() => {}); // apiPost 와 같이, 다음 페이지를 불러오는 동안 기다리는 모습 그대로 둔다
+  }
+  return { ok: response.ok, status: response.status, offline: false, data: await readJson(response) };
+}
+
+// 대화 id 모양(UUID): 16진수 8-4-4-4-12 자리. 주소창에서 읽은 대화 id 를 API 주소에 넣기 전에 이 모양인지 본다 —
+// 그대로 넣으면 "../me/chats" 같은 값이 다른 API 를 부를 수 있다 (내 기록 상세, 채팅의 이어서 질문)
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(value) {
+  return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
+// 대화 id 모양이 틀려 서버에 묻지 않았을 때의 안내 — 없는 대화·남의 대화에 서버가 주는
+// 404 CONVERSATION_NOT_FOUND 문구와 같게 해서, 어떤 경우든 사용자에게는 같은 말로 보인다
+export const CONVERSATION_NOT_FOUND_MESSAGE = "대화를 찾을 수 없어요.";
 
 // POST 를 한 번 보내고 결과를 { ok, status, offline, data } 로 돌려준다 (apiPost 가 부른다)
 async function sendPost(url, body) {

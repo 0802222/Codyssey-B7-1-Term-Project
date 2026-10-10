@@ -5,7 +5,7 @@
  * 색을 바꾸려면 변수만 고치면 된다. (글자 대비는 모두 4.5:1 이상, 테두리는 3:1 이상으로 계산해 정했다)
  *
  * 1. 디자인 값  2. 기본  3. 레이아웃  4. 헤더·메뉴  5. 푸터  6. 버튼  7. 소개 페이지
- * 8. 가입·로그인  9. 채팅  10. 모바일
+ * 8. 가입·로그인  9. 채팅  10. 내 기록  11. 모바일
  */
 
 /* ===== 1. 디자인 값 ===== */
@@ -63,6 +63,8 @@ body {
   font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.6;
+  word-break: keep-all; /* 한국어는 띄어쓰기에서만 줄을 바꾼다 — "결과를" 이 "결/과를" 로 갈라지지 않게 */
+  overflow-wrap: break-word; /* 띄어쓰기 없이 긴 글(주소 등)은 넘치지 않게 그 자리에서 바꾼다 */
 }
 
 main {
@@ -116,13 +118,14 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 8px 12px;
-  padding-block: 14px;
+  padding-block: 12px; /* 메뉴가 44px 이라 위아래를 줄여 헤더 높이는 그대로 */
 }
 
 .logo {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px; /* 손가락으로 누르기 편한 크기 */
   font-family: var(--font-display);
   font-size: 1.25rem;
   text-decoration: none;
@@ -140,9 +143,13 @@ img {
   gap: 4px;
 }
 
-/* 메뉴 링크와 로그아웃 버튼(로그인했을 때 "로그인" 자리)은 같은 모양이다 */
+/* 메뉴 링크와 로그아웃 버튼(로그인했을 때 "로그인" 자리)은 같은 모양이다.
+   높이 44px — 다른 버튼과 같은 손가락으로 누르기 편한 크기 */
 .site-nav a,
 .site-nav button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: 8px 14px;
   border-radius: var(--radius-pill);
   color: var(--text-muted);
@@ -495,7 +502,7 @@ img {
 
 .auth-switch a {
   display: inline-block;
-  padding-block: 10px; /* 손가락으로 누르기 편하게 위아래를 넓힌다 */
+  padding: 11px 4px; /* 손가락으로 누르기 편하게 44×44px 이상으로 넓힌다 */
   color: var(--accent-text);
   font-weight: 500;
 }
@@ -727,6 +734,12 @@ img {
   }
 }
 
+/* 이어서 질문: 지난 대화를 불러오는 동안 상태 칸에 넣는 안내 */
+.chat-opening {
+  color: var(--text-muted);
+  text-align: center;
+}
+
 /* 채팅의 오류 칸은 위아래 간격을 .chat-panel 의 gap 으로 맞춘다.
    요청이 실패했을 때는 오른쪽에 "다시 보내기" 버튼이 붙고, 좁은 화면에서는 버튼이 아래 줄로 내려간다 (시안 F) */
 .chat .form-error {
@@ -838,7 +851,249 @@ img {
   font-size: 0.75rem;
 }
 
-/* ===== 10. 모바일 (화면 폭 520px 이하) ===== */
+/* ===== 10. 내 기록 (/history) ===== */
+/* 채팅과 같은 폭(760px)으로 가운데에 둔다. 목록은 둥근 카드, 상세는 채팅과 같은 말풍선 */
+.history {
+  padding-block: 24px 40px;
+}
+
+.history-panel {
+  max-width: 760px;
+}
+
+.history-heading {
+  width: fit-content; /* 포커스 테두리가 줄 전체가 아니라 글자 둘레에 (아래 :focus-visible) */
+  max-width: 100%;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 400; /* Jua 에는 굵은 글씨체가 없다 */
+}
+
+/* 목록 ↔ 상세를 오갈 때 포커스가 가는 제목(h1·h2). 2장의 공통 :focus-visible 테두리라 키보드로 왔을 때만
+   보이고(마우스로 누르면 브라우저가 그리지 않는다), 글자 둘레에 조금 띄워 둥글게 그린다 */
+.history-heading:focus-visible,
+.detail-title:focus-visible {
+  outline-offset: 4px;
+}
+
+.history-lead {
+  margin-bottom: 20px;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+/* 불러오는 중 안내. 칸은 늘 있고(스크린리더가 바뀐 글을 읽게), 비어 있을 때는 자리를 차지하지 않는다 */
+.history-status {
+  margin-bottom: 16px;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.history-status:empty {
+  margin-bottom: 0;
+}
+
+/* 오류 칸: 서버 문구 + 아래 줄 안내 + 오른쪽 "다시 시도" (채팅의 오류 칸과 같은 모양, 좁으면 버튼이 아래 줄로) */
+.history-error {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.history-error-body {
+  flex: 1 1 170px;
+  word-break: keep-all;
+}
+
+.history-error-note:empty {
+  display: none;
+}
+
+/* 대화가 하나도 없을 때 */
+.history-empty {
+  padding: 32px 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.history-empty img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 8px;
+}
+
+.history-empty-title {
+  margin-bottom: 4px;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.history-empty .btn {
+  margin-top: 16px;
+}
+
+/* 대화 목록: 카드 하나가 통째로 상세로 가는 링크 */
+.conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px; /* 손가락으로 누르기 편한 크기(44px)보다 넉넉하게 */
+  padding: 12px 18px 12px 20px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.history-item:hover {
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
+}
+
+/* 오른쪽 꺾쇠(>): 누르면 상세로 간다는 표시. 꾸밈이라 글자가 아닌 테두리로 그린다 */
+.history-item::after {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-top: 2px solid var(--text-muted);
+  border-right: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+}
+
+.history-item-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.history-item-title {
+  font-weight: 500;
+  word-break: keep-all; /* 한국어는 낱말 중간에서 줄을 바꾸지 않는다 */
+  overflow-wrap: anywhere; /* 끊을 곳이 없는 긴 글은 넘치지 않게 아무 데서나 바꾼다 */
+}
+
+.history-item-time {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.history-more {
+  margin-top: 16px;
+  text-align: center;
+}
+
+/* 상세 위쪽 줄: 목록으로 + 이어서 질문 (좁으면 아래 줄로) */
+.history-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.history-tools .btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.detail-title {
+  width: fit-content; /* 포커스 테두리가 줄 전체가 아니라 글자 둘레에 (.history-heading 아래 :focus-visible) */
+  max-width: 100%;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1.4;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.detail-meta {
+  margin: 4px 0 16px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.detail-meta:empty {
+  margin: 0;
+}
+
+/* 답이 없는 턴(실패·중단·답을 만드는 중): 점선 테두리의 흐린 말풍선 */
+.msg-missing .bubble {
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+/* 연달아 답이 없는 턴은 하나로 접는다. 누르면 펼쳐진다 (<details>, 키보드로도 열린다) */
+.missing-group summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  list-style: none; /* 브라우저 기본 삼각형 대신 아래 꺾쇠 */
+}
+
+.missing-group summary::-webkit-details-marker {
+  display: none;
+}
+
+/* 접혀 있으면 아래(v), 펼치면 위(^)를 가리키는 꺾쇠 */
+.missing-group summary::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-top: -3px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.missing-group details[open] summary::before {
+  margin-top: 3px;
+  transform: rotate(-135deg);
+}
+
+.missing-group details > .thread {
+  margin-top: 14px;
+}
+
+.detail-end {
+  margin-top: 24px;
+  text-align: center;
+}
+
+/* ===== 11. 모바일 (화면 폭 520px 이하) ===== */
 /* 메뉴가 3개뿐이라 햄버거 없이 375px 에서도 로고와 한 줄에 들어간다 */
 @media (max-width: 520px) {
   :root {
@@ -846,7 +1101,7 @@ img {
   }
 
   .site-header .container {
-    padding-block: 12px;
+    padding-block: 9px; /* 메뉴가 44px 이라 위아래를 줄여 헤더 높이는 그대로 */
   }
 
   .logo {
@@ -930,6 +1185,28 @@ img {
 
   .msg {
     max-width: 94%;
+  }
+
+  .history {
+    padding-block: 16px 24px;
+  }
+
+  .history-heading {
+    font-size: 1.5rem;
+  }
+
+  .history-item {
+    padding: 12px 14px 12px 16px;
+  }
+
+  .detail-title {
+    font-size: 1.3125rem;
+  }
+
+  /* 더 보기·이어서 질문(아래)은 폭을 가득 채워 엄지로 누르기 쉽게 */
+  .history-more .btn,
+  .detail-end .btn {
+    width: 100%;
   }
 }
 

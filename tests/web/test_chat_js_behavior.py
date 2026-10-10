@@ -1,9 +1,12 @@
-"""채팅 화면 JS 의 다시 보내기·요청 번호 규칙을 실제로 실행해 확인한다. (C 담당, EE-14)
+"""화면 JS 를 실제로 실행해 확인한다. (C 담당, EE-14·EE-17)
 
 pytest 는 JS 를 실행하지 못해서 Node 의 기본 테스트 도구(node:test)로 tests/web/js/*.test.mjs 를
-돌린다. chat.js·api.js 는 그대로 불러오고, 브라우저 대신 DOM·fetch·sessionStorage 만 흉내 낸다
-(tests/web/js/fake_dom.mjs). 서버도 흉내 내서 같은 요청 번호면 저장한 답을 돌려주므로,
-AI 호출 수로 중복 호출이 생겼는지 알 수 있다. 새 패키지는 쓰지 않는다.
+돌린다. chat.js·history.js·api.js 는 그대로 불러오고, 브라우저 대신 DOM·fetch·sessionStorage·
+주소와 방문 기록만 흉내 낸다(tests/web/js/fake_dom.mjs). 새 패키지는 쓰지 않는다.
+- chat_retry.test.mjs: 채팅의 다시 보내기·요청 번호 규칙 (EE-14). 서버도 흉내 내서 같은 요청 번호면
+  저장한 답을 돌려주므로, AI 호출 수로 중복 호출이 생겼는지 알 수 있다
+- history.test.mjs: 내 기록의 목록·더 보기·제목 대체·상세·실패 턴·주소 전환 (EE-17)
+- chat_resume.test.mjs: 채팅의 이어서 질문과 주소 맞추기 (EE-17)
 
 CI(ubuntu-latest)에는 node 가 있어 실행된다. node 가 없는 컴퓨터에서는 이 테스트만 건너뛴다(skip).
 """
