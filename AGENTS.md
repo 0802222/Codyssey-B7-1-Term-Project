@@ -30,6 +30,7 @@ uv run uvicorn app.main:app --reload
 | C 화면 | `app/web/`, `app/templates/`, `app/static/`, `tests/web/` |
 
 - 지금 맡은 이슈의 범위 밖 파일은 고치지 않는다. 필요하면 변경 내용을 보고하고 멈춘다.
+- 예외: 평가 대비 `docs/team/eval/<역할>.md` 는 각 담당자가 자기 파일만 고친다.
 - 공유 파일(`main.py`, `core/`, `conftest.py`, `pyproject.toml`, `docs/` 계약)은 L 이 조정한다.
 - 다른 영역의 기능을 다시 만들지 않는다. 인증은 `app.auth.dependencies`, DB 세션은
   `app.db.session.SessionDep`, AI 는 `app.chat.provider.AIProvider` 를 사용한다.
