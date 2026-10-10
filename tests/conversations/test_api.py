@@ -459,7 +459,16 @@ def test_my_chats_has_more_false_when_exactly_limit(user_a, settings):
 @pytest.mark.parametrize("path", ["/api/me/conversations", "/api/me/chats"])
 @pytest.mark.parametrize(
     "query",
-    ["limit=0", "limit=101", "limit=-1", "limit=abc", "offset=-1", "offset=abc"],
+    [
+        "limit=0",
+        "limit=101",
+        "limit=-1",
+        "limit=abc",
+        "offset=-1",
+        "offset=abc",
+        "offset=1000001",
+        f"offset={10**100}",
+    ],
 )
 def test_invalid_pagination_params_return_422(user_a, path, query):
     client, _, _ = user_a
