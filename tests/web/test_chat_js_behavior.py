@@ -31,6 +31,7 @@ def test_chat_script_behaviour_in_node():
         [NODE, "--test", *map(str, JS_TESTS)],
         capture_output=True,
         text=True,
+        encoding="utf-8",  # Node의 한글 출력도 Windows 기본 인코딩 대신 UTF-8로 읽는다.
         timeout=120,
     )
 
