@@ -190,6 +190,7 @@
 | | `AI_PROVIDER` | `anthropic` | Deploy Logs `ai_provider=anthropic` |
 | | `ANTHROPIC_API_KEY` | (비밀 값, 문서에 쓰지 않음) | 실제 AI 답변 생성 |
 | | `COOKIE_SECURE` | `true` | 대시보드 · 운영 모드 기동 (`false` 면 기동 거부) |
+| | `AI_TIMEOUT_SECONDS` | `30` (2026-10-11 EE-23 점검 때 잠시 `1` 로 바꿨다가 복구) | 대시보드 · 시간 초과 재현·복구 로그 |
 | | 그 밖의 값 (`AI_MODEL` 등) | 설정하지 않음 → `.env.example` 기본값 | |
 
 ---
