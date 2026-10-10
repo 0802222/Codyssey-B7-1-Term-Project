@@ -17,6 +17,9 @@
   {% block scripts %}{% endblock %}
 </head>
 <body>
+  {# 본문으로 건너뛰기: 키보드로 쓰는 사람이 페이지마다 머리말 메뉴(로고·채팅·내 기록·로그인)를 지나지 않고 본문으로 간다.
+     평소에는 화면 밖에 있다가 Tab 을 처음 누르면 왼쪽 위에 보인다 (style.css 12장) #}
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
   <header class="site-header">
     <div class="container">
       <a class="logo" href="/"><img src="/static/img/mascot.svg" alt="" width="32" height="32">EasyExplain</a>
@@ -36,7 +39,9 @@
     </div>
   </header>
 
-  <main>
+  {# id="main": 건너뛰기 링크가 가리키는 곳. tabindex="-1": 링크로 오면 포커스를 받아 다음 Tab 이 본문의 첫 컨트롤로 간다
+     (Tab 순서에는 들어가지 않는다) #}
+  <main id="main" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
 

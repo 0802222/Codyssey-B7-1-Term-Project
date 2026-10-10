@@ -5,7 +5,7 @@
  * 색을 바꾸려면 변수만 고치면 된다. (글자 대비는 모두 4.5:1 이상, 테두리는 3:1 이상으로 계산해 정했다)
  *
  * 1. 디자인 값  2. 기본  3. 레이아웃  4. 헤더·메뉴  5. 푸터  6. 버튼  7. 소개 페이지
- * 8. 가입·로그인  9. 채팅  10. 내 기록  11. 모바일
+ * 8. 가입·로그인  9. 채팅  10. 내 기록  11. 모바일  12. 접근성
  */
 
 /* ===== 1. 디자인 값 ===== */
@@ -1222,4 +1222,34 @@ img {
     width: 16px;
     height: 16px;
   }
+}
+
+/* ===== 12. 접근성 (EE-21) ===== */
+/* 본문으로 건너뛰기 (base.html 맨 앞의 링크). 평소에는 화면 위쪽 밖에 두고, Tab 으로 포커스가 오면 왼쪽 위에 나타난다.
+   hidden·display: none 으로 숨기면 Tab 으로 갈 수 없어서 자리만 화면 밖으로 옮긴다 */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px; /* 손가락으로 누르기 편한 크기 (다른 버튼과 같다) */
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 500;
+  text-decoration: none;
+  transform: translateY(calc(-100% - 16px));
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* 건너뛰기 링크로 본문(main)에 오면 2장의 포커스 테두리를 본문 안쪽에 그린다 — 본문은 화면 폭 가득이라
+   바깥에 그리면 양옆이 화면 밖으로 잘린다. 다음 Tab 에서 본문의 첫 컨트롤로 넘어가면 사라진다 */
+main:focus-visible {
+  outline-offset: -3px;
 }
