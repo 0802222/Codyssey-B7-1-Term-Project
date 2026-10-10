@@ -191,6 +191,19 @@ def test_skip_link_is_the_first_stop_and_goes_to_main(page):
     assert main.attrs.get("tabindex") == "-1"
 
 
+def test_skip_link_script_is_on_every_page(page):
+    # 주소(#main)·방문 기록을 바꾸지 않고 포커스만 옮기는 스크립트 (동작은 js/skip_link.test.mjs)
+    path, root = page
+    scripts = [s.attrs for s in all_nodes(root, "script")]
+    assert {"type": "module", "src": "/static/js/skip-link.js"} in scripts, path
+
+
+def test_skip_link_script_is_served(client):
+    response = client.get("/static/js/skip-link.js")
+    assert response.status_code == 200
+    assert "javascript" in response.headers["content-type"]
+
+
 def rule(selector: str) -> str:
     """`selector {` 로 시작하는 첫 규칙의 선언들"""
     begin = CSS.index(f"\n{selector} {{") + len(selector) + 3
