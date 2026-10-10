@@ -10,7 +10,7 @@ from html.parser import HTMLParser
 import pytest
 
 PUBLIC_PAGES = ["/", "/signup", "/login"]
-LOGGED_IN_PAGES = [*PUBLIC_PAGES, "/chat"]
+LOGGED_IN_PAGES = [*PUBLIC_PAGES, "/chat", "/history"]
 
 
 class _NavItems(HTMLParser):
@@ -95,3 +95,4 @@ def test_header_shows_login_again_after_logout(client, settings):
     assert response.status_code == 204
     assert labels(client.get("/").text)[-1] == "a:로그인"
     assert client.get("/chat", follow_redirects=False).status_code == 303
+    assert client.get("/history", follow_redirects=False).status_code == 303  # EE-17

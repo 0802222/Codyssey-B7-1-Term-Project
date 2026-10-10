@@ -1,7 +1,8 @@
-"""실제 채팅 서비스를 거쳐 품질 검토용 답변 5개를 모은다. (EE-19)
+"""실제 채팅 서비스를 거쳐 품질 검토용 답변을 모은다. (EE-19, #54)
 
 수집 완료는 품질 통과가 아니다. 답변 평가는 사람이 별도로 한다.
 실제 호출: uv run python -m app.chat.quality_check --live --env-file PATH --output PATH
+수준 변경 후 같은 질문을 검토하려면 --repeat-question을 추가한다. (3건)
 """
 
 import argparse
@@ -36,6 +37,11 @@ SAMPLE_PLAN = (
     ("C-advanced", "C", "advanced", QUESTION),
     ("C-easier", "C", "easy", "더 쉽게"),
     ("C-example", "C", "easy", "예시 하나 더"),
+)
+REPEAT_QUESTION_PLAN = (
+    ("R-easy", "R", "easy", "도커?"),
+    ("R-easier", "R", "easy", "더 쉽게"),
+    ("R-advanced-repeat", "R", "advanced", "도커?"),
 )
 
 
@@ -97,10 +103,15 @@ class _RecordingProvider:
         return result
 
 
-async def collect_samples(settings: Settings, provider: AIProvider, output: Path) -> dict:
-    """주입한 provider로 5개 사례를 순서대로 모은다. 실패하면 앞선 결과를 남기고 멈춘다."""
+async def collect_samples(
+    settings: Settings, provider: AIProvider, output: Path, *, repeat_question: bool = False
+) -> dict:
+    """기본 5건 또는 반복 질문 3건을 모은다. 실패하면 앞선 결과를 남기고 멈춘다."""
+    plan = REPEAT_QUESTION_PLAN if repeat_question else SAMPLE_PLAN
     report = {
         "provider": settings.ai_provider,
+        "scenario": "repeat-question" if repeat_question else "levels-and-followups",
+        "new_question_limit": len(plan),
         "collection_status": "incomplete",
         "quality_review": "not_performed",
         "started_at": _utc_now(),
@@ -144,7 +155,7 @@ async def collect_samples(settings: Settings, provider: AIProvider, output: Path
                 session.refresh(user)
                 user_id = user.id
                 conversations = {}
-                for case_id, alias, level, question in SAMPLE_PLAN:
+                for case_id, alias, level, question in plan:
                     sample = {
                         "id": case_id,
                         "conversation_alias": alias,
@@ -205,8 +216,11 @@ async def collect_samples(settings: Settings, provider: AIProvider, output: Path
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="EE-19 품질 검토용 실제 답변 5개 수집")
+    parser = argparse.ArgumentParser(description="AI 품질 검토용 실제 답변 수집 (기본 5건)")
     parser.add_argument("--live", action="store_true", help="실제 AI 호출을 명시적으로 허용")
+    parser.add_argument(
+        "--repeat-question", action="store_true", help="수준 변경 후 같은 질문 사례만 3건 수집"
+    )
     parser.add_argument("--env-file", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -233,7 +247,11 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
         try:
-            report = asyncio.run(collect_samples(settings, provider, args.output))
+            report = asyncio.run(
+                collect_samples(
+                    settings, provider, args.output, repeat_question=args.repeat_question
+                )
+            )
         except (Exception, KeyboardInterrupt):
             print("수집을 중단했습니다. 설정과 출력 파일을 확인해 주세요.", file=sys.stderr)
             return 1
@@ -243,7 +261,8 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        print("샘플 5개를 저장했습니다. 보고서를 읽고 실제 품질을 별도로 검토해 주세요.")
+        count = len(report["cases"])
+        print(f"샘플 {count}개를 저장했습니다. 보고서를 읽고 실제 품질을 별도로 검토해 주세요.")
         return 0
     finally:
         # 테스트나 다른 호출자가 쓰던 전역 설정은 성공·실패 모두 원래대로 돌린다.

@@ -143,7 +143,10 @@ def test_question_box_has_label_limit_and_descriptions(chat_html):
 
     page_ids = {attrs["id"] for _, attrs, _ in elements(chat_html) if attrs.get("id")}
     described_by = question["aria-describedby"].split()
-    assert {"question-count", "question-keys", "chat-error"} <= set(described_by)
+    expected = {"question-count", "question-keys", "chat-error-text", "chat-error-note"}
+    assert expected <= set(described_by)
+    # 오류 칸 전체를 가리키면 그 안의 숨은 "다시 보내기" 버튼 글까지 설명으로 읽힌다 (EE-21)
+    assert "chat-error" not in described_by
     assert set(described_by) <= page_ids, "aria-describedby 가 없는 id 를 가리킴"
     _, keys = find_one(chat_html, "p", id="question-keys")
     assert "Enter" in keys and "Shift" in keys
