@@ -862,16 +862,20 @@ img {
 }
 
 .history-heading {
+  width: fit-content; /* 포커스 테두리가 줄 전체가 아니라 글자 둘레에 (아래 :focus-visible) */
+  max-width: 100%;
   margin-bottom: 4px;
+  border-radius: 8px;
   font-family: var(--font-display);
   font-size: 1.75rem;
   font-weight: 400; /* Jua 에는 굵은 글씨체가 없다 */
 }
 
-/* 화면 안에서 목록으로 돌아올 때만 포커스가 가는 제목이라 테두리를 그리지 않는다 */
-.history-heading:focus,
-.detail-title:focus {
-  outline: none;
+/* 목록 ↔ 상세를 오갈 때 포커스가 가는 제목(h1·h2). 2장의 공통 :focus-visible 테두리라 키보드로 왔을 때만
+   보이고(마우스로 누르면 브라우저가 그리지 않는다), 글자 둘레에 조금 띄워 둥글게 그린다 */
+.history-heading:focus-visible,
+.detail-title:focus-visible {
+  outline-offset: 4px;
 }
 
 .history-lead {
@@ -1018,6 +1022,9 @@ img {
 }
 
 .detail-title {
+  width: fit-content; /* 포커스 테두리가 줄 전체가 아니라 글자 둘레에 (.history-heading 아래 :focus-visible) */
+  max-width: 100%;
+  border-radius: 8px;
   font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 400;
