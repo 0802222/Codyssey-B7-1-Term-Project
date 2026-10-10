@@ -284,7 +284,7 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 **제출물**
 - [ ] GitHub 저장소 링크
 - [ ] 외부 네트워크에서 접속되는 서비스 URL
-- [ ] DB 확인 방법 (내 기록 API 또는 `scripts/check_logs.sql`)
+- [x] DB 확인 방법 (7장, `scripts/check_logs.sql`)
 
 **README / 기술 문서에 들어갈 것**
 - [x] 프로젝트 개요 — 문제 정의, 대상 사용자, 핵심 시나리오 (1·3장)
@@ -300,3 +300,30 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 - [ ] 모든 기능이 PR 로 머지됨 (3장 기능 표의 PR 칸)
 - [ ] 각자 맡은 코드를 설명할 수 있음 → [docs/team/2-evaluation-example.md](docs/team/2-evaluation-example.md)
 - [ ] 서버 재시작 후에도 대화 기록 유지
+
+## 7. DB 확인·백업·복구
+
+### 평가자가 배포된 DB 확인
+
+평가자는 `/history` 또는 로그인 후 `GET /api/me/conversations`, `GET /api/me/chats`에서 본인 기록을 확인할 수 있습니다.
+DB 원문을 직접 확인할 때는 담당자가 `railway ssh`로 접속한 뒤 컨테이너의 Python에서 아래 코드를 실행합니다.
+
+```python
+import sqlite3
+from pathlib import Path
+
+db = sqlite3.connect("/app/data/easyexplain.db")
+sql = Path("/app/scripts/check_logs.sql").read_text(encoding="utf-8")
+rows = db.execute(sql, {"email": "평가용 계정 이메일"}).fetchall()
+print(*rows, sep="\n")
+db.close()
+```
+
+이 방법은 `sqlite3` 명령이 없는 컨테이너에서도 동작합니다. 질문·답변 원문이 출력되므로 필요한 경우에만 실행합니다.
+
+### Railway Volume 백업과 복구
+
+평가 전 Railway 대시보드의 **서비스 → Volume → Backups**에서 수동 백업을 만들고 완료 여부를 확인합니다.
+복구할 때는 백업을 선택해 **Restore → Deploy**하고, `/health`와 기록 조회로 복구 상태를 확인합니다.
+복구 전에는 현재 DB도 백업합니다. 별도 파일 보관이 필요하면 SQLite `Connection.backup()`으로 복사본을 만든 뒤
+`railway ssh`/`scp`로 내려받습니다.
