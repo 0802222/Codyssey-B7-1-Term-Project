@@ -1,0 +1,25 @@
+{
+  "source": "GitHub Railway deployment records",
+  "deployment_id": 6982619783,
+  "commit": "03f84e6aa550c2aecbe25efa1bd87949d3ce31d6",
+  "environment": "sunny-heart / production",
+  "deployment_created_at": "2026-10-10T15:04:39Z",
+  "statuses_url": "https://api.github.com/repos/easy-explain/Codyssey-B7-1-Term-Project/deployments/6982619783/statuses",
+  "statuses": [
+    {
+      "state": "success",
+      "created_at": "2026-10-10T15:06:18Z"
+    },
+    {
+      "state": "in_progress",
+      "created_at": "2026-10-10T15:04:39Z"
+    }
+  ],
+  "runtime_commit_exposed_by_public_api": false,
+  "included_merged_prs": [
+    52,
+    53,
+    55,
+    56
+  ]
+}

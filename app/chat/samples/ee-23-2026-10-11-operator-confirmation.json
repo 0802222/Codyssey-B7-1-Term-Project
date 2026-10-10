@@ -1,0 +1,56 @@
+{
+  "source": "operator_report",
+  "observed_at": "2026-10-10T15:47:57.649894+00:00",
+  "operator_comment": {
+    "url": "https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/51#issuecomment-6099216839",
+    "author": "0802222",
+    "created_at": "2026-10-10T15:41:16Z",
+    "updated_at": "2026-10-10T15:44:58Z"
+  },
+  "deploy_commit": "03f84e6aa550c2aecbe25efa1bd87949d3ce31d6",
+  "environment": "production",
+  "normal_settings": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4",
+    "ai_timeout_seconds": 30,
+    "timeout_restore_method": "set AI_TIMEOUT_SECONDS=30",
+    "user_requests_per_minute": 10,
+    "service_requests_per_utc_day": 200,
+    "replicas": 1,
+    "uvicorn_workers": 1
+  },
+  "timeout_signal": {
+    "source": "operator message forwarded by user",
+    "railway_deployment_id_prefix": "4164ad34",
+    "ai_timeout_seconds": 1,
+    "redeployment_complete_reported": true,
+    "prior_signalled_setting_seconds": 30
+  },
+  "quota": {
+    "operator_console_date": "2026-10-11",
+    "keys_reported": 1,
+    "monthly_calls": 30,
+    "charged_tokens": 61968,
+    "remaining_tokens": 4938032,
+    "average_charged_tokens_per_call": 2065.6,
+    "reported_charge_basis": "input + output; cache 0",
+    "monthly_reset_day_reported": 1,
+    "monthly_reset_verified": false,
+    "reset_timezone_verified": false,
+    "weight_application_verified": false,
+    "worst_case_cost_verified": false
+  },
+  "rate_limit_recommendation": {
+    "user_requests_per_minute": 10,
+    "service_requests_per_utc_day": 200,
+    "action": "retain current values",
+    "operator_agreed": true
+  },
+  "verification_limits": [
+    "Runtime settings and quota were reported by operator, not returned by public API.",
+    "Raw console screenshot and Railway request logs are not yet received.",
+    "Recovery must wait for next user signal confirming 30-second restore and redeployment."
+  ],
+  "phase2_result": "ee-23-2026-10-11-production-timeout.json",
+  "phase4_status": "awaiting_user_signal"
+}
