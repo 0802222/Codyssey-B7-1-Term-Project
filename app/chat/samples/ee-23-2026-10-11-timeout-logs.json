@@ -1,0 +1,94 @@
+{
+  "source": "operator_provided_log_excerpt",
+  "source_url": "https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/51#issuecomment-6099352098",
+  "source_author": "0802222",
+  "source_created_at": "2026-10-10T15:53:04Z",
+  "source_updated_at": "2026-10-10T15:53:04Z",
+  "railway_console_directly_accessed": false,
+  "evidence_scope": "The lead supplied Railway log excerpts after searching each request ID. These are not a direct console export.",
+  "log_timezone": "UTC",
+  "log_date": "2026-10-10",
+  "log_date_basis": "The comment gives UTC clock times. The date is matched to the HTTP collection interval 2026-10-10T15:46:38.446882+00:00 through 2026-10-10T15:46:42.354357+00:00 in ee-23-2026-10-11-production-timeout.json.",
+  "http_evidence_file": "ee-23-2026-10-11-production-timeout.json",
+  "sanitization": "User identifiers were removed. No credentials, keys, email addresses, question text, or answer text are included.",
+  "requests": [
+    {
+      "request_id": "f5a25126364a4a9a877b905b429fd279",
+      "kind": "initial_request",
+      "turn_id": 18,
+      "events": [
+        {
+          "at": "2026-10-10T15:46:39.459Z",
+          "level": "INFO",
+          "event": "request_received",
+          "method": "POST",
+          "path": "/api/chat"
+        },
+        {
+          "at": "2026-10-10T15:46:40.699Z",
+          "level": "INFO",
+          "event": "db_save_success",
+          "entity": "chat_turn",
+          "status": "pending"
+        },
+        {
+          "at": "2026-10-10T15:46:40.703Z",
+          "level": "INFO",
+          "event": "ai_call_start",
+          "turn_id": 18
+        },
+        {
+          "at": "2026-10-10T15:46:41.705Z",
+          "level": "WARNING",
+          "event": "ai_call_failed",
+          "turn_id": 18,
+          "error_code": "AI_TIMEOUT"
+        },
+        {
+          "at": "2026-10-10T15:46:41.720Z",
+          "level": "INFO",
+          "event": "db_save_success",
+          "entity": "chat_turn",
+          "status": "failed"
+        },
+        {
+          "at": "2026-10-10T15:46:41.723Z",
+          "level": "INFO",
+          "event": "request_completed",
+          "http_status": 504,
+          "latency_ms": 2264
+        }
+      ]
+    },
+    {
+      "request_id": "0fa810d8b08c4625b7d7ec72b9b0ab54",
+      "kind": "same_key_replay",
+      "events": [
+        {
+          "at": "2026-10-10T15:46:41.952Z",
+          "level": "INFO",
+          "event": "request_received",
+          "method": "POST",
+          "path": "/api/chat"
+        },
+        {
+          "at": "2026-10-10T15:46:41.956Z",
+          "level": "INFO",
+          "event": "request_completed",
+          "http_status": 504,
+          "latency_ms": 4
+        }
+      ],
+      "ai_call_start_absent": true,
+      "absence_verification_source": "operator_confirmation_after_request_id_search"
+    }
+  ],
+  "operator_confirmation": {
+    "confirmed_at": "2026-10-10T15:53:04Z",
+    "ai_timeout_seconds_restored": 30,
+    "redeployment_completed": true,
+    "railway_deployment_id": null,
+    "runtime_settings_directly_accessed": false,
+    "recovery_check_requested": true
+  }
+}

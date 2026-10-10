@@ -1,0 +1,118 @@
+{
+  "source": "remote_http",
+  "scenario": "recovery",
+  "max_new_questions": 1,
+  "base_url": "https://codyssey-b7-1-term-project-production.up.railway.app",
+  "collection_status": "completed",
+  "quality_review": "not_performed",
+  "started_at": "2026-10-10T15:55:06.882467+00:00",
+  "finished_at": "2026-10-10T15:55:20.217985+00:00",
+  "http_timeout_seconds": 60,
+  "server_runtime": {
+    "provider": "not_verified",
+    "model": "not_exposed",
+    "deploy_commit": "not_verified",
+    "server_logs": "not_verified",
+    "gateway_quota": "not_verified"
+  },
+  "checks": [
+    {
+      "step": "health:before",
+      "started_at": "2026-10-10T15:55:06.914707+00:00",
+      "http_status": 200,
+      "request_id": "7f5d70c03c74430a990043c372c8b822",
+      "elapsed_seconds": 0.284,
+      "body_request_id": null
+    },
+    {
+      "step": "signup",
+      "started_at": "2026-10-10T15:55:07.198740+00:00",
+      "http_status": 201,
+      "request_id": "fc0a47f3b1a1469fa99d5042f473c52c",
+      "elapsed_seconds": 0.24,
+      "body_request_id": null
+    },
+    {
+      "step": "login",
+      "started_at": "2026-10-10T15:55:07.439201+00:00",
+      "http_status": 200,
+      "request_id": "981e228570684e26b95123b010a8971b",
+      "elapsed_seconds": 0.214,
+      "body_request_id": null
+    },
+    {
+      "step": "conversation:A",
+      "started_at": "2026-10-10T15:55:07.653259+00:00",
+      "http_status": 201,
+      "request_id": "b4e83afb005e48a3bb86f483b92e2e1c",
+      "elapsed_seconds": 0.14,
+      "body_request_id": null
+    },
+    {
+      "step": "chat:A-easy",
+      "started_at": "2026-10-10T15:55:07.794232+00:00",
+      "http_status": 200,
+      "request_id": "d7846ce5740b45deb2dc877c90a9c52e",
+      "elapsed_seconds": 11.768,
+      "body_request_id": "d7846ce5740b45deb2dc877c90a9c52e"
+    },
+    {
+      "step": "history:A-easy",
+      "started_at": "2026-10-10T15:55:19.565589+00:00",
+      "http_status": 200,
+      "request_id": "e41d5ba9298e43e9a6b32772bf7a693b",
+      "elapsed_seconds": 0.128,
+      "body_request_id": null
+    },
+    {
+      "step": "replay:A-easy",
+      "started_at": "2026-10-10T15:55:19.694368+00:00",
+      "http_status": 200,
+      "request_id": "bb8e25a8b8e045f891f0d2e106658480",
+      "elapsed_seconds": 0.119,
+      "body_request_id": "d7846ce5740b45deb2dc877c90a9c52e"
+    },
+    {
+      "step": "history:A-easy",
+      "started_at": "2026-10-10T15:55:19.813420+00:00",
+      "http_status": 200,
+      "request_id": "07effc3370cc43ba99a9bd251a785bc9",
+      "elapsed_seconds": 0.122,
+      "body_request_id": null
+    },
+    {
+      "step": "health:after",
+      "started_at": "2026-10-10T15:55:19.939172+00:00",
+      "http_status": 200,
+      "request_id": "03a48569c23247eda284964374a99a50",
+      "elapsed_seconds": 0.124,
+      "body_request_id": null
+    },
+    {
+      "step": "logout",
+      "started_at": "2026-10-10T15:55:20.062989+00:00",
+      "http_status": 204,
+      "request_id": "8d28a65eb92c427dac017b50a042381e",
+      "elapsed_seconds": 0.155,
+      "body_request_id": null
+    }
+  ],
+  "cases": [
+    {
+      "id": "A-easy",
+      "conversation_alias": "A",
+      "conversation_id": "67fbe462-5e83-417e-a05c-5a1895626f07",
+      "level": "easy",
+      "question": "API가 무엇인지 설명해줘.",
+      "answer": "API는 두 프로그램이 서로 대화할 수 있게 해주는 창구예요.\n\n조금 더 풀어서 설명할게요. 식당을 생각해 보세요. 손님(내 앱)이 원하는 음식을 직접 주방(다른 서비스)에 들어가서 만들 수는 없잖아요. 대신 웨이터(API)에게 주문을 하면, 웨이터가 주방에 전달하고 완성된 음식을 다시 손님에게 가져다줘요. API가 바로 이 웨이터 역할을 해요.\n\n예시를 볼게요. 날씨 앱을 만들고 싶다고 해봐요. 직접 날씨 데이터를 수집하기는 어렵죠. 그래서 기상청 같은 곳이 제공하는 날씨 API에 \"서울 날씨 알려줘\"라고 요청을 보내면, API가 \"오늘 맑고 15도예요\"라는 답을 돌려줘요. 내 앱은 그 정보를 화면에 보여주면 되는 거예요.\n\n핵심 정리를 하면 이래요.\n\n1. API는 프로그램끼리 소통하는 창구예요.\n2. 내가 직접 만들 수 없는 기능을 다른 곳에서 빌려 쓸 수 있어요.\n3. 요청을 보내면 결과를 돌려받는 방식으로 작동해요.\n\n궁금한 점이 더 있으면 언제든지 물어봐요!",
+      "status": "completed",
+      "storage_verified": true,
+      "turn_id": 19,
+      "request_id": "d7846ce5740b45deb2dc877c90a9c52e",
+      "stored_turn_count": 1,
+      "replay_verified": true,
+      "replay_ai_call_count": "server_logs_required"
+    }
+  ],
+  "logout_status": "completed"
+}
