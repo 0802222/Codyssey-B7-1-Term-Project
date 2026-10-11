@@ -27,3 +27,24 @@ jobs:
 
       - name: Test
         run: uv run pytest
+
+  # 린트 결과는 OS 와 관계없어 위 job 에서만 돌린다.
+  # 팀원이 Windows 에서도 개발한다. 경로 구분자 같은 OS 차이(#12)를 PR 단계에서 잡는다.
+  # main 보호 규칙의 필수 체크는 위 `test` 하나다. 이 job 은 별도 이름이라 기존 머지 규칙을 바꾸지 않는다.
+  test-windows:
+    runs-on: windows-latest
+    env:
+      APP_ENV: test
+      AI_PROVIDER: fake
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Test
+        run: uv run pytest

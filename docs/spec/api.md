@@ -43,7 +43,7 @@ API 의 비로그인 요청은 리다이렉트가 아니라 JSON 401 을 반환�
 - `password`: 8~64자, 영어(영문·숫자·기호와 공백, ASCII 32~126)만. 그 밖의 조건(대소문자·숫자·기호 섞기 등)은 없다. 앞뒤 공백을 지우지 않고 그대로 해시한다
 - 로그인 실패는 이메일이 없든 비밀번호가 틀리든 똑같이 401 `INVALID_CREDENTIALS`
 
-- `limit` 기본 20·최대 100, `offset` 기본 0·0 이상.
+- `limit` 기본 20·최대 100, `offset` 기본 0·0 이상·최대 1,000,000. 범위를 벗어나면 422 `VALIDATION_ERROR`.
 - 없는 대화와 남의 대화는 **똑같이** 404 `CONVERSATION_NOT_FOUND` (존재 여부를 알려 주지 않음).
 - 응답에 `password_hash`, `token_hash`, 다른 사람의 정보를 넣지 않는다.
 
@@ -132,7 +132,7 @@ API 의 비로그인 요청은 리다이렉트가 아니라 JSON 401 을 반환�
 | 로그인 사용자 (페이지) | `app.auth.dependencies.OptionalUserDep` → `CurrentUser` 또는 `None`. 오류를 내지 않음 | A | C (`None` 이면 `/login` 으로 303) |
 | CSRF 검증 | `app.auth.dependencies.CsrfDep` | A | B |
 | DB 세션 | `app.db.session.SessionDep` | L→A | A, B |
-| 대화 저장소 | `app.conversations.repository` 의 대화·turn 저장 및 조회 함수. `user_id`로 소유권을 확인하며, 없는 대화나 타인 대화는 404 `CONVERSATION_NOT_FOUND`, DB 오류는 503 `DB_ERROR`로 처리한다 | A | B |
+| 대화 저장소 | `app.conversations.repository`의 저장 함수는 내부에서 commit한다. `create_conversation(session, user_id, title) -> Conversation`, `create_pending_turn(session, conversation_id, user_id, client_request_id, request_id, level, question) -> ChatTurn`, `complete_turn(session, turn_id, user_id, answer) -> ChatTurn`, `fail_turn(session, turn_id, user_id, error_code) -> ChatTurn`. 조회 함수 `get_recent_completed_turns(session, conversation_id, user_id, limit) -> list[ChatTurn]`는 최근 완료 턴을 최신순으로 반환하며 `limit=0`이면 빈 목록을 반환한다. 소유권을 확인하며, 없는 대화나 타인 대화는 404 `CONVERSATION_NOT_FOUND`, DB 오류는 503 `DB_ERROR`로 처리한다 | A | B |
 | AI provider 선택 | `app.chat.provider.get_ai_provider` → `AIProviderDep`. `settings.ai_provider` 로 fake / anthropic 선택 (EE-05 에서 작성). 테스트는 `app.dependency_overrides[get_ai_provider]` 로 타임아웃·오류를 내는 가짜로 바꿔 끼운다 | B | B |
 | AI 호출 | `app.chat.provider.AIProvider.generate_reply(messages, *, system, timeout_seconds, max_output_tokens) -> AIResult` | B | B |
 | AI 오류 | `AITimeoutError` / `AIUpstreamError` / `AIUnavailableError` | B | B |
