@@ -35,4 +35,5 @@ def test_chat_script_behaviour_in_node():
         timeout=120,
     )
 
-    assert result.returncode == 0, result.stdout[-4000:] + result.stderr[-2000:]
+    # 앞쪽 JS 테스트가 실패해도 원인과 테스트 이름이 CI 로그에서 잘리지 않게 한다.
+    assert result.returncode == 0, result.stdout + result.stderr
