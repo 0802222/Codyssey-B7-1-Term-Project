@@ -1,6 +1,5 @@
 import asyncio
 import json
-import time
 
 import httpx2
 import pytest
@@ -164,16 +163,26 @@ def test_translates_sdk_network_errors(provider, mock_sdk, transport_error, expe
 
 def test_limits_total_wait_even_when_transport_does_not_apply_socket_timeout(provider, mock_sdk):
     async def slow_response(request):
-        await asyncio.sleep(1)
-        return httpx2.Response(200, json=response_body())
+        await asyncio.Event().wait()
 
-    requests, clients, _ = mock_sdk(slow_response)
-    started = time.monotonic()
+    requests, clients, options = mock_sdk(slow_response)
     with pytest.raises(AITimeoutError):
-        generate(provider, timeout_seconds=0.02)
+        # 전체 제한이 사라져도 테스트가 무한히 기다리지 않도록 1초 안전장치를 둔다.
+        asyncio.run(
+            asyncio.wait_for(
+                provider.generate_reply(
+                    [ChatMessage(role="user", content="질문")],
+                    system="시스템 안내",
+                    timeout_seconds=0.02,
+                    max_output_tokens=77,
+                ),
+                timeout=1,
+            )
+        )
 
-    assert time.monotonic() - started < 0.5
-    assert len(requests) == 1
+    # 20ms 제한은 SDK 준비 시간도 포함하므로 전송 전에 끝나면 요청은 0건이다.
+    assert len(requests) <= 1
+    assert options[0]["max_retries"] == 0
     assert clients[0].is_closed()
 
 

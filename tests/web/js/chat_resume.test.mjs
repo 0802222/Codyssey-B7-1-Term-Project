@@ -13,6 +13,9 @@ const chatCalls = (calls) => calls.filter((call) => call.url === "/api/chat");
 const createCalls = (calls) => calls.filter((call) => call.url === "/api/conversations");
 const checkedLevel = () => document.querySelector('input[name="level"]:checked').value;
 
+// 기대 한국 시각은 직접 적고, 오전/AM 같은 표기만 Node의 언어 데이터에 맡긴다.
+const expectedKoreanClock = (civilTime) => new Date(civilTime).toLocaleString("ko-KR", { timeZone: "UTC" });
+
 function turn(id, question, extra = {}) {
   return {
     id,
@@ -84,7 +87,10 @@ test("이어서 질문: 주소의 대화를 불러와 답을 받은 턴만 그�
   assert.deepEqual(calls.map((call) => `${call.method} ${call.url}`), [`GET /api/conversations/${CONVERSATION}`]);
   // 답을 못 받은 "더 쉽게" 는 그리지 않는다 — 화면의 대화 = 서버가 문맥으로 쓰는 완료된 턴
   assert.deepEqual(bubbles(), ["API가 뭐야?", "답변 1", "예시 하나 더", "답변 3"]);
-  assert.equal($("thread").children[2].querySelector(".msg-meta").textContent, "전공자 · 2026. 10. 10. 오전 12:30:00");
+  assert.equal(
+    $("thread").children[2].querySelector(".msg-meta").textContent,
+    `전공자 · ${expectedKoreanClock("2026-10-10T00:30:00Z")}`,
+  );
   assert.equal(checkedLevel(), "advanced"); // 마지막으로 답을 받은 수준
   assert.equal($("follow-ups").hidden, false);
   assert.equal($("chat-empty").hidden, true);
