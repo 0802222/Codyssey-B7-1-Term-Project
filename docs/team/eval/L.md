@@ -134,19 +134,26 @@ main 은 보호 규칙으로 **직접 push 금지, 다른 팀원 1명 승인 필
 
 ## 3. 결과 예측 → 실제 실행
 
-| 해 볼 것 | 내 예측 | 실제 결과 |
+| 해 볼 것 | 내 예측 | 실제 결과 (2026-10-12) |
 |---|---|---|
-| 배포 URL `/health` | `{"status":"ok","db":"ok"}` | 〔 〕 |
-| 로그아웃 상태로 `curl -X POST <URL>/api/chat` | 401 `AUTH_REQUIRED`, 본문에 `request_id` | 〔 〕 |
-| `curl <URL>/api/nope` | 404, 공통 오류 형식 | 〔 〕 |
-| 화면에서 질문 1개 → 응답 헤더 `X-Request-ID` 로 Railway Logs 검색 | 6줄이 같은 ID 로 이어짐, 질문 원문 없음 | 〔 〕 |
-| `.env` 에 `APP_ENV=production`, `AI_PROVIDER=fake` 로 서버 실행 | 시작하지 않고 설정 오류 | 〔 〕 |
-| `uv run pytest tests/integration -q` | 21 passed | 〔 〕 |
-| `git shortlog -sne --no-merges origin/main` | 4명 모두 10개 이상 | 〔 〕 |
+| 배포 URL `/health` | `{"status":"ok","db":"ok"}` | ✅ 같음 |
+| 로그아웃 상태로 `curl -X POST <URL>/api/chat` | 401 `AUTH_REQUIRED`, 본문에 `request_id` | ✅ 401 `AUTH_REQUIRED` "로그인이 필요합니다.", 본문 `request_id` 와 응답 헤더 `X-Request-ID` 가 같은 값 |
+| `curl <URL>/api/nope` | 404, 공통 오류 형식 | ✅ 404 `NOT_FOUND` "요청한 경로를 찾을 수 없어요.", `request_id` 포함 |
+| 위 401 요청의 `X-Request-ID` 로 Railway 로그 검색 (`railway logs --filter <ID>`) | 요청 수신·응답 2줄 (인증에서 막혀 AI·DB 줄은 없음) | ✅ `request_received` → `request_completed status=401 latency_ms=8` 2줄 |
+| 질문 1개의 `X-Request-ID` 로 Railway Logs 검색 | 6줄이 같은 ID 로 이어짐, 질문 원문 없음 | ✅ 2026-10-11 EE-23 점검: 시간 초과 요청 6줄(…`ai_call_failed` → `status=failed` → 504), 복구 요청 6줄(…`ai_call_success` → `status=completed` → 200), 질문 원문 없음 ([EE-23](../../../app/chat/EE-23.md)) |
+| `APP_ENV=production`, `AI_PROVIDER=fake` 로 서버 실행 | 시작하지 않고 설정 오류 | ✅ `ValidationError` "production 에서는 AI_PROVIDER=fake 로 기동할 수 없습니다." 로 시작하지 않음 |
+| `uv run pytest tests/integration -q` | 21 passed | ✅ 21 passed |
+| `git shortlog -sne --no-merges origin/main` | 4명 모두 10개 이상 | ✅ 유민규 89 · 이초롱 39 · 송지윤 34 · 나현준 33 |
 
 ## 4. 준비 메모
 
 - **보여 줄 파일:** 위 2장 표
 - **시연:** `/health` → 질문 하나의 `X-Request-ID` 로 Railway Logs 검색 → GitHub PR 목록과 보호 규칙 → Actions 의 CI 결과
 - **어려웠던 점 후보:** [트러블슈팅](../4-troubleshooting.md) 1번(#54, 실제 AI 로만 잡힌 문제) 또는 4·5번(배포 설정)
-- **내 답변 메모:**
+- **내 답변 메모:** 실제로 겪은 일 중 꼬리 질문으로 나올 만한 것
+  - **"CI 가 실패하면 배포는 어떻게 되나요?"** → Railway 의 Wait for CI 는 필수 체크가 아닌 `test-windows` 까지 기다린다. #58 머지 때 Windows 테스트가 실패해 배포가 SKIPPED 됐고(서비스는 이전 버전 유지), #62 로 Windows 테스트를 고친 뒤 다시 배포됐다. 그래서 README 에는 "실제 실행 버전은 마지막 성공 배포로 확인" 이라고 적었다
+  - **"Windows job 은 왜 필수가 아닌가요?"** → 처음 추가할 때 기존 테스트가 Windows 에서 실패할 수 있어 지켜보려고 필수로 하지 않았다. 실제로 테스트 코드 문제 3종(#59·#60)을 찾았다. 지금은 통과하므로 필수로 바꿀 수 있다
+  - **"로그는 화면 말고 어떻게 찾나요?"** → `railway logs --filter <request_id>` 로 터미널에서도 검색된다
+  - **"평가용 저장소가 포크인데 PR 기록은요?"** → 포크에는 코드·커밋만 복사되고 PR·리뷰·이슈·CI 기록은 원본(`easy-explain/Codyssey-B7-1-Term-Project`)에 있다
+  - **"스택 PR 을 머지할 때 주의할 점은?"** → 아래 PR 의 기준을 main 으로 먼저 바꾸고 브랜치를 지운다. 순서를 거꾸로 했다가 #63 이 닫혀서 브랜치를 되살려 다시 연 적이 있다
+  - **"DB 백업은 어떻게 하나요?"** → Railway Volume 백업은 Pro 요금제가 필요해서, SQLite `backup()` 으로 파일 백업 → 내려받기 → 사본으로 서버 기동까지 리허설했다 (README 7장)
