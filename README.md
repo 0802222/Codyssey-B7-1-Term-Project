@@ -5,7 +5,7 @@
 
 Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝트」** · 4인 팀
 
-> **현재 상태:** 필수 기능 구현과 외부 배포 완료. DB 확인 SQL(EE-20)과 제출 점검(EE-24)이 남았습니다. 과제 요구사항별 근거와 진행 상태는 [6장](#6-과제-요구사항과-제출-점검).
+> **현재 상태:** 필수 기능 구현, 외부 배포, DB 확인·백업 리허설 완료. 제출 점검(EE-24)이 남았습니다. 과제 요구사항별 근거와 진행 상태는 [6장](#6-과제-요구사항과-제출-점검).
 
 ### 🧭 평가자 길 안내
 
@@ -20,6 +20,7 @@ Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝�
 | 실행·배포 방법, 환경 변수 | [5장](#5-실행-방법) · [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차) |
 | 역할과 개인별 작업 | [3장 팀·기능 표](#3-주요-기능과-역할-분담) (담당·PR 칸) |
 | 겪은 문제와 해결 | [트러블슈팅 기록](docs/team/4-troubleshooting.md) |
+| 확장성·장애·보안·LLM 품질 점검 | [퍼실리테이터 사전 질문 답변](docs/team/5-facilitator-questions.md) |
 
 <details>
 <summary><b>👥 팀원용 문서 안내 — 언제 무엇을 읽나요?</b></summary>
@@ -34,6 +35,7 @@ Codyssey **B7-1 Term Project「웹 기반 AI 챗봇 서비스 개발 프로젝�
 | ③ 평가 전 | [docs/team/eval/](docs/team/eval/) | 역할별 예상 질문·읽을 코드·실습 (**자기 파일만** 고침) |
 | 배포할 때 | [docs/team/3-deploy-options.md](docs/team/3-deploy-options.md) | 배포 방식 결정, Railway 설정 절차 |
 | 문제가 생겼을 때 | [docs/team/4-troubleshooting.md](docs/team/4-troubleshooting.md) | 겪은 문제와 해결 기록 |
+| ③ 평가 전 | [docs/team/5-facilitator-questions.md](docs/team/5-facilitator-questions.md) | 퍼실리테이터 사전 질문 답변·점검 (✅🟨❌) |
 | 읽지 않아도 됨 | `AGENTS.md`, `CLAUDE.md` | AI 코딩 도구가 읽는 규칙 (CONTRIBUTING 요약본) |
 
 </details>
@@ -128,25 +130,25 @@ AGENTS.md             # AI 코딩 도구용 규칙
 | 대분류 | 기능 | 설명 | 담당 | API · 화면 | 상태 | PR |
 |---|---|---|---|---|---|---|
 | **계정** | 회원가입 | 이메일·비밀번호, 비밀번호는 해시로 저장 | A 가입 API·DB<br>C 가입 화면 | `POST /api/auth/signup`<br>`/signup` | ✅ | [#35](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/35) · [#38](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/38) |
-|  | 로그인·로그아웃 | 세션 쿠키 발급·삭제 | A 세션 처리<br>C 로그인 화면·로그아웃 버튼 | `POST /api/auth/login`<br>`POST /api/auth/logout`<br>`/login` | ✅ | [#37](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/37) · [#38](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/38) · [#41](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/41) |
-|  | 접근 제어 | 비로그인은 API 401, 페이지는 로그인으로 이동, CSRF 검사 | A | `GET /api/auth/me` | ✅ | [#37](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/37) · [#45](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/45) |
+| | 로그인·로그아웃 | 세션 쿠키 발급·삭제 | A 세션 처리<br>C 로그인 화면·로그아웃 버튼 | `POST /api/auth/login`<br>`POST /api/auth/logout`<br>`/login` | ✅ | [#37](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/37) · [#38](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/38) · [#41](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/41) |
+| | 접근 제어 | 비로그인은 API 401, 페이지는 로그인으로 이동, CSRF 검사 | A | `GET /api/auth/me` | ✅ | [#37](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/37) · [#45](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/45) |
 | **채팅** | 질문·답변 | 같은 화면에 답 표시, 대기 중 버튼 잠금 | B 채팅 API·AI 호출<br>C 채팅 화면 | `POST /api/chat`<br>`/chat` | ✅ | [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) · [#41](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/41) · [#47](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/47) |
-|  | 설명 수준 | 아주 쉽게 / 입문자 / 전공자 | B 수준별 프롬프트<br>C 수준 선택 UI | `POST /api/chat` 의 `level` | ✅ | [#8](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) · [#41](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/41) · [#55](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/55) |
-|  | 문맥 유지 | 같은 대화의 최근 5턴을 기억 | B | (서버 내부) | ✅ | [#8](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
-|  | 후속 버튼 | 더 쉽게 / 예시 하나 더 / 핵심만 | C | `/chat` | ✅ | [#41](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/41) |
-|  | 설명 품질 증빙 | 실제 AI 로 수준별·후속 문맥 답변 샘플과 검토 | B | 수동 수집 | ✅ | [#46](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/46) · [#55](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/55) |
+| | 설명 수준 | 아주 쉽게 / 입문자 / 전공자 | B 수준별 프롬프트<br>C 수준 선택 UI | `POST /api/chat` 의 `level` | ✅ | [#8](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) · [#41](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/41) · [#55](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/55) |
+| | 문맥 유지 | 같은 대화의 최근 5턴을 기억 | B | (서버 내부) | ✅ | [#8](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/8) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) |
+| | 후속 버튼 | 더 쉽게 / 예시 하나 더 / 핵심만 | C | `/chat` | ✅ | [#41](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/41) |
+| | 설명 품질 증빙 | 실제 AI 로 수준별·후속 문맥 답변 샘플과 검토 | B | 수동 수집 | ✅ | [#46](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/46) · [#55](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/55) |
 | **대화 기록** | 대화 만들기 | 새 대화 시작, 첫 질문으로 제목 저장 | A | `POST /api/conversations` | ✅ | [#42](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/42) · [#53](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/53) |
-|  | 내 기록 조회 | 내 대화 목록·상세, 이어서 질문, 남의 대화는 볼 수 없음 | A 조회 API·권한<br>C 기록 화면 | `GET /api/me/conversations`<br>`GET /api/me/chats`<br>`/history` | ✅ | [#42](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/42) · [#52](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/52) |
-|  | DB 확인 도구 | 사용자별 최근 대화 조회 SQL | A | `scripts/check_logs.sql` | ⬜ | [EE-20](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/27) |
+| | 내 기록 조회 | 내 대화 목록·상세, 이어서 질문, 남의 대화는 볼 수 없음 | A 조회 API·권한<br>C 기록 화면 | `GET /api/me/conversations`<br>`GET /api/me/chats`<br>`/history` | ✅ | [#42](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/42) · [#52](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/52) |
+| | DB 확인 도구 | 사용자별 최근 대화 조회 SQL, 백업·복구 | A | `scripts/check_logs.sql` | ✅ | [#57](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/57) |
 | **안정성** | 오류 안내 | AI 지연·실패·DB 오류에도 서버 유지, 공통 형식으로 안내 | L 공통 오류 형식<br>B AI 오류 처리<br>C 오류 메시지 표시 | 모든 API | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) · [#44](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/44) · [#47](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/47) |
-|  | 입력 검증 | 빈 질문, 2,000자 초과, 잘못된 값 차단 | B 서버 검증<br>C 화면 입력 제한 | `POST /api/chat` | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) · [#41](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/41) |
-|  | 중복 요청·재시작 복구 | 같은 요청 번호는 AI 를 다시 부르지 않음, 재시작 때 처리 중이던 질문은 중단 처리 | B 중복 처리<br>A 재시작 복구 | `POST /api/chat` | ✅ | [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) · [#48](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/48) |
-|  | 질문 횟수 제한 | 사용자별 1분·서비스 전체 하루 한도, 단일 서버 기준 | B | `POST /api/chat` | ✅ | [#44](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/44) |
-|  | 서버 로그 | 요청·AI 호출·DB 저장을 요청 ID 로 묶어 기록 | L 요청 로그<br>B AI 호출 로그<br>A DB 저장 로그 | 서버 로그 | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) · [#42](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/42) |
-|  | 상태 확인 | 서버·DB 정상 여부 | L | `GET /health` | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
+| | 입력 검증 | 빈 질문, 2,000자 초과, 잘못된 값 차단 | B 서버 검증<br>C 화면 입력 제한 | `POST /api/chat` | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) · [#41](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/41) |
+| | 중복 요청·재시작 복구 | 같은 요청 번호는 AI 를 다시 부르지 않음, 재시작 때 처리 중이던 질문은 중단 처리 | B 중복 처리<br>A 재시작 복구 | `POST /api/chat` | ✅ | [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) · [#48](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/48) |
+| | 질문 횟수 제한 | 사용자별 1분·서비스 전체 하루 한도, 단일 서버 기준 | B | `POST /api/chat` | ✅ | [#44](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/44) |
+| | 서버 로그 | 요청·AI 호출·DB 저장을 요청 ID 로 묶어 기록 | L 요청 로그<br>B AI 호출 로그<br>A DB 저장 로그 | 서버 로그 | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) · [#43](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/43) · [#42](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/42) |
+| | 상태 확인 | 서버·DB 정상 여부 | L | `GET /health` | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
 | **화면** | 접근성·모바일 | 키보드만으로 사용, 글자 대비, 휴대폰 화면, 사용 가이드 | C | 모든 화면 | ✅ | [#52](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/52) · [#56](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/56) |
 | **배포·협업** | 외부 배포 | 공개 URL, 재시작해도 기록 유지 | L | 서비스 URL | ✅ | [#50](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/50) |
-|  | 자동 검사 (CI) | PR 마다 코드 검사·테스트 자동 실행 | L | GitHub Actions | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
+| | 자동 검사 (CI) | PR 마다 코드 검사·테스트 자동 실행 | L | GitHub Actions | ✅ | [#4](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4) |
 
 ⬜ 미착수 · 🟨 일부 완료 · ✅ 완료 — 기능을 머지할 때 상태와 PR 번호를 함께 적습니다.
 
@@ -239,6 +241,35 @@ uv run uvicorn app.main:app --reload
 uv run pytest
 ```
 
+### 화면 동작 테스트용 Node.js
+
+전체 테스트에는 Node.js **22.23.2 (LTS)**가 필요합니다. 기준 버전은 루트의 [`.nvmrc`](.nvmrc)에
+적어 두었고, Ubuntu·Windows CI도 이 파일을 읽어 같은 버전을 설치합니다.
+Node는 화면 JavaScript를 검사하는 데 쓰며, 웹 서버 실행에는 필요하지 않습니다.
+Node가 없으면 화면 동작 테스트가 건너뛰어지므로, 전체 검증 전에는 `node --version`을 확인하세요.
+
+이미 nvm을 쓰는 macOS·Linux에서는 저장소 폴더에서 다음을 실행합니다.
+
+```bash
+nvm install
+nvm use
+node --version                        # v22.23.2 확인
+uv run pytest
+```
+
+Windows에서 nvm-windows를 쓰면 PowerShell에서 버전을 읽어 설치합니다.
+
+```powershell
+$nodeVersion = (Get-Content .nvmrc).Trim()
+nvm install $nodeVersion
+nvm use $nodeVersion
+node --version
+uv run pytest
+```
+
+nvm이 없다면 [Node.js 공식 설치 파일](https://nodejs.org/en/blog/release/v22.23.2)에서
+운영체제에 맞는 버전을 설치하면 됩니다. 화면 테스트는 Node 기본 도구를 사용하므로 `npm install`은 필요하지 않습니다.
+
 ### 서버 설정 값 (환경 변수)
 
 API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니다. `.env` 는 Git 에 올라가지 않습니다.
@@ -264,7 +295,8 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 ### 배포
 
 - **서비스 URL:** https://codyssey-b7-1-term-project-production.up.railway.app
-- **배포된 커밋:** `03f84e6` (2026-10-11, #56 머지 후 자동 배포)
+- **배포 버전:** main 에 병합되면 CI 통과 후 자동 배포합니다. 실제 실행 버전은 Railway에서 마지막으로 성공한 배포의 커밋을 확인하고, 평가 시점 버전은 릴리스 태그로 남깁니다.
+  EE-23의 수준별·후속 답변 5건은 1차 배포 `ffe4a05`, 최종 시간 초과·복구 2건은 `03f84e6` 기준입니다 ([EE-23](app/chat/EE-23.md)).
 - Railway + Volume 에 배포합니다. 설정 절차·업데이트 방법·주의점은 [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차)을 봅니다.
 
 ### 사용 가이드 (처음 쓰는 사람)
@@ -319,8 +351,8 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | 4-3 AI 는 서버에서 호출 (키 노출 방지) | 화면은 우리 서버만 부르고, AI 는 [app/chat/provider.py](app/chat/provider.py) 경계로 서버에서만 호출. 키는 환경 변수 `ANTHROPIC_API_KEY` | ✅ [#6][p6] [#43][p43] |
 | 4-3 문맥 유지 전략 | 같은 대화의 완료된 최근 5턴, 최대 12,000자 ([app/chat/context.py](app/chat/context.py), [tests/chat/test_context.py](tests/chat/test_context.py)) · 실제 AI 샘플 ([EE-19](app/chat/EE-19.md)) | ✅ [#8][p8] [#43][p43] [#46][p46] [#55][p55] |
 | 4-4 질문·응답 누적 저장 (사용자·시각·질문·응답) | `chat_turns` 의 `user_id` `created_at` `question` `answer` ([docs/spec/db.md](docs/spec/db.md)) | ✅ [#33][p33] [#42][p42] [#43][p43] |
-| 4-4 사용자 기준 조회·추적 | 내 기록 API `GET /api/me/conversations` `GET /api/me/chats` · 화면 `/history` · 확인용 SQL `scripts/check_logs.sql` | 🟨 API·화면 ✅ [#42][p42] [#52][p52] · SQL [EE-20][i27] |
-| 4-5 서버 로그: 요청 수신 / AI 호출 / AI 응답·실패 / DB 저장 성공·실패 | `request_received` · `ai_call_start` · `ai_call_success`·`ai_call_failed` · `db_save_success`·`db_save_failed`, 모두 같은 `request_id` ([app/core/logging.py](app/core/logging.py), [app/core/middleware.py](app/core/middleware.py)) · 배포 서버 Railway 로그로 추적 확인 | ✅ [#4][p4] [#42][p42] [#43][p43] |
+| 4-4 사용자 기준 조회·추적 | 내 기록 API `GET /api/me/conversations` `GET /api/me/chats` · 화면 `/history` · 확인용 SQL [scripts/check_logs.sql](scripts/check_logs.sql) (7장) | ✅ [#42][p42] [#52][p52] [#57][p57] |
+| 4-5 서버 로그: 요청 수신 / AI 호출 / AI 응답·실패 / DB 저장 성공·실패 | `request_received` · `ai_call_start` · `ai_call_success`·`ai_call_failed` · `db_save_success`·`db_save_failed`, 모두 같은 `request_id` ([app/core/logging.py](app/core/logging.py), [app/core/middleware.py](app/core/middleware.py)) · 통합 테스트 [test_request_logs.py](tests/integration/test_request_logs.py) · 배포 서버 Railway 로그로 추적 확인 | ✅ [#4][p4] [#42][p42] [#43][p43] [#58][p58] |
 | 4-5 AI 실패·타임아웃에도 서버 유지, 사용자에게 안내 | 모든 예외를 공통 JSON 오류로 변환 ([app/core/errors.py](app/core/errors.py)) · AI 오류는 504 `AI_TIMEOUT` 등 한국어 안내 · 배포 서버에서 시간 초과 재현·복구 확인 | ✅ [#4][p4] [#43][p43] [#44][p44] · 배포 검증 [EE-23][i30] |
 | 4-5 입력 검증 1개 이상 | 가입·로그인 이메일 형식·비밀번호 길이 → 422 ([tests/auth/](tests/auth/)) · 질문 1~2,000자 ([app/chat/schemas.py](app/chat/schemas.py)) | ✅ [#35][p35] [#37][p37] [#43][p43] |
 | 4-6 외부 접속 URL, 배포·환경 변수 문서 | Railway + Volume, 5장 배포 · [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차) | ✅ [#34][p34] [#50][p50] |
@@ -341,9 +373,9 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | 문서: DB 구조 (테이블·필드) | [docs/spec/db.md](docs/spec/db.md) | ✅ |
 | 문서: 배포·실행 방법, 환경 변수 이름·설정 방법 | 5장 (환경 변수 전체 목록, 배포) · [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차) | ✅ [#50][p50] |
 | 문서: 민감정보 관리 / 민감정보는 환경 변수로, `.env` 는 Git 제외 | [.env.example](.env.example), [.gitignore](.gitignore), 설정은 [app/core/config.py](app/core/config.py) 에서만 읽음 | ✅ |
-| DB 확인 가이드 (3가지 중 1개 이상) | 로그 조회 API(`GET /api/me/chats`) + 확인용 SQL(`scripts/check_logs.sql`). 관리자 화면은 비제공 (3장) | 🟨 API ✅ [#42][p42] · SQL [EE-20][i27] |
+| DB 확인 가이드 (3가지 중 1개 이상) | 로그 조회 API(`GET /api/me/chats`) + 확인용 SQL(`scripts/check_logs.sql`), [7장](#7-db-확인백업복구). 관리자 화면은 비제공 (3장) | ✅ [#42][p42] [#57][p57] |
 | Python & FastAPI, SQLite | 4장 기술 스택 | ✅ |
-| 평가자가 DB 에 연결·조회 가능 | 배포 서버의 DB 에 확인용 SQL 실행 (`railway ssh`) | ⬜ [EE-20][i27] |
+| 평가자가 DB 에 연결·조회 가능 | 배포 서버의 DB 에 확인용 SQL 실행 (`railway ssh`), [7장](#7-db-확인백업복구) · 2026-10-11 리허설 | ✅ [#57][p57] |
 | AI 호출 타임아웃 설정, 실패 시 안내 | `AI_TIMEOUT_SECONDS` 30초 ([app/core/config.py](app/core/config.py)) · 시간 초과 시 504 `AI_TIMEOUT` 안내 | ✅ [#43][p43] [#44][p44] · 배포 검증 [EE-23][i30] |
 | 과제 목표: 각자 맡은 부분을 설명 | [평가 대비](docs/team/2-evaluation-example.md) | 🟨 [EE-24][i31] |
 
@@ -356,7 +388,51 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 - [ ] 모든 기능이 PR 로 머지됨 (3장 기능 표의 PR 칸)
 - [ ] 각자 맡은 코드 설명 리허설 → [평가 대비](docs/team/2-evaluation-example.md)
 
-[i27]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/27
+## 7. DB 확인·백업·복구
+
+### 평가자가 배포된 DB 확인
+
+평가자는 `/history` 또는 로그인 후 `GET /api/me/conversations`, `GET /api/me/chats`에서 본인 기록을 확인할 수 있습니다.
+DB 원문을 직접 확인할 때는 담당자가 `railway ssh`로 접속한 뒤 컨테이너의 Python에서 아래 코드를 실행합니다.
+
+```python
+import sqlite3
+from pathlib import Path
+
+db = sqlite3.connect("/app/data/easyexplain.db")
+sql = Path("/app/scripts/check_logs.sql").read_text(encoding="utf-8")
+rows = db.execute(sql, {"email": "평가용 계정 이메일"}).fetchall()
+print(*rows, sep="\n")
+db.close()
+```
+
+이 방법은 `sqlite3` 명령이 없는 컨테이너에서도 동작합니다. 질문·답변 원문이 출력되므로 필요한 경우에만 실행합니다.
+
+- **접속 준비 (처음 한 번):** Railway CLI 설치 → `railway login` → 저장소 폴더에서 `railway link` → `railway ssh keys add` (내 SSH 공개 키 등록)
+- **2026-10-11 리허설:** 컨테이너에 `python` 이 있고 `sqlite3` 명령은 없음, DB 는 Volume 의 `/app/data/easyexplain.db`. 위 코드로 `check_logs.sql` 실행 확인 ([#31 기록](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/31))
+
+### 백업과 복구
+
+Railway 대시보드의 Volume **Backups 는 새 백업을 만들려면 Pro 요금제가 필요**합니다(체험판은 기존 백업 조회·복구만 가능).
+그래서 **SQLite `backup()` 으로 파일 백업**을 만들어 내려받습니다. 서버를 멈추지 않아도 일관된 복사본이 만들어집니다.
+
+```bash
+# 0) 처음 한 번: Railway 가 SSH 접속 설정(Host easyexplain-railway)을 ~/.ssh/config 에 만들어 줌
+railway ssh config --alias easyexplain-railway -i ~/.ssh/<등록한 키>
+
+# 1) 컨테이너 안에서 복사본 만들기 (무결성 검사와 SHA-256 출력)
+ssh easyexplain-railway 'python -c "import sqlite3,hashlib; s=sqlite3.connect(\"/app/data/easyexplain.db\"); d=sqlite3.connect(\"/app/data/backup.db\"); s.backup(d); print(d.execute(\"pragma integrity_check\").fetchone()[0]); d.close(); print(hashlib.sha256(open(\"/app/data/backup.db\",\"rb\").read()).hexdigest())"'
+# 2) 내 컴퓨터의 저장소 밖 폴더로 내려받고, 위 SHA-256 과 같은지 확인 (사용자 이메일·대화가 들어 있음 — 저장소에 넣지 않음)
+ssh easyexplain-railway 'cat /app/data/backup.db' > ~/EasyExplain-backups/easyexplain-YYYYMMDD.db
+shasum -a 256 ~/EasyExplain-backups/easyexplain-YYYYMMDD.db
+# 3) Volume 의 복사본 지우기
+ssh easyexplain-railway 'rm /app/data/backup.db'
+```
+
+- **복구 확인:** 내려받은 파일로 로컬 서버를 띄워(`DATABASE_URL=sqlite:///<파일>`) `/health` 와 행 수를 확인합니다.
+- **운영 DB 를 실제로 되돌릴 때:** 그 사이 쌓인 기록이 사라지므로 먼저 현재 DB 를 한 번 더 백업하고, 백업 파일을 Volume 에 올려(`railway volume files upload`) 같은 `backup()` 방식으로 `/app/data/easyexplain.db` 에 덮어쓴 뒤 재배포해 `/health` 와 기록 조회로 확인합니다.
+- **2026-10-11 리허설:** 백업 생성(무결성 ok) → 내려받기(SHA-256 일치) → 사본으로 로컬 서버 기동 `/health` ok → Volume 의 임시 복사본 삭제. 운영 DB 는 덮어쓰지 않았습니다.
+
 [i30]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/30
 [i31]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/31
 [p4]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/4
@@ -377,3 +453,5 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 [p50]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/50
 [p52]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/52
 [p55]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/55
+[p57]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/57
+[p58]: https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/58

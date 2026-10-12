@@ -12,11 +12,10 @@ AI 만 호출 수를 세는 가짜로 끼운다. 서버 규칙(B 의 app/chat)�
 """
 
 import re
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import UUID, uuid4
-from zoneinfo import ZoneInfo
 
 import pytest
 from sqlmodel import Session, select
@@ -322,5 +321,7 @@ def test_daily_limit_note_says_the_korean_time_the_server_resets(monkeypatch):
     limiter.check_and_count(2)
 
     utc_midnight = datetime.combine(day.value, time(0), tzinfo=UTC)
-    assert utc_midnight.astimezone(ZoneInfo("Asia/Seoul")).hour == 9
+    # 한국 시간은 UTC+9 고정값으로 계산해 Windows의 시간대 DB 유무에 기대지 않는다.
+    korean_time = timezone(timedelta(hours=9))
+    assert utc_midnight.astimezone(korean_time).hour == 9
     assert "한도는 매일 오전 9시에 다시 채워져요." in script("chat.js")
