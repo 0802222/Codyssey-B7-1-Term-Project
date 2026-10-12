@@ -18,6 +18,9 @@ from app.db.session import SessionDep
 
 router = APIRouter(prefix="/api", tags=["conversations"])
 
+# SQLite의 정수 범위를 넘는 offset으로 쿼리 실행이 실패하지 않도록 제한한다.
+MAX_OFFSET = 1_000_000
+
 
 @router.post("/conversations", status_code=201)
 def create_conversation(
@@ -43,7 +46,7 @@ def list_my_conversations(
     user: CurrentUserDep,
     session: SessionDep,
     limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=MAX_OFFSET),
 ):
     conversations, has_more = list_conversations_for_user(
         session=session,
@@ -108,7 +111,7 @@ def list_my_chats(
     user: CurrentUserDep,
     session: SessionDep,
     limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=MAX_OFFSET),
 ):
     chats, has_more = list_chats_for_user(
         session=session,
