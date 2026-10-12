@@ -347,7 +347,7 @@ Refs #이슈번호
 
 ### 👑 L 이초롱 — 팀장 · 공통 뼈대, 오류·로그, CI, 통합, 배포
 
-- **내 폴더:** `app/main.py` `app/core/` `app/health.py` `tests/conftest.py` `tests/core/` `tests/integration/` `.github/` `docs/` `pyproject.toml` `uv.lock`
+- **내 폴더:** `app/main.py` `app/core/` `app/health.py` `tests/conftest.py` `tests/core/` `tests/integration/` `.github/` `docs/` `pyproject.toml` `uv.lock` (단, `docs/team/eval/<역할>.md` 는 각 담당자가 자기 파일을 고침)
 - **할 일:** 다른 영역에 필요한 공통 기능 요청 처리, 통합 테스트, 배포
 
 ### 🔐 A 송지윤 — 회원·로그인·접근 제어, DB, 내 기록
