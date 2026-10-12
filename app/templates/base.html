@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}EasyExplain{% endblock %}</title>
+  {# 검색 결과·링크 공유 미리보기에 쓰이는 설명. og:image 는 대부분의 메신저가 SVG 를 지원하지 않아 넣지 않는다 #}
+  <meta name="description" content="모르는 개념을 아주 쉽게·입문자·전공자 수준으로 골라 설명받고, 후속 질문으로 이어서 묻는 AI 학습 챗봇">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="EasyExplain">
+  <meta property="og:title" content="EasyExplain — 수준별 개념 설명 AI 챗봇">
+  <meta property="og:description" content="모르는 개념을 아주 쉽게·입문자·전공자 수준으로 골라 설명받고, 후속 질문으로 이어서 묻는 AI 학습 챗봇">
+  <meta property="og:locale" content="ko_KR">
   <link rel="icon" href="/static/img/mascot.svg" type="image/svg+xml">
   {# 글꼴: 제목·로고는 Jua, 본문은 Pretendard. 못 받으면 style.css 의 대체 글꼴로 보인다 #}
   <link rel="preconnect" href="https://fonts.googleapis.com">

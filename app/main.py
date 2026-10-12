@@ -23,6 +23,20 @@ from app.web.router import router as web_router
 STATIC_DIR = Path(__file__).parent / "static"
 
 
+class RevalidatingStaticFiles(StaticFiles):
+    """정적 파일(CSS·JS·이미지)을 쓰기 전에 브라우저가 매번 서버에 바뀌었는지 묻게 한다.
+
+    배포마다 파일 주소가 같아서, 캐시 지시가 없으면 브라우저가 예전 JS 를 잠시 그대로 쓸 수 있다.
+    no-cache 는 "저장은 하되 쓰기 전에 확인"이라,
+    바뀌지 않았으면 ETag 비교로 304(본문 없음)만 받는다.
+    """
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # DB 는 build 단계가 아니라 실행 시점에 만든다. (영속 디스크는 실행 중에만 연결됨)
@@ -49,7 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(conversations_router)
     app.include_router(chat_router)
     app.include_router(web_router)
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    app.mount("/static", RevalidatingStaticFiles(directory=STATIC_DIR), name="static")
     return app
 
 

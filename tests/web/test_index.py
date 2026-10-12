@@ -1,5 +1,7 @@
 """소개 페이지(/)와 공통 틀·정적 파일 테스트. (C 담당, EE-04)"""
 
+import pytest
+
 MENU = [("/chat", "채팅"), ("/history", "내 기록"), ("/login", "로그인")]
 
 
@@ -48,3 +50,12 @@ def test_mascot_image_is_served(client):
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("image/svg+xml")
+
+
+@pytest.mark.parametrize("path", ["/", "/login", "/signup"])
+def test_pages_have_description_and_open_graph(client, path):
+    html = client.get(path).text
+
+    assert '<meta name="description" content="' in html
+    for prop in ("og:type", "og:site_name", "og:title", "og:description", "og:locale"):
+        assert f'<meta property="{prop}" content="' in html
