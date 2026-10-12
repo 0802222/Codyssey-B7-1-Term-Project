@@ -241,6 +241,35 @@ uv run uvicorn app.main:app --reload
 uv run pytest
 ```
 
+### 화면 동작 테스트용 Node.js
+
+전체 테스트에는 Node.js **22.23.2 (LTS)**가 필요합니다. 기준 버전은 루트의 [`.nvmrc`](.nvmrc)에
+적어 두었고, Ubuntu·Windows CI도 이 파일을 읽어 같은 버전을 설치합니다.
+Node는 화면 JavaScript를 검사하는 데 쓰며, 웹 서버 실행에는 필요하지 않습니다.
+Node가 없으면 화면 동작 테스트가 건너뛰어지므로, 전체 검증 전에는 `node --version`을 확인하세요.
+
+이미 nvm을 쓰는 macOS·Linux에서는 저장소 폴더에서 다음을 실행합니다.
+
+```bash
+nvm install
+nvm use
+node --version                        # v22.23.2 확인
+uv run pytest
+```
+
+Windows에서 nvm-windows를 쓰면 PowerShell에서 버전을 읽어 설치합니다.
+
+```powershell
+$nodeVersion = (Get-Content .nvmrc).Trim()
+nvm install $nodeVersion
+nvm use $nodeVersion
+node --version
+uv run pytest
+```
+
+nvm이 없다면 [Node.js 공식 설치 파일](https://nodejs.org/en/blog/release/v22.23.2)에서
+운영체제에 맞는 버전을 설치하면 됩니다. 화면 테스트는 Node 기본 도구를 사용하므로 `npm install`은 필요하지 않습니다.
+
 ### 서버 설정 값 (환경 변수)
 
 API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니다. `.env` 는 Git 에 올라가지 않습니다.

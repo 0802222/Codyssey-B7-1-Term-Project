@@ -16,6 +16,9 @@ const titlesShown = () => document.querySelectorAll(".history-item-title").map((
 const listCalls = (calls) => calls.filter((call) => call.url.startsWith("/api/me/conversations"));
 const detailCalls = (calls) => calls.filter((call) => call.url.startsWith("/api/conversations/"));
 
+// 기대 한국 시각은 직접 적고, 오전/AM 같은 표기만 Node의 언어 데이터에 맡긴다.
+const expectedKoreanClock = (civilTime) => new Date(civilTime).toLocaleString("ko-KR", { timeZone: "UTC" });
+
 // 턴 하나 (명세 2장의 턴 항목). n: 대화 번호
 function turn(n, id, question, extra = {}) {
   return {
@@ -186,7 +189,7 @@ test("목록: 시각은 정렬 기준(updated_at)을 한국 시간으로, <time>
   await openHistory(server);
 
   const time = links()[0].querySelector(".history-item-time");
-  assert.equal(time.textContent, "2026. 10. 10. 오전 12:30:00");
+  assert.equal(time.textContent, expectedKoreanClock("2026-10-10T00:30:00Z"));
   assert.equal(time.dateTime, "2026-10-09T15:30:00Z");
 });
 
@@ -309,10 +312,10 @@ test("상세: 누르면 주소만 바꿔(pushState) 턴을 서버 순서(오래�
   assert.deepEqual(bubbles, ["첫 질문", "답변 1", "두 번째 질문", "답변 2"]);
   const metas = $("detail-thread").querySelectorAll(".msg-meta").map((meta) => meta.textContent);
   assert.deepEqual(metas, [
-    `아주 쉽게 · ${new Date("2026-10-09T01:00:00Z").toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`,
-    "입문자 · 2026. 10. 10. 오전 12:30:00",
+    `아주 쉽게 · ${expectedKoreanClock("2026-10-09T10:00:00Z")}`,
+    `입문자 · ${expectedKoreanClock("2026-10-10T00:30:00Z")}`,
   ]);
-  assert.equal($("detail-meta").textContent, "질문 2개 · 시작 2026. 10. 9. 오전 9:00:00");
+  assert.equal($("detail-meta").textContent, `질문 2개 · 시작 ${expectedKoreanClock("2026-10-09T09:00:00Z")}`);
 });
 
 test("상세: 가운데 버튼·Ctrl 과 함께 누르면 막지 않는다 (새 탭으로 열기)", async () => {
@@ -492,7 +495,7 @@ test("상세: 질문이 없는 대화는 안내하고, 이어서 질문(첫 질�
 
   assert.equal($("detail-status").textContent, "이 대화에는 아직 질문이 없어요.");
   assert.equal($("detail-title").textContent, "새 대화");
-  assert.equal($("detail-meta").textContent, "질문 0개 · 시작 2026. 10. 9. 오전 9:00:00");
+  assert.equal($("detail-meta").textContent, `질문 0개 · 시작 ${expectedKoreanClock("2026-10-09T09:00:00Z")}`);
   assert.equal($("continue-bottom").hidden, false);
 });
 
