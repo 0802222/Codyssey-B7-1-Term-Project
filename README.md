@@ -297,6 +297,7 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 - **서비스 URL:** https://codyssey-b7-1-term-project-production.up.railway.app
 - **배포 버전:** main 에 병합되면 CI 통과 후 자동 배포합니다. 실제 실행 버전은 Railway에서 마지막으로 성공한 배포의 커밋을 확인하고, 평가 시점 버전은 릴리스 태그로 남깁니다.
   EE-23의 수준별·후속 답변 5건은 1차 배포 `ffe4a05`, 최종 시간 초과·복구 2건은 `03f84e6` 기준입니다 ([EE-23](app/chat/EE-23.md)).
+- **가짜 AI 와 실제 AI:** CI·로컬 테스트는 코드 로직 검증용이라 가짜 AI(`AI_PROVIDER=fake`)로 돌리고, 배포 서버와 시연은 실제 AI 입니다. 운영(`APP_ENV=production`)에서는 가짜 AI 나 빈 키로 서버가 뜨지 않습니다. 실제 AI 동작은 배포 후 [EE-23](app/chat/EE-23.md)에서 검증했습니다.
 - Railway + Volume 에 배포합니다. 설정 절차·업데이트 방법·주의점은 [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차)을 봅니다.
 
 ### 사용 가이드 (처음 쓰는 사람)
