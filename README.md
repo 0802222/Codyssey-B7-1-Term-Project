@@ -199,7 +199,7 @@ def health():
 
 - **라우팅:** 주소(`/api/chat`)와 함수를 연결
 - **입력 검증:** "level 은 easy/beginner/advanced 중 하나" 같은 규칙을 적어 두면 틀린 요청을 자동으로 거절
-- **자동 문서:** 서버를 켜고 `/docs` 에 들어가면 모든 API 를 보고 직접 호출해 볼 수 있음
+- **자동 문서:** 서버를 켜고 `/docs` 에 들어가면 모든 API 를 보고 직접 호출해 볼 수 있음 (로컬 개발용. 운영 서버 `APP_ENV=production` 에서는 꺼 둠)
 
 ### SQLite 와 MySQL 은 뭐가 다른가요?
 
