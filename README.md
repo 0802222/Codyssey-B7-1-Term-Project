@@ -55,6 +55,120 @@ AI 를 직접 만드는 게 아니라, 이미 있는 AI(Claude)를 **우리 서�
                                    DB (SQLite)
 ```
 
+### 시스템 아키텍처
+
+앱은 FastAPI를 중심으로 웹 페이지와 API를 함께 제공하는 단일 서버 구조입니다.
+`app/main.py`가 공통 설정·미들웨어·DB·라우터를 조립하고, 채팅 요청의 업무 흐름은
+`app/chat/service.py`가 담당합니다.
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"edgeLabelBackground": "#ffffff", "lineColor": "#555b6e", "textColor": "#111111", "titleColor": "#111111", "clusterBkg": "#f7f8fb", "clusterBorder": "#9aa1b2"}, "flowchart": {"curve": "basis", "padding": 14, "subGraphTitleMargin": {"top": 8, "bottom": 12}}}}%%
+flowchart TB
+  browser("🌐 <b>브라우저</b><br/><small>HTML(Jinja2) · CSS · JS</small>")
+
+  subgraph railway["☁️ Railway 서버"]
+    edge("🔒 <b>Railway 앞단 프록시</b><br/><small>HTTPS 인증서 처리 · 요청 전달</small>")
+    uvicorn("🦄 <b>uvicorn</b> · 웹 서버<br/><small>app.main:app 실행 · 포트 $PORT</small>")
+
+    subgraph fastapi["⚡ FastAPI 앱"]
+      core("🛡️ <b>RequestIdMiddleware</b><br/><small>request_id · 로그 · 오류 형식</small>")
+
+      web("🖥️ <b>web 화면</b><br/><small>페이지 5개 · 입력 규칙</small>")
+      auth("🔐 <b>auth</b><br/><small>가입 · 로그인 · 로그아웃</small>")
+      conv("🗂️ <b>conversations</b><br/><small>대화 만들기 · 내 기록</small>")
+      chat("💬 <b>chat</b><br/><small>질문 · 문맥 · 한도</small>")
+      health("❤️ <b>/health · /static</b><br/><small>배포 확인 · CSS/JS</small>")
+
+      deps("🔑 <b>로그인 확인 · CSRF</b><br/><small>auth/dependencies.py</small>")
+      repo("📒 <b>대화 저장소</b><br/><small>conversations/repository.py</small>")
+      provider{{"🔌 <b>AIProvider 경계</b><br/><small>AI_PROVIDER 설정으로 고름</small>"}}
+      fake("🧪 <b>FakeAIProvider</b><br/><small>개발 · CI · 키 없음</small>")
+    end
+
+    db[("🗄️ <b>SQLite</b><br/><small>Railway Volume /app/data</small>")]
+  end
+
+  gateway("🤖 <b>코디세이 게이트웨이</b><br/><small>→ Claude</small>")
+
+  browser ===>|HTTPS| edge
+  edge ==>|HTTP| uvicorn
+  uvicorn ==> core
+  core --> web & auth & conv & chat & health
+  web & conv & chat -.-> deps
+  conv & chat --> repo
+  chat --> provider
+  auth --> db
+  %% ~~~ 는 화면에 안 보이는 연결. auth 를 다른 라우터와 같은 줄에 두려고만 씀
+  auth ~~~ deps
+  deps --> db
+  repo --> db
+  provider -.->|fake| fake
+  provider ==>|anthropic| gateway
+
+  classDef L fill:#fff4cc,stroke:#e0a800,stroke-width:2px,color:#3d2e00
+  classDef A fill:#e3edff,stroke:#3b74e0,stroke-width:2px,color:#0f2a5c
+  classDef B fill:#dcf5e3,stroke:#2f9e5a,stroke-width:2px,color:#0d3b20
+  classDef C fill:#ffe1ec,stroke:#e0457b,stroke-width:2px,color:#5c0f2b
+  classDef ext fill:#eef0f4,stroke:#6b7489,stroke-width:2px,color:#222,stroke-dasharray:5 3
+  class uvicorn,core,health L
+  class auth,conv,deps,repo,db A
+  class chat,provider,fake B
+  class browser,web C
+  class gateway,edge ext
+  style railway fill:#ffffff,stroke:#6b7489,stroke-width:2px
+  style fastapi fill:#f3f5fa,stroke:#9aa1b2,stroke-dasharray:4 3
+  linkStyle default color:#111111
+```
+
+**범례** — 상자 색은 담당자
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontSize": "12px"}, "flowchart": {"padding": 6, "rankSpacing": 10}}}%%
+flowchart LR
+  %% 범례: 상자 색 = 담당자. ~~~ 는 상자를 가로로 늘어놓으려는 보이지 않는 연결
+  L(["L 이초롱 · 공통·배포"]) ~~~ A(["A 송지윤 · 인증·DB"]) ~~~ B(["B 나현준 · AI·채팅"]) ~~~ C(["C 유민규 · 화면"]) ~~~ X(["🤖 외부 서비스"])
+  classDef L fill:#fff4cc,stroke:#e0a800,stroke-width:2px,color:#3d2e00
+  classDef A fill:#e3edff,stroke:#3b74e0,stroke-width:2px,color:#0f2a5c
+  classDef B fill:#dcf5e3,stroke:#2f9e5a,stroke-width:2px,color:#0d3b20
+  classDef C fill:#ffe1ec,stroke:#e0457b,stroke-width:2px,color:#5c0f2b
+  classDef ext fill:#eef0f4,stroke:#6b7489,stroke-width:2px,color:#222,stroke-dasharray:5 3
+  class L L
+  class A A
+  class B B
+  class C C
+  class X ext
+```
+
+#### 채팅 요청 처리 순서
+
+```mermaid
+sequenceDiagram
+  actor User as 사용자
+  participant Page as 브라우저
+  participant API as FastAPI
+  participant Service as 채팅 서비스
+  participant DB as SQLite
+  participant AI as Claude API
+
+  User->>Page: 질문 입력
+  Page->>API: POST /api/chat
+  API->>API: 세션·CSRF·입력 검증
+  API->>Service: answer_question()
+  Service->>DB: 대화 소유권 확인
+  Service->>DB: 질문을 pending으로 저장
+  Service->>DB: 최근 완료 대화 조회
+  Service->>Service: 문맥·설명 수준 프롬프트 구성
+  Service->>AI: 질문 + 문맥 + 시스템 안내
+  AI-->>Service: 답변 + 토큰 사용량
+  Service->>DB: 질문·답변을 completed로 저장
+  Service-->>API: ChatResponse
+  API-->>Page: 답변 JSON
+  Page-->>User: 답변 표시
+```
+
+인증이 필요한 요청은 세션 쿠키와 CSRF 토큰을 확인하며, 사용자의 `user_id`는 요청 본문이
+아니라 서버 인증 결과로 결정됩니다. AI 키는 브라우저에 전달하지 않고 서버의 제공자 계층에서만 사용합니다.
+
 | 부품 | 비유 | 하는 일 |
 |---|---|---|
 | 웹 화면 | 🍽️ 손님 테이블과 메뉴판 | 질문을 입력하고 답을 보는 곳 |
