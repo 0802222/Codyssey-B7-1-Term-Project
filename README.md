@@ -184,7 +184,7 @@ sequenceDiagram
 | ② | 인증 | 회원가입·로그인, **로그인한 사람만** 챗봇 사용 | [app/auth/](app/auth/) | [tests/auth/](tests/auth/) · [통합: 실패 경로](tests/integration/test_failure_paths.py) |
 | ③ | AI 처리 | AI 호출은 **서버에서만**, **이전 대화를 기억** | [service.py](app/chat/service.py) · [context.py](app/chat/context.py) | [test_chat_api.py](tests/chat/test_chat_api.py) · [test_context.py](tests/chat/test_context.py) |
 | ④ | 대화 기록 | 질문·답변·사용자·시각을 DB 에 쌓고 **사용자별로 조회** | [models.py](app/db/models.py) · [app/conversations/](app/conversations/) | [tests/conversations/](tests/conversations/) · [통합: 전체 흐름](tests/integration/test_user_journey.py) |
-| ⑤ | 안정성 | 서버 로그, AI 실패·지연에도 **서버가 안 죽고 안내**, 입력 검증 | [errors.py](app/core/errors.py) · [logging.py](app/core/logging.py) · [service.py](app/chat/service.py) | [통합: 실패 경로](tests/integration/test_failure_paths.py) · [통합: 요청 로그](tests/integration/test_request_logs.py) |
+| ⑤ | 안정성 | 서버 로그, AI 실패·지연에도 **서버가 안 죽고 안내**, 입력 검증 | [errors.py](app/core/errors.py) · [logging.py](app/core/logging.py) · [service.py](app/chat/service.py) | [통합: 실패 경로](tests/integration/test_failure_paths.py) · [통합: 요청 로그](tests/integration/test_request_logs.py) · [배포 로그 추적 캡처](docs/team/img/railway-log-request-trace.png) |
 | ⑥ | 배포 | 평가 때 **외부에서 접속 가능한 URL** | Railway + Volume ([5장](#5-실행-방법)) | [배포 기록](docs/team/3-deploy-options.md#8-railway-설정-절차) · [배포 AI 검증](app/chat/EE-23.md) |
 | ⑦ | 협업 | 브랜치·PR 머지, **1인당 의미 있는 커밋 10개 이상** | [CONTRIBUTING.md](CONTRIBUTING.md) · [ci.yml](.github/workflows/ci.yml) | PR 목록 · `git shortlog -sne --no-merges origin/main` |
 
@@ -233,6 +233,8 @@ AGENTS.md             # AI 코딩 도구용 규칙
 | **A** | 송지윤 | 회원·로그인·접근 제어, DB, 내 기록 (서버) |
 | **B** | 나현준 | AI 호출, 설명 수준, 문맥 유지, AI 오류 (서버) |
 | **C** | 유민규 | 웹 화면, API 연결, 사용성 (화면) |
+
+개인별 커밋 수 (2026-10-16, `git shortlog -sne --no-merges origin/main`): 유민규 90 · 이초롱 44 · 송지윤 35 · 나현준 34
 
 ### 기능
 
@@ -473,8 +475,8 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | 4-6 외부 접속 URL, 배포·환경 변수 문서 | Railway + Volume, 5장 배포 · [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차) | ✅ [#34][p34] [#50][p50] |
 | 4-7 브랜치 전략, 기능 단위 작업 브랜치 | `main` 보호 + 이슈별 `feat/ee-XX-…` 브랜치 ([CONTRIBUTING.md](CONTRIBUTING.md)) | ✅ |
 | 4-7 PR 기반 Merge | main 직접 커밋 금지. 승인 1명 + CI `test` 통과 후 Merge commit ([.github/workflows/ci.yml](.github/workflows/ci.yml)) | ✅ |
-| 4-7 1인 유의미한 커밋 10회 | `git shortlog -sne --no-merges origin/main` (아래 평가 전 확인) | ✅ 4명 모두 10개 이상 (최종 확인 [EE-24][i31]) |
-| 4-7 역할·개인별 작업 요약 (Git 이력과 일치) | 3장 역할·기능 표(담당·PR 칸) | 🟨 역할·PR ✅ · 개인별 요약 [EE-24][i31] |
+| 4-7 1인 유의미한 커밋 10회 | `git shortlog -sne --no-merges origin/main` (아래 평가 전 확인) | ✅ 4명 모두 10개 이상 (2026-10-16: 90 · 44 · 35 · 34, [EE-24][i31]) |
+| 4-7 역할·개인별 작업 요약 (Git 이력과 일치) | 3장 팀 표(개인별 담당·커밋 수) · 기능 표(담당·PR 칸) · 개인별 [평가 대비](docs/team/eval/README.md) | ✅ [EE-24][i31] |
 
 ### 제출물 · 개발 환경 · 제약 사항 (원문 2·5·6장)
 
@@ -483,7 +485,7 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | GitHub 저장소 링크 | 공개 저장소, 주소는 5장 | ✅ |
 | 외부 접속 서비스 URL | 5장 배포 (휴대폰 와이파이·모바일 데이터 접속 확인) | ✅ [#50][p50] |
 | 문서: 프로젝트 개요 (문제 정의·대상 사용자·핵심 시나리오) | 1·3장 | ✅ |
-| 문서: 시스템 구조 (아키텍처·컴포넌트 역할) | 1·2장 | 🟨 구조도 보강 [EE-24][i31] |
+| 문서: 시스템 구조 (아키텍처·컴포넌트 역할) | 1장 [시스템 아키텍처](#시스템-아키텍처) 구조도·범례·채팅 처리 순서 · 2장 폴더 구조 | ✅ [EE-24][i31] |
 | 문서: API 명세 (요청·응답 예시) | [docs/spec/api.md](docs/spec/api.md) | ✅ |
 | 문서: DB 구조 (테이블·필드) | [docs/spec/db.md](docs/spec/db.md) | ✅ |
 | 문서: 배포·실행 방법, 환경 변수 이름·설정 방법 | 5장 (환경 변수 전체 목록, 배포) · [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차) | ✅ [#50][p50] |
@@ -492,16 +494,16 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | Python & FastAPI, SQLite | 4장 기술 스택 | ✅ |
 | 평가자가 DB 에 연결·조회 가능 | 배포 서버의 DB 에 확인용 SQL 실행 (`railway ssh`), [7장](#7-db-확인백업복구) · 2026-10-11 리허설 | ✅ [#57][p57] |
 | AI 호출 타임아웃 설정, 실패 시 안내 | `AI_TIMEOUT_SECONDS` 30초 ([app/core/config.py](app/core/config.py)) · 시간 초과 시 504 `AI_TIMEOUT` 안내 | ✅ [#43][p43] [#44][p44] · 배포 검증 [EE-23][i30] |
-| 과제 목표: 각자 맡은 부분을 설명 | [평가 대비](docs/team/2-evaluation-example.md) | 🟨 [EE-24][i31] |
+| 과제 목표: 각자 맡은 부분을 설명 | [평가 대비](docs/team/2-evaluation-example.md) · 역할별 [L](docs/team/eval/L.md) [A](docs/team/eval/A.md) [B](docs/team/eval/B.md) [C](docs/team/eval/C.md) · 설명 리허설 | ✅ [EE-24][i31] |
 
 ### 평가 전 확인
 
 표의 근거를 **실제로 돌려 보는** 마지막 점검입니다.
-- [ ] 휴대폰 데이터(외부 네트워크)로 서비스 URL 접속 → 가입·로그인·질문·내 기록
-- [ ] 서버 재시작 후에도 대화 기록 유지
-- [ ] 1인당 의미 있는 커밋 10개 이상: `git shortlog -sne --no-merges origin/main`
-- [ ] 모든 기능이 PR 로 머지됨 (3장 기능 표의 PR 칸)
-- [ ] 각자 맡은 코드 설명 리허설 → [평가 대비](docs/team/2-evaluation-example.md)
+- [x] 휴대폰 데이터(외부 네트워크)로 서비스 URL 접속 → 가입·로그인·질문·내 기록
+- [x] 서버 재시작 후에도 대화 기록 유지 (재배포 전후 `GET /api/me/conversations` 비교, [L 평가 대비](docs/team/eval/L.md))
+- [x] 1인당 의미 있는 커밋 10개 이상: `git shortlog -sne --no-merges origin/main` → 2026-10-16 기준 90 · 44 · 35 · 34
+- [x] 모든 기능이 PR 로 머지됨 (3장 기능 표의 PR 칸, 전 기능 ✅)
+- [x] 각자 맡은 코드 설명 리허설 → [평가 대비](docs/team/2-evaluation-example.md)
 
 ## 7. DB 확인·백업·복구
 
@@ -516,7 +518,7 @@ from pathlib import Path
 
 db = sqlite3.connect("/app/data/easyexplain.db")
 sql = Path("/app/scripts/check_logs.sql").read_text(encoding="utf-8")
-rows = db.execute(sql, {"email": "평가용 계정 이메일"}).fetchall()
+rows = db.execute(sql, {"email": "test@test.com"}).fetchall()
 print(*rows, sep="\n")
 db.close()
 ```
