@@ -4,18 +4,15 @@
 uv run python scripts/backup_db.py 로 실행
 """
 
+import sqlite3
 import sys
+from datetime import datetime
 from pathlib import Path
 
-# 프로젝트 루트를 Python 모듈 검색 경로에 추가
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR))
 
-import sqlite3
-from datetime import datetime
-
-from app.core.config import get_settings
-
+from app.core.config import get_settings  # noqa: E402
 
 BACKUP_DIR = BASE_DIR / "backups"
 
