@@ -530,21 +530,42 @@ db.close()
 
 ### 백업과 복구
 
+| 무엇을 | 언제 | 방법 | 저장 위치 |
+|---|---|---|---|
+| **운영 DB** (Railway) | 평가 전후, 배포 설정을 바꾸기 전 | 아래 [운영 DB 백업](#운영-db-백업) — SSH 로 서버에서 복사 → 내려받기 | 내 컴퓨터의 저장소 **밖** `~/EasyExplain-backups/` |
+| **로컬 개발 DB** | 로컬에서 테스트 데이터를 지우기 전 등 | 아래 [로컬 DB 백업](#로컬-db-백업) — `scripts/backup_db.py` | 저장소 안 `backups/` (Git 제외) |
+
+두 방법 모두 SQLite `backup()` 을 써서 서버를 멈추지 않아도 일관된 복사본이 만들어지고, 파일 이름에 `_YYYYMMDD_HHMMSS` 시각이 붙습니다.
+
+#### 운영 DB 백업
+
 Railway 대시보드의 Volume **Backups 는 새 백업을 만들려면 Pro 요금제가 필요**합니다(체험판은 기존 백업 조회·복구만 가능).
-그래서 **SQLite `backup()` 으로 파일 백업**을 만들어 내려받습니다. 서버를 멈추지 않아도 일관된 복사본이 만들어집니다.
+그래서 서버에서 복사본을 만들어 내 컴퓨터로 내려받습니다. 운영 DB 에는 사용자 이메일·대화가 들어 있어 **저장소 밖**에 보관합니다.
 
 ```bash
 # 0) 처음 한 번: Railway 가 SSH 접속 설정(Host easyexplain-railway)을 ~/.ssh/config 에 만들어 줌
 railway ssh config --alias easyexplain-railway -i ~/.ssh/<등록한 키>
+mkdir -p ~/EasyExplain-backups
 
-# 1) 컨테이너 안에서 복사본 만들기 (무결성 검사와 SHA-256 출력)
+# 1) 이번 백업의 시각 (2~3단계 파일 이름에 씀)
+TS=$(date +%Y%m%d_%H%M%S)
+# 2) 컨테이너 안에서 Volume 에 임시 복사본 만들기 (무결성 검사와 SHA-256 출력)
 ssh easyexplain-railway 'python -c "import sqlite3,hashlib; s=sqlite3.connect(\"/app/data/easyexplain.db\"); d=sqlite3.connect(\"/app/data/backup.db\"); s.backup(d); print(d.execute(\"pragma integrity_check\").fetchone()[0]); d.close(); print(hashlib.sha256(open(\"/app/data/backup.db\",\"rb\").read()).hexdigest())"'
-# 2) 내 컴퓨터의 저장소 밖 폴더로 내려받고, 위 SHA-256 과 같은지 확인 (사용자 이메일·대화가 들어 있음 — 저장소에 넣지 않음)
-ssh easyexplain-railway 'cat /app/data/backup.db' > ~/EasyExplain-backups/easyexplain-YYYYMMDD.db
-shasum -a 256 ~/EasyExplain-backups/easyexplain-YYYYMMDD.db
-# 3) Volume 의 복사본 지우기
+# 3) 내 컴퓨터로 내려받고, 위 SHA-256 과 같은지 확인
+ssh easyexplain-railway 'cat /app/data/backup.db' > ~/EasyExplain-backups/easyexplain_$TS.db
+shasum -a 256 ~/EasyExplain-backups/easyexplain_$TS.db
+# 4) Volume 의 임시 복사본 지우기 (빠뜨리면 사용자 데이터 사본이 서버에 남음)
 ssh easyexplain-railway 'rm /app/data/backup.db'
 ```
+
+#### 로컬 DB 백업
+
+```bash
+uv run python scripts/backup_db.py   # → backups/backup_YYYYMMDD_HHMMSS.db
+```
+`.env` 의 `DATABASE_URL` 이 가리키는 DB 를 백업합니다. 내 컴퓨터에서 실행하면 **로컬 개발 DB** 가 대상이고 운영 DB 가 아닙니다. `backups/` 는 `.gitignore` 에 있어 커밋되지 않습니다.
+
+#### 복구
 
 - **복구 확인:** 내려받은 파일로 로컬 서버를 띄워(`DATABASE_URL=sqlite:///<파일>`) `/health` 와 행 수를 확인합니다.
 - **운영 DB 를 실제로 되돌릴 때:** 그 사이 쌓인 기록이 사라지므로 먼저 현재 DB 를 한 번 더 백업하고, 백업 파일을 Volume 에 올려(`railway volume files upload`) 같은 `backup()` 방식으로 `/app/data/easyexplain.db` 에 덮어쓴 뒤 재배포해 `/health` 와 기록 조회로 확인합니다.
