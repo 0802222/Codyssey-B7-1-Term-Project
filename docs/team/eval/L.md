@@ -14,6 +14,39 @@
 각 영역은 자기 폴더에 라우터를 두고, 여기서 `include_router` 로 조립만 합니다. 그래서 네 명이 서로 다른 폴더에서 동시에 작업할 수 있었습니다.
 DB 테이블은 서버가 **시작할 때**(`lifespan`) 만듭니다. 배포 서버의 저장 공간(Volume)은 실행 중에만 붙기 때문입니다.
 
+### 서비스 아키텍처 (요청이 들어오는 길)
+
+**🧑‍🏫 퍼실:** README 의 아키텍처 그림으로 서비스 구조를 설명해 주세요.
+
+**👑 L:** 요청이 들어오는 길과 앱 안으로 나눠 설명하겠습니다.
+
+**[들어오는 길]** 브라우저의 HTTPS 요청은 먼저 Railway 앞단 프록시가 받습니다. HTTP 로 잘못 들어온 요청은 301 로 HTTPS 주소를 안내해 다시 오게 합니다.
+프록시가 HTTPS 를 복호화해서 Railway 내부망으로는 HTTP 로 전달하고, 응답은 반대로 다시 암호화해 브라우저로 보냅니다.
+이렇게 하면 인증서를 프록시 한곳에서 관리하고, 암호화도 바깥 구간에서 한 번만 하면 됩니다.
+내부망은 인터넷에 노출되지 않아 위험이 낮고, 위험한 공용 인터넷 구간은 HTTPS 로 보호됩니다. 보안 요구가 높은 곳은 내부망까지 암호화하는 제로트러스트 방식을 쓰기도 합니다.
+
+**[앱 안]** HTTP 요청은 포트를 열고 기다리던 uvicorn 이 받아 FastAPI 앱에 넘깁니다.
+앱의 미들웨어가 요청마다 request_id 를 발급해 로그에 남기고, 응답 헤더 `X-Request-ID` 에도 붙입니다.
+그다음 주소에 따라 라우터로 나뉩니다. 화면은 web, 로그인은 auth, 대화 기록은 conversations, 질문은 chat 이 맡고, 로그인이 필요한 요청은 공통 의존성에서 세션 쿠키와 CSRF 토큰을 확인합니다.
+chat 은 AIProvider 경계를 통해 운영에서는 코디세이 게이트웨이(Claude)를, 테스트에서는 가짜 AI 를 부릅니다. 질문과 답변은 저장소를 거쳐 Railway Volume 의 SQLite 에 저장됩니다.
+
+**[확인 방법]** 브라우저 개발자 도구 → Network → 요청 클릭 → Headers → Response Headers 에서 `server: railway-hikari`(Railway 프록시를 거침)와 `x-request-id`(우리 미들웨어가 붙임)를 볼 수 있습니다. 이 ID 로 서버 로그에서 같은 요청을 찾습니다.
+
+**🧑‍🏫 퍼실:** uvicorn 은 왜 필요한가요?
+
+**👑 L:** FastAPI 는 "요청이 오면 무엇을 할지" 정한 코드라 혼자 포트를 열지 못합니다. uvicorn 이 ASGI(Asynchronous Server Gateway Interface) 서버로서 포트를 열고, 받은 요청을 앱에 넘기고 응답을 돌려줍니다.
+Nginx 는 ASGI 서버가 아니라 앞단 프록시이고, 우리 구조에서는 Railway 프록시가 그 역할을 합니다.
+
+**🧑‍🏫 퍼실:** 시작 명령의 `--host 0.0.0.0` 은 뭔가요?
+
+**👑 L:** Railway 서비스 Settings → Deploy 의 Custom Start Command 에 넣은 uvicorn 옵션입니다(`uvicorn app.main:app --host 0.0.0.0 --port $PORT`).
+기본값 `127.0.0.1` 은 컨테이너 안에서 온 요청만 받아서, 밖에 있는 프록시 요청도 받도록 열었습니다. `$PORT` 는 Railway 가 넣어 주는 환경 변수입니다.
+
+**🧑‍🏫 퍼실:** 워커는 몇 개인가요? 사용자가 많아지면요?
+
+**👑 L:** 워커도 서버(Replicas)도 1개입니다. 비동기라 한 사람의 AI 답변을 기다리는 동안 다른 요청을 처리할 수 있어서 평가 규모에는 충분합니다.
+다만 질문 횟수 제한과 "처리 중" 표시가 메모리에 있어서(`app/chat/rate_limit.py`, `app/chat/service.py`), 그대로 늘리면 워커마다 따로 세어 부정확해집니다. 늘리려면 이 값을 Redis 같은 공유 저장소로 먼저 옮겨야 합니다.
+
 ### 서버 로그
 
 **🧑‍🏫 퍼실:** 과제에서 요구한 서버 로그는 어디서 남기나요?
@@ -48,6 +81,28 @@ INFO    request_completed request_id=f5a2… status=504 latency_ms=2264
 모든 오류는 `{"error": {"code", "message", "request_id"}}` 한 가지 형식이라 화면은 `message` 만 보여 주면 됩니다.
 에러 상세 내용은 서버 로그에만 남기고 사용자에게는 보여 주지 않습니다. `tests/core/test_errors.py` 에서 확인합니다.
 AI 시간 초과·DB 오류 뒤에도 서버가 계속 응답하는지는 `tests/integration/test_failure_paths.py` 에서 확인합니다.
+
+### 장애 대응
+
+**🧑‍🏫 퍼실:** 장애 알림이 없는데, 장애가 나면 어떻게 대응하나요?
+
+**👑 L:** 장애 알림은 과제 범위 밖이라 두지 않았습니다. 대신 **장애가 나도 서버가 버티도록** 만들고, **장애가 나면 정해진 순서로 대응**하도록 준비했습니다.
+
+**[버티는 설계]** AI 가 느리거나 실패하면 30초 뒤 504 로 안내하고 서버는 계속 돕니다. DB 오류는 롤백하고 503 으로 안내하며 성공한 척하지 않습니다.
+처리 도중 서버가 재시작되면 다음 시작 때 남은 질문을 `interrupted` 로 정리합니다. 설정이 잘못되면 서버가 아예 뜨지 않게 해서 잘못된 상태로 운영되지 않게 했습니다.
+
+**[대응 순서]** ① `/health` 로 서버와 DB 를 확인하고 → ② Railway Deployments 에서 배포가 실패했는지 보고 → ③ 사용자가 본 오류의 `request_id` 로 로그를 찾아 AI 문제인지 DB 문제인지 가립니다.
+원인에 따라 설정을 고쳐 재배포하거나, 이전 성공 배포로 Rollback 하거나, 백업으로 DB 를 복구합니다. 끝나면 원인과 해결을 [트러블슈팅](../4-troubleshooting.md)에 남깁니다.
+
+**[실제 경험]** 배포 장애 두 건(가입 403, 배포 Crashed)을 이 순서로 로그와 재현으로 찾아 고쳤습니다. 실무라면 가장 먼저 UptimeRobot 으로 `/health` 를 감시해 사용자보다 먼저 알게 하겠습니다.
+
+| 증상 | 먼저 볼 곳 | 원인 예 | 대응 |
+|---|---|---|---|
+| 사이트가 아예 안 열림 | Railway Deployments 상태 (Crashed?) | 잘못된 환경 변수, 코드 오류 | Deploy Logs 마지막 줄 확인 → 설정 고쳐 재배포, 안 되면 Rollback |
+| `/health` 가 `db` 실패 | Logs 의 `db_save_failed`, Volume 사용량 | 디스크 가득 참, DB 잠금 | 재시작·용량 정리, 파일이 깨졌으면 백업으로 복구 (README 7장) |
+| 질문만 실패 (504·502) | Logs 의 `ai_call_failed error_code=…` | AI 서비스 장애, 키 만료 | 화면에는 이미 안내가 나감. 키 확인, AI 쪽 복구 대기 |
+| 특정 사용자만 오류 | 그 사람이 본 `request_id` 로 로그 검색 | 입력 값, 권한 문제 | 해당 요청 6줄을 따라가 원인 찾기 |
+| 배포 직후 이상 | 마지막 배포 커밋 | 새 코드 버그 | 즉시 Rollback → 고친 PR 로 다시 배포 |
 
 ### 민감정보
 
@@ -105,6 +160,12 @@ CI 는 **코드 로직**(처리 순서, 오류 응답, 권한, DB 저장)을 검
 2026-10-09 1차 배포 때 재배포 전에 만든 대화가 재배포 후에도 `GET /api/me/conversations` 에 남아 있는 것을 확인했습니다.
 그 뒤로도 여러 번 자동 재배포됐는데 계정과 대화가 유지됐습니다.
 
+**🧑‍🏫 퍼실:** 서버리스였다면요? 로그는 서버가 죽어도 남나요?
+
+**👑 L:** 서버리스(AWS Lambda, Vercel 등)는 요청이 올 때만 코드를 잠깐 실행해서, 실행할 때마다 파일이 사라집니다. 그러면 SQLite 를 쓸 수 없고 PostgreSQL 같은 별도 DB 서버가 필요합니다.
+우리는 **계속 켜져 있는 컨테이너에 Volume(저장 디스크)을 붙인 구조**라 DB 파일이 남고, 그래서 Volume 을 지원하는 Railway 를 골랐습니다.
+로그는 Railway 가 모아 보관해서 서버가 죽어도 남지만, 보관 기간은 Railway 요금제를 따르고 우리가 따로 저장하지 않는 한계가 있습니다. Volume 을 지우면 DB 도 사라지므로 DB 는 수동 백업으로 대비하고, 운영이라면 로그를 외부 저장소로 보내겠습니다.
+
 **🧑‍🏫 퍼실:** 배포하는 동안 서비스가 멈추지 않나요?
 
 **👑 L:** 1~2분 멈출 수 있습니다. Volume 은 한 번에 서버 하나만 붙을 수 있어서, 이전 서버를 내리고 새 서버를 올리는 동안 공백이 생깁니다.
@@ -145,13 +206,30 @@ CI 는 **코드 로직**(처리 순서, 오류 응답, 권한, DB 저장)을 검
 | 해 볼 것 | 내 예측 | 실제 결과 (2026-10-12) |
 |---|---|---|
 | 배포 URL `/health` | `{"status":"ok","db":"ok"}` | ✅ 같음 |
+| `curl -I http://<도메인>/health` (https 아님) | Railway 가 HTTPS 로 안내 | ✅ (2026-10-16) `301 Moved Permanently`, `location: https://…/health` |
+| `curl -I https://<도메인>/health` 응답 헤더 | 프록시 표시와 우리 요청 ID 가 함께 옴 | ✅ (2026-10-16) `server: railway-hikari`, `x-request-id` 있음 |
 | 로그아웃 상태로 `curl -X POST <URL>/api/chat` | 401 `AUTH_REQUIRED`, 본문에 `request_id` | ✅ 401 `AUTH_REQUIRED` "로그인이 필요합니다.", 본문 `request_id` 와 응답 헤더 `X-Request-ID` 가 같은 값 |
 | `curl <URL>/api/nope` | 404, 공통 오류 형식 | ✅ 404 `NOT_FOUND` "요청한 경로를 찾을 수 없어요.", `request_id` 포함 |
 | 위 401 요청의 `X-Request-ID` 로 Railway 로그 검색 (`railway logs --filter <ID>`) | 요청 수신·응답 2줄 (인증에서 막혀 AI·DB 줄은 없음) | ✅ `request_received` → `request_completed status=401 latency_ms=8` 2줄 |
-| 질문 1개의 `X-Request-ID` 로 Railway Logs 검색 | 6줄이 같은 ID 로 이어짐, 질문 원문 없음 | ✅ 2026-10-11 EE-23 점검: 시간 초과 요청 6줄(…`ai_call_failed` → `status=failed` → 504), 복구 요청 6줄(…`ai_call_success` → `status=completed` → 200), 질문 원문 없음 ([EE-23](../../../app/chat/EE-23.md)) |
+| 질문 1개의 `X-Request-ID` 로 Railway Logs 검색 | 6줄이 같은 ID 로 이어짐, 질문 원문 없음 | ✅ 2026-10-11 EE-23 점검: 시간 초과 요청 6줄(…`ai_call_failed` → `status=failed` → 504), 복구 요청 6줄(…`ai_call_success` → `status=completed` → 200), 질문 원문 없음 ([EE-23](../../../app/chat/EE-23.md)). 2026-10-16 정상 질문도 6줄(`request_received` → `db_save_success pending` → `ai_call_start` → `ai_call_success` → `db_save_success completed` → `request_completed status=200 latency_ms=9700`), 아래 캡처 |
+| `railway logs --lines 500 > logs.txt` → `grep -E 'WARNING\|ERROR' logs.txt` | 경고 줄만 걸러지고, 검증 실패는 값 없이 필드 이름만 | ✅ (2026-10-16) `validation_failed` 3줄. Postman 에서 필드 이름을 틀린 요청은 `fields=body.conversations_id,body.questions…`, JSON 문법 오류는 `fields=body.146` (146번째 글자) 로만 남고 질문 원문은 없음. 아래 로그 |
 | `APP_ENV=production`, `AI_PROVIDER=fake` 로 서버 실행 | 시작하지 않고 설정 오류 | ✅ `ValidationError` "production 에서는 AI_PROVIDER=fake 로 기동할 수 없습니다." 로 시작하지 않음 |
 | `uv run pytest tests/integration -q` | 21 passed | ✅ 21 passed |
 | `git shortlog -sne --no-merges origin/main` | 4명 모두 10개 이상 | ✅ 유민규 89 · 이초롱 39 · 송지윤 34 · 나현준 33 |
+
+**증빙 (2026-10-16):** 브라우저 Network 탭의 `x-request-id` 를 Railway Logs 검색창에 붙여넣은 결과
+
+![Railway Logs 에서 request_id 하나로 질문 처리 6줄을 찾은 화면](../img/railway-log-request-trace.png)
+
+**증빙 (2026-10-16):** 로그를 파일로 뽑아 경고만 거른 결과. 입력 검증 실패도 값이 아니라 필드 이름(또는 JSON 오류 위치)만 남는다
+
+```
+$ railway logs --lines 500 > logs.txt
+$ grep -E 'WARNING|ERROR' logs.txt
+2026-10-15 20:30:19,044 WARNING validation_failed request_id=7e42c0d62dd943cfbca29fb97a6e1c40 fields=body.conversation_id,body.question,body.conversations_id,body.questions
+2026-10-15 20:30:59,526 WARNING validation_failed request_id=ecdf475942514e8ab97cc76211f7f3e9 fields=body.146
+2026-10-15 20:32:56,022 WARNING validation_failed request_id=a6c053bf7b7e4db2a7fce3e3cd9af204 fields=body.144
+```
 
 ## 4. 준비 메모
 
@@ -161,6 +239,7 @@ CI 는 **코드 로직**(처리 순서, 오류 응답, 권한, DB 저장)을 검
 - **내 답변 메모:** 실제로 겪은 일 중 꼬리 질문으로 나올 만한 것
   - **"CI 가 실패하면 배포는 어떻게 되나요?"** → Railway 의 Wait for CI 는 필수 체크가 아닌 `test-windows` 까지 기다린다. #58 머지 때 Windows 테스트가 실패해 배포가 SKIPPED 됐고(서비스는 이전 버전 유지), #62 로 Windows 테스트를 고친 뒤 다시 배포됐다. 그래서 README 에는 "실제 실행 버전은 마지막 성공 배포로 확인" 이라고 적었다
   - **"Windows job 은 왜 필수가 아닌가요?"** → 처음 추가할 때 기존 테스트가 Windows 에서 실패할 수 있어 지켜보려고 필수로 하지 않았다. 실제로 테스트 코드 문제 3종(#59·#60)을 찾았다. 지금은 통과하므로 필수로 바꿀 수 있다
+  - **"Railway 로그가 왜 다 빨간색이에요? 에러인가요?"** → 아니다. 내용은 `INFO` 인데 파이썬 `logging.basicConfig()` 기본 출력이 stderr 라서 Railway 가 오류 단계로 칠한다. 실제 단계는 줄 안의 `INFO`·`WARNING` 으로 구분한다
   - **"로그는 화면 말고 어떻게 찾나요?"** → `railway logs --filter <request_id>` 로 터미널에서도 검색된다
   - **"평가용 저장소가 포크인데 PR 기록은요?"** → 포크에는 코드·커밋만 복사되고 PR·리뷰·이슈·CI 기록은 원본(`easy-explain/Codyssey-B7-1-Term-Project`)에 있다
   - **"스택 PR 을 머지할 때 주의할 점은?"** → 아래 PR 의 기준을 main 으로 먼저 바꾸고 브랜치를 지운다. 순서를 거꾸로 했다가 #63 이 닫혀서 브랜치를 되살려 다시 연 적이 있다
