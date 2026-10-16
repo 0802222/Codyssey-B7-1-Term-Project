@@ -185,7 +185,7 @@ sequenceDiagram
 | ③ | AI 처리 | AI 호출은 **서버에서만**, **이전 대화를 기억** | [service.py](app/chat/service.py) · [context.py](app/chat/context.py) | [test_chat_api.py](tests/chat/test_chat_api.py) · [test_context.py](tests/chat/test_context.py) |
 | ④ | 대화 기록 | 질문·답변·사용자·시각을 DB 에 쌓고 **사용자별로 조회** | [models.py](app/db/models.py) · [app/conversations/](app/conversations/) | [tests/conversations/](tests/conversations/) · [통합: 전체 흐름](tests/integration/test_user_journey.py) |
 | ⑤ | 안정성 | 서버 로그, AI 실패·지연에도 **서버가 안 죽고 안내**, 입력 검증 | [errors.py](app/core/errors.py) · [logging.py](app/core/logging.py) · [service.py](app/chat/service.py) | [통합: 실패 경로](tests/integration/test_failure_paths.py) · [통합: 요청 로그](tests/integration/test_request_logs.py) · [배포 로그 추적 캡처](docs/team/img/railway-log-request-trace.png) |
-| ⑥ | 배포 | 평가 때 **외부에서 접속 가능한 URL** | Railway + Volume ([5장](#5-실행-방법)) | [배포 기록](docs/team/3-deploy-options.md#8-railway-설정-절차) · [배포 AI 검증](app/chat/EE-23.md) |
+| ⑥ | 배포 | 평가 때 **외부에서 접속 가능한 URL** | Railway + Volume ([5장](#5-실행-방법)) | [배포 기록](docs/team/3-deploy-options.md#8-railway-설정-절차) · [배포 AI 검증](docs/team/chat/EE-23.md) |
 | ⑦ | 협업 | 브랜치·PR 머지, **1인당 의미 있는 커밋 10개 이상** | [CONTRIBUTING.md](CONTRIBUTING.md) · [ci.yml](.github/workflows/ci.yml) | PR 목록 · `git shortlog -sne --no-merges origin/main` |
 
 과제 원문 항목마다 어디서 만족하는지는 [6장 과제 요구사항과 제출 점검](#6-과제-요구사항과-제출-점검)에 있습니다.
@@ -269,7 +269,7 @@ AGENTS.md             # AI 코딩 도구용 규칙
 ⬜ 미착수 · 🟨 일부 완료 · ✅ 완료 — 기능을 머지할 때 상태와 PR 번호를 함께 적습니다.
 
 B 영역의 처리 순서와 검증 자료는 `app/chat/` 안내 문서에 모았습니다:
-[EE-13 처리 순서](app/chat/EE-13.md) · [EE-16 횟수 제한](app/chat/EE-16.md) · [EE-19 품질 샘플](app/chat/EE-19.md) · [#54 반복 질문 보완](app/chat/ISSUE-54.md)
+[EE-13 처리 순서](docs/team/chat/EE-13.md) · [EE-16 횟수 제한](docs/team/chat/EE-16.md) · [EE-19 품질 샘플](docs/team/chat/EE-19.md) · [#54 반복 질문 보완](docs/team/chat/ISSUE-54.md)
 
 ### 비제공 기능
 
@@ -412,14 +412,14 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 
 - **서비스 URL:** https://codyssey-b7-1-term-project-production.up.railway.app
 - **배포 버전:** main 에 병합되면 CI 통과 후 자동 배포합니다. 실제 실행 버전은 Railway에서 마지막으로 성공한 배포의 커밋을 확인하고, 평가 시점 버전은 릴리스 태그로 남깁니다.
-  EE-23의 수준별·후속 답변 5건은 1차 배포 `ffe4a05`, 최종 시간 초과·복구 2건은 `03f84e6` 기준입니다 ([EE-23](app/chat/EE-23.md)).
-- **가짜 AI 와 실제 AI:** CI·로컬 테스트는 코드 로직 검증용이라 가짜 AI(`AI_PROVIDER=fake`)로 돌리고, 배포 서버와 시연은 실제 AI 입니다. 운영(`APP_ENV=production`)에서는 가짜 AI 나 빈 키로 서버가 뜨지 않습니다. 실제 AI 동작은 배포 후 [EE-23](app/chat/EE-23.md)에서 검증했습니다.
+  EE-23의 수준별·후속 답변 5건은 1차 배포 `ffe4a05`, 최종 시간 초과·복구 2건은 `03f84e6` 기준입니다 ([EE-23](docs/team/chat/EE-23.md)).
+- **가짜 AI 와 실제 AI:** CI·로컬 테스트는 코드 로직 검증용이라 가짜 AI(`AI_PROVIDER=fake`)로 돌리고, 배포 서버와 시연은 실제 AI 입니다. 운영(`APP_ENV=production`)에서는 가짜 AI 나 빈 키로 서버가 뜨지 않습니다. 실제 AI 동작은 배포 후 [EE-23](docs/team/chat/EE-23.md)에서 검증했습니다.
 - Railway + Volume 에 배포합니다. 설정 절차·업데이트 방법·주의점은 [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차)을 봅니다.
 
 ### 사용 가이드 (처음 쓰는 사람)
 
 위 서비스 URL(또는 내 컴퓨터의 `http://localhost:8000`)에 들어가 아래 순서로 씁니다. 마우스 없이 키보드만으로도, 휴대폰에서도 같은 순서입니다.
-캡처는 로컬 서버에서 가짜 계정(`guide@example.com`)으로 찍었고, 답변 글은 팀이 기록해 둔 실제 AI 답변 샘플([EE-19](app/chat/EE-19.md))을 다시 보여 준 것입니다.
+캡처는 로컬 서버에서 가짜 계정(`guide@example.com`)으로 찍었고, 답변 글은 팀이 기록해 둔 실제 AI 답변 샘플([EE-19](docs/team/chat/EE-19.md))을 다시 보여 준 것입니다.
 
 1. **가입** — 첫 화면의 [시작하기] → 이메일과 비밀번호(8~64자, 영문·숫자·기호) → [가입하기]. 이미 가입한 이메일이거나 규칙에 맞지 않으면 안내 칸에 이유가 나오고, 입력한 내용은 지워지지 않으니 고쳐서 다시 누르면 됩니다.
 2. **로그인** — 가입하면 로그인 화면으로 넘어가 "가입이 끝났어요" 안내가 보입니다. 같은 이메일·비밀번호로 [로그인]하면 채팅 화면이 열립니다.
@@ -466,7 +466,7 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | 4-2 회원가입·로그인 | API: [app/auth/router.py](app/auth/router.py), [tests/auth/](tests/auth/) · 화면: `/signup` `/login` | ✅ [#35][p35] [#37][p37] [#38][p38] |
 | 4-2 로그인 여부로 기능 구분, 챗봇은 로그인 사용자만 | `CurrentUserDep` → 비로그인 API 는 401, 상태 변경은 CSRF 없으면 403 ([app/auth/dependencies.py](app/auth/dependencies.py)) · 페이지는 `/login` 으로 303 | ✅ [#37][p37] [#41][p41] [#45][p45] |
 | 4-3 AI 는 서버에서 호출 (키 노출 방지) | 화면은 우리 서버만 부르고, AI 는 [app/chat/provider.py](app/chat/provider.py) 경계로 서버에서만 호출. 키는 환경 변수 `ANTHROPIC_API_KEY` | ✅ [#6][p6] [#43][p43] |
-| 4-3 문맥 유지 전략 | 같은 대화의 완료된 최근 5턴, 최대 12,000자 ([app/chat/context.py](app/chat/context.py), [tests/chat/test_context.py](tests/chat/test_context.py)) · 실제 AI 샘플 ([EE-19](app/chat/EE-19.md)) | ✅ [#8][p8] [#43][p43] [#46][p46] [#55][p55] |
+| 4-3 문맥 유지 전략 | 같은 대화의 완료된 최근 5턴, 최대 12,000자 ([app/chat/context.py](app/chat/context.py), [tests/chat/test_context.py](tests/chat/test_context.py)) · 실제 AI 샘플 ([EE-19](docs/team/chat/EE-19.md)) | ✅ [#8][p8] [#43][p43] [#46][p46] [#55][p55] |
 | 4-4 질문·응답 누적 저장 (사용자·시각·질문·응답) | `chat_turns` 의 `user_id` `created_at` `question` `answer` ([docs/spec/db.md](docs/spec/db.md)) | ✅ [#33][p33] [#42][p42] [#43][p43] |
 | 4-4 사용자 기준 조회·추적 | 내 기록 API `GET /api/me/conversations` `GET /api/me/chats` · 화면 `/history` · 확인용 SQL [scripts/check_logs.sql](scripts/check_logs.sql) (7장) | ✅ [#42][p42] [#52][p52] [#57][p57] |
 | 4-5 서버 로그: 요청 수신 / AI 호출 / AI 응답·실패 / DB 저장 성공·실패 | `request_received` · `ai_call_start` · `ai_call_success`·`ai_call_failed` · `db_save_success`·`db_save_failed`, 모두 같은 `request_id` ([app/core/logging.py](app/core/logging.py), [app/core/middleware.py](app/core/middleware.py)) · 통합 테스트 [test_request_logs.py](tests/integration/test_request_logs.py) · 배포 서버 Railway 로그로 추적 확인 | ✅ [#4][p4] [#42][p42] [#43][p43] [#58][p58] |

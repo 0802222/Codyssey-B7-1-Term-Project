@@ -69,7 +69,7 @@ easy는 일상 단어·비유, beginner는 기본 용어·흐름, advanced는 �
 [#54](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/issues/54)가 있었습니다.
 [#55](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/pull/55)에서 짧거나 반복된 질문도 현재 수준으로 바로 설명하도록 보완했습니다.
 가짜 AI로 전달 메시지 1·3·5개와 advanced 지침을 확인하고 실제 샘플도 따로 검토했습니다.
-모든 답변의 정확성을 보장한다는 뜻은 아닙니다. → [수정·실제 AI 기록](../../../app/chat/ISSUE-54.md).
+모든 답변의 정확성을 보장한다는 뜻은 아닙니다. → [수정·실제 AI 기록](../chat/ISSUE-54.md).
 
 **🧑‍🏫 퍼실:** AI가 응답을 안 주면요?
 
@@ -96,7 +96,7 @@ AI를 시작한 시간 초과·오류도 한도를 쓰지만, 입력 거절·중
 한도에 걸린 새 질문은 `429 RATE_LIMITED` 실패 턴으로 저장하며 같은 키 재전송은 그대로 429입니다.
 횟수·처리 중 표시는 서버 메모리라 worker·서버가 하나일 때 쓰는 구조입니다.
 재시작하면 횟수가 초기화되므로 하루 200회는 과금의 강제 상한이 아닙니다. 키 예산은 콘솔에서 따로 확인합니다.
-→ [test_chat_limits.py](../../../tests/chat/test_chat_limits.py), [EE-16 운영 한계](../../../app/chat/EE-16.md).
+→ [test_chat_limits.py](../../../tests/chat/test_chat_limits.py), [EE-16 운영 한계](../chat/EE-16.md).
 
 **🧑‍🏫 퍼실:** 실제 시간 초과·복구도 확인했나요?
 
@@ -117,7 +117,7 @@ HTTP·기록 조회는 B의 수집 결과이고 Railway 로그·설정 복구는
 [복구 HTTP](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/blob/26384cf/app/chat/samples/ee-23-2026-10-11-production-recovery.json),
 [시간 초과 로그](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/blob/26384cf/app/chat/samples/ee-23-2026-10-11-timeout-logs.json),
 [복구 로그](https://github.com/easy-explain/Codyssey-B7-1-Term-Project/blob/26384cf/app/chat/samples/ee-23-2026-10-11-recovery-logs.json).
-키·쿠키·사용자 식별자는 공개 증빙에서 제외했습니다. 설명 품질은 [EE-19](../../../app/chat/EE-19.md)의 실제 답변·수동 검토와 구분합니다.
+키·쿠키·사용자 식별자는 공개 증빙에서 제외했습니다. 설명 품질은 [EE-19](../chat/EE-19.md)의 실제 답변·수동 검토와 구분합니다.
 
 ## 2. 읽을 코드 표
 

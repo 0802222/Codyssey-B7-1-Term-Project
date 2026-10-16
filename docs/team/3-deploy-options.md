@@ -130,7 +130,7 @@
      (Railpack 은 `main:app` 만 자동으로 찾아서, 우리 `app.main:app` 은 직접 적어요.
      `--proxy-headers --forwarded-allow-ips="*"` 는 넣지 않아요. 앱이 클라이언트 IP·URL 을 쓰지 않고, `*` 는 모든 전달 헤더를 믿게 돼요)
    - Healthcheck Path: `/health`
-   - Replicas: 1 (uvicorn worker 도 기본 1개 그대로). 처리 중 표시·질문 횟수 제한이 서버 메모리에 있어서 여러 개면 정확하지 않아요 (`app/chat/EE-16.md`)
+   - Replicas: 1 (uvicorn worker 도 기본 1개 그대로). 처리 중 표시·질문 횟수 제한이 서버 메모리에 있어서 여러 개면 정확하지 않아요 (`docs/team/chat/EE-16.md`)
    - Wait for CI: 켜기
 6. **도메인**: Settings → Networking → Generate Domain → `https://xxx.up.railway.app` (HTTPS 자동)
 7. **확인**
