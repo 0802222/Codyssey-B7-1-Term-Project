@@ -51,7 +51,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
 
-    app = FastAPI(title="EasyExplain", version="0.1.0", lifespan=lifespan)
+    is_production = settings.app_env == "production"
+    app = FastAPI(
+        title="EasyExplain",
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url=None if is_production else "/docs",
+        redoc_url=None if is_production else "/redoc",
+        openapi_url=None if is_production else "/openapi.json",
+    )
     app.state.settings = settings
     app.state.engine = create_db_engine(settings.database_url)
 

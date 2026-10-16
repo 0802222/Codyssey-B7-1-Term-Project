@@ -55,6 +55,120 @@ AI 를 직접 만드는 게 아니라, 이미 있는 AI(Claude)를 **우리 서�
                                    DB (SQLite)
 ```
 
+### 시스템 아키텍처
+
+앱은 FastAPI를 중심으로 웹 페이지와 API를 함께 제공하는 단일 서버 구조입니다.
+`app/main.py`가 공통 설정·미들웨어·DB·라우터를 조립하고, 채팅 요청의 업무 흐름은
+`app/chat/service.py`가 담당합니다.
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"edgeLabelBackground": "#ffffff", "lineColor": "#555b6e", "textColor": "#111111", "titleColor": "#111111", "clusterBkg": "#f7f8fb", "clusterBorder": "#9aa1b2"}, "flowchart": {"curve": "basis", "padding": 14, "subGraphTitleMargin": {"top": 8, "bottom": 12}}}}%%
+flowchart TB
+  browser("🌐 <b>브라우저</b><br/><small>HTML(Jinja2) · CSS · JS</small>")
+
+  subgraph railway["☁️ Railway 서버"]
+    edge("🔒 <b>Railway 앞단 프록시</b><br/><small>HTTPS 인증서 처리 · 요청 전달</small>")
+    uvicorn("🦄 <b>uvicorn</b> · 웹 서버<br/><small>app.main:app 실행 · 포트 $PORT</small>")
+
+    subgraph fastapi["⚡ FastAPI 앱"]
+      core("🛡️ <b>RequestIdMiddleware</b><br/><small>request_id · 로그 · 오류 형식</small>")
+
+      web("🖥️ <b>web 화면</b><br/><small>페이지 5개 · 입력 규칙</small>")
+      auth("🔐 <b>auth</b><br/><small>가입 · 로그인 · 로그아웃</small>")
+      conv("🗂️ <b>conversations</b><br/><small>대화 만들기 · 내 기록</small>")
+      chat("💬 <b>chat</b><br/><small>질문 · 문맥 · 한도</small>")
+      health("❤️ <b>/health · /static</b><br/><small>배포 확인 · CSS/JS</small>")
+
+      deps("🔑 <b>로그인 확인 · CSRF</b><br/><small>auth/dependencies.py</small>")
+      repo("📒 <b>대화 저장소</b><br/><small>conversations/repository.py</small>")
+      provider{{"🔌 <b>AIProvider 경계</b><br/><small>AI_PROVIDER 설정으로 고름</small>"}}
+      fake("🧪 <b>FakeAIProvider</b><br/><small>개발 · CI · 키 없음</small>")
+    end
+
+    db[("🗄️ <b>SQLite</b><br/><small>Railway Volume /app/data</small>")]
+  end
+
+  gateway("🤖 <b>코디세이 게이트웨이</b><br/><small>→ Claude</small>")
+
+  browser ===>|HTTPS| edge
+  edge ==>|HTTP| uvicorn
+  uvicorn ==> core
+  core --> web & auth & conv & chat & health
+  web & conv & chat -.-> deps
+  conv & chat --> repo
+  chat --> provider
+  auth --> db
+  %% ~~~ 는 화면에 안 보이는 연결. auth 를 다른 라우터와 같은 줄에 두려고만 씀
+  auth ~~~ deps
+  deps --> db
+  repo --> db
+  provider -.->|fake| fake
+  provider ==>|anthropic| gateway
+
+  classDef L fill:#fff4cc,stroke:#e0a800,stroke-width:2px,color:#3d2e00
+  classDef A fill:#e3edff,stroke:#3b74e0,stroke-width:2px,color:#0f2a5c
+  classDef B fill:#dcf5e3,stroke:#2f9e5a,stroke-width:2px,color:#0d3b20
+  classDef C fill:#ffe1ec,stroke:#e0457b,stroke-width:2px,color:#5c0f2b
+  classDef ext fill:#eef0f4,stroke:#6b7489,stroke-width:2px,color:#222,stroke-dasharray:5 3
+  class uvicorn,core,health L
+  class auth,conv,deps,repo,db A
+  class chat,provider,fake B
+  class browser,web C
+  class gateway,edge ext
+  style railway fill:#ffffff,stroke:#6b7489,stroke-width:2px
+  style fastapi fill:#f3f5fa,stroke:#9aa1b2,stroke-dasharray:4 3
+  linkStyle default color:#111111
+```
+
+**범례** — 상자 색은 담당자
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontSize": "12px"}, "flowchart": {"padding": 6, "rankSpacing": 10}}}%%
+flowchart LR
+  %% 범례: 상자 색 = 담당자. ~~~ 는 상자를 가로로 늘어놓으려는 보이지 않는 연결
+  L(["L 이초롱 · 공통·배포"]) ~~~ A(["A 송지윤 · 인증·DB"]) ~~~ B(["B 나현준 · AI·채팅"]) ~~~ C(["C 유민규 · 화면"]) ~~~ X(["🤖 외부 서비스"])
+  classDef L fill:#fff4cc,stroke:#e0a800,stroke-width:2px,color:#3d2e00
+  classDef A fill:#e3edff,stroke:#3b74e0,stroke-width:2px,color:#0f2a5c
+  classDef B fill:#dcf5e3,stroke:#2f9e5a,stroke-width:2px,color:#0d3b20
+  classDef C fill:#ffe1ec,stroke:#e0457b,stroke-width:2px,color:#5c0f2b
+  classDef ext fill:#eef0f4,stroke:#6b7489,stroke-width:2px,color:#222,stroke-dasharray:5 3
+  class L L
+  class A A
+  class B B
+  class C C
+  class X ext
+```
+
+#### 채팅 요청 처리 순서
+
+```mermaid
+sequenceDiagram
+  actor User as 사용자
+  participant Page as 브라우저
+  participant API as FastAPI
+  participant Service as 채팅 서비스
+  participant DB as SQLite
+  participant AI as Claude API
+
+  User->>Page: 질문 입력
+  Page->>API: POST /api/chat
+  API->>API: 세션·CSRF·입력 검증
+  API->>Service: answer_question()
+  Service->>DB: 대화 소유권 확인
+  Service->>DB: 질문을 pending으로 저장
+  Service->>DB: 최근 완료 대화 조회
+  Service->>Service: 문맥·설명 수준 프롬프트 구성
+  Service->>AI: 질문 + 문맥 + 시스템 안내
+  AI-->>Service: 답변 + 토큰 사용량
+  Service->>DB: 질문·답변을 completed로 저장
+  Service-->>API: ChatResponse
+  API-->>Page: 답변 JSON
+  Page-->>User: 답변 표시
+```
+
+인증이 필요한 요청은 세션 쿠키와 CSRF 토큰을 확인하며, 사용자의 `user_id`는 요청 본문이
+아니라 서버 인증 결과로 결정됩니다. AI 키는 브라우저에 전달하지 않고 서버의 제공자 계층에서만 사용합니다.
+
 | 부품 | 비유 | 하는 일 |
 |---|---|---|
 | 웹 화면 | 🍽️ 손님 테이블과 메뉴판 | 질문을 입력하고 답을 보는 곳 |
@@ -70,8 +184,8 @@ AI 를 직접 만드는 게 아니라, 이미 있는 AI(Claude)를 **우리 서�
 | ② | 인증 | 회원가입·로그인, **로그인한 사람만** 챗봇 사용 | [app/auth/](app/auth/) | [tests/auth/](tests/auth/) · [통합: 실패 경로](tests/integration/test_failure_paths.py) |
 | ③ | AI 처리 | AI 호출은 **서버에서만**, **이전 대화를 기억** | [service.py](app/chat/service.py) · [context.py](app/chat/context.py) | [test_chat_api.py](tests/chat/test_chat_api.py) · [test_context.py](tests/chat/test_context.py) |
 | ④ | 대화 기록 | 질문·답변·사용자·시각을 DB 에 쌓고 **사용자별로 조회** | [models.py](app/db/models.py) · [app/conversations/](app/conversations/) | [tests/conversations/](tests/conversations/) · [통합: 전체 흐름](tests/integration/test_user_journey.py) |
-| ⑤ | 안정성 | 서버 로그, AI 실패·지연에도 **서버가 안 죽고 안내**, 입력 검증 | [errors.py](app/core/errors.py) · [logging.py](app/core/logging.py) · [service.py](app/chat/service.py) | [통합: 실패 경로](tests/integration/test_failure_paths.py) · [통합: 요청 로그](tests/integration/test_request_logs.py) |
-| ⑥ | 배포 | 평가 때 **외부에서 접속 가능한 URL** | Railway + Volume ([5장](#5-실행-방법)) | [배포 기록](docs/team/3-deploy-options.md#8-railway-설정-절차) · [배포 AI 검증](app/chat/EE-23.md) |
+| ⑤ | 안정성 | 서버 로그, AI 실패·지연에도 **서버가 안 죽고 안내**, 입력 검증 | [errors.py](app/core/errors.py) · [logging.py](app/core/logging.py) · [service.py](app/chat/service.py) | [통합: 실패 경로](tests/integration/test_failure_paths.py) · [통합: 요청 로그](tests/integration/test_request_logs.py) · [배포 로그 추적 캡처](docs/team/img/railway-log-request-trace.png) |
+| ⑥ | 배포 | 평가 때 **외부에서 접속 가능한 URL** | Railway + Volume ([5장](#5-실행-방법)) | [배포 기록](docs/team/3-deploy-options.md#8-railway-설정-절차) · [배포 AI 검증](docs/team/chat/EE-23.md) |
 | ⑦ | 협업 | 브랜치·PR 머지, **1인당 의미 있는 커밋 10개 이상** | [CONTRIBUTING.md](CONTRIBUTING.md) · [ci.yml](.github/workflows/ci.yml) | PR 목록 · `git shortlog -sne --no-merges origin/main` |
 
 과제 원문 항목마다 어디서 만족하는지는 [6장 과제 요구사항과 제출 점검](#6-과제-요구사항과-제출-점검)에 있습니다.
@@ -120,6 +234,8 @@ AGENTS.md             # AI 코딩 도구용 규칙
 | **B** | 나현준 | AI 호출, 설명 수준, 문맥 유지, AI 오류 (서버) |
 | **C** | 유민규 | 웹 화면, API 연결, 사용성 (화면) |
 
+개인별 커밋 수 (2026-10-16, `git shortlog -sne --no-merges origin/main`): 유민규 90 · 이초롱 44 · 송지윤 35 · 나현준 34
+
 ### 기능
 
 로그인한 사용자가 **설명 수준을 골라 개념을 질문하면, AI 가 이전 대화를 기억하며 쉽게 설명**해 주는 챗봇입니다.
@@ -153,7 +269,7 @@ AGENTS.md             # AI 코딩 도구용 규칙
 ⬜ 미착수 · 🟨 일부 완료 · ✅ 완료 — 기능을 머지할 때 상태와 PR 번호를 함께 적습니다.
 
 B 영역의 처리 순서와 검증 자료는 `app/chat/` 안내 문서에 모았습니다:
-[EE-13 처리 순서](app/chat/EE-13.md) · [EE-16 횟수 제한](app/chat/EE-16.md) · [EE-19 품질 샘플](app/chat/EE-19.md) · [#54 반복 질문 보완](app/chat/ISSUE-54.md)
+[EE-13 처리 순서](docs/team/chat/EE-13.md) · [EE-16 횟수 제한](docs/team/chat/EE-16.md) · [EE-19 품질 샘플](docs/team/chat/EE-19.md) · [#54 반복 질문 보완](docs/team/chat/ISSUE-54.md)
 
 ### 비제공 기능
 
@@ -199,7 +315,7 @@ def health():
 
 - **라우팅:** 주소(`/api/chat`)와 함수를 연결
 - **입력 검증:** "level 은 easy/beginner/advanced 중 하나" 같은 규칙을 적어 두면 틀린 요청을 자동으로 거절
-- **자동 문서:** 서버를 켜고 `/docs` 에 들어가면 모든 API 를 보고 직접 호출해 볼 수 있음
+- **자동 문서:** 서버를 켜고 `/docs` 에 들어가면 모든 API 를 보고 직접 호출해 볼 수 있음 (로컬 개발용. 운영 서버 `APP_ENV=production` 에서는 꺼 둠)
 
 ### SQLite 와 MySQL 은 뭐가 다른가요?
 
@@ -296,13 +412,14 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 
 - **서비스 URL:** https://codyssey-b7-1-term-project-production.up.railway.app
 - **배포 버전:** main 에 병합되면 CI 통과 후 자동 배포합니다. 실제 실행 버전은 Railway에서 마지막으로 성공한 배포의 커밋을 확인하고, 평가 시점 버전은 릴리스 태그로 남깁니다.
-  EE-23의 수준별·후속 답변 5건은 1차 배포 `ffe4a05`, 최종 시간 초과·복구 2건은 `03f84e6` 기준입니다 ([EE-23](app/chat/EE-23.md)).
+  EE-23의 수준별·후속 답변 5건은 1차 배포 `ffe4a05`, 최종 시간 초과·복구 2건은 `03f84e6` 기준입니다 ([EE-23](docs/team/chat/EE-23.md)).
+- **가짜 AI 와 실제 AI:** CI·로컬 테스트는 코드 로직 검증용이라 가짜 AI(`AI_PROVIDER=fake`)로 돌리고, 배포 서버와 시연은 실제 AI 입니다. 운영(`APP_ENV=production`)에서는 가짜 AI 나 빈 키로 서버가 뜨지 않습니다. 실제 AI 동작은 배포 후 [EE-23](docs/team/chat/EE-23.md)에서 검증했습니다.
 - Railway + Volume 에 배포합니다. 설정 절차·업데이트 방법·주의점은 [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차)을 봅니다.
 
 ### 사용 가이드 (처음 쓰는 사람)
 
 위 서비스 URL(또는 내 컴퓨터의 `http://localhost:8000`)에 들어가 아래 순서로 씁니다. 마우스 없이 키보드만으로도, 휴대폰에서도 같은 순서입니다.
-캡처는 로컬 서버에서 가짜 계정(`guide@example.com`)으로 찍었고, 답변 글은 팀이 기록해 둔 실제 AI 답변 샘플([EE-19](app/chat/EE-19.md))을 다시 보여 준 것입니다.
+캡처는 로컬 서버에서 가짜 계정(`guide@example.com`)으로 찍었고, 답변 글은 팀이 기록해 둔 실제 AI 답변 샘플([EE-19](docs/team/chat/EE-19.md))을 다시 보여 준 것입니다.
 
 1. **가입** — 첫 화면의 [시작하기] → 이메일과 비밀번호(8~64자, 영문·숫자·기호) → [가입하기]. 이미 가입한 이메일이거나 규칙에 맞지 않으면 안내 칸에 이유가 나오고, 입력한 내용은 지워지지 않으니 고쳐서 다시 누르면 됩니다.
 2. **로그인** — 가입하면 로그인 화면으로 넘어가 "가입이 끝났어요" 안내가 보입니다. 같은 이메일·비밀번호로 [로그인]하면 채팅 화면이 열립니다.
@@ -349,7 +466,7 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | 4-2 회원가입·로그인 | API: [app/auth/router.py](app/auth/router.py), [tests/auth/](tests/auth/) · 화면: `/signup` `/login` | ✅ [#35][p35] [#37][p37] [#38][p38] |
 | 4-2 로그인 여부로 기능 구분, 챗봇은 로그인 사용자만 | `CurrentUserDep` → 비로그인 API 는 401, 상태 변경은 CSRF 없으면 403 ([app/auth/dependencies.py](app/auth/dependencies.py)) · 페이지는 `/login` 으로 303 | ✅ [#37][p37] [#41][p41] [#45][p45] |
 | 4-3 AI 는 서버에서 호출 (키 노출 방지) | 화면은 우리 서버만 부르고, AI 는 [app/chat/provider.py](app/chat/provider.py) 경계로 서버에서만 호출. 키는 환경 변수 `ANTHROPIC_API_KEY` | ✅ [#6][p6] [#43][p43] |
-| 4-3 문맥 유지 전략 | 같은 대화의 완료된 최근 5턴, 최대 12,000자 ([app/chat/context.py](app/chat/context.py), [tests/chat/test_context.py](tests/chat/test_context.py)) · 실제 AI 샘플 ([EE-19](app/chat/EE-19.md)) | ✅ [#8][p8] [#43][p43] [#46][p46] [#55][p55] |
+| 4-3 문맥 유지 전략 | 같은 대화의 완료된 최근 5턴, 최대 12,000자 ([app/chat/context.py](app/chat/context.py), [tests/chat/test_context.py](tests/chat/test_context.py)) · 실제 AI 샘플 ([EE-19](docs/team/chat/EE-19.md)) | ✅ [#8][p8] [#43][p43] [#46][p46] [#55][p55] |
 | 4-4 질문·응답 누적 저장 (사용자·시각·질문·응답) | `chat_turns` 의 `user_id` `created_at` `question` `answer` ([docs/spec/db.md](docs/spec/db.md)) | ✅ [#33][p33] [#42][p42] [#43][p43] |
 | 4-4 사용자 기준 조회·추적 | 내 기록 API `GET /api/me/conversations` `GET /api/me/chats` · 화면 `/history` · 확인용 SQL [scripts/check_logs.sql](scripts/check_logs.sql) (7장) | ✅ [#42][p42] [#52][p52] [#57][p57] |
 | 4-5 서버 로그: 요청 수신 / AI 호출 / AI 응답·실패 / DB 저장 성공·실패 | `request_received` · `ai_call_start` · `ai_call_success`·`ai_call_failed` · `db_save_success`·`db_save_failed`, 모두 같은 `request_id` ([app/core/logging.py](app/core/logging.py), [app/core/middleware.py](app/core/middleware.py)) · 통합 테스트 [test_request_logs.py](tests/integration/test_request_logs.py) · 배포 서버 Railway 로그로 추적 확인 | ✅ [#4][p4] [#42][p42] [#43][p43] [#58][p58] |
@@ -358,8 +475,8 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | 4-6 외부 접속 URL, 배포·환경 변수 문서 | Railway + Volume, 5장 배포 · [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차) | ✅ [#34][p34] [#50][p50] |
 | 4-7 브랜치 전략, 기능 단위 작업 브랜치 | `main` 보호 + 이슈별 `feat/ee-XX-…` 브랜치 ([CONTRIBUTING.md](CONTRIBUTING.md)) | ✅ |
 | 4-7 PR 기반 Merge | main 직접 커밋 금지. 승인 1명 + CI `test` 통과 후 Merge commit ([.github/workflows/ci.yml](.github/workflows/ci.yml)) | ✅ |
-| 4-7 1인 유의미한 커밋 10회 | `git shortlog -sne --no-merges origin/main` (아래 평가 전 확인) | ✅ 4명 모두 10개 이상 (최종 확인 [EE-24][i31]) |
-| 4-7 역할·개인별 작업 요약 (Git 이력과 일치) | 3장 역할·기능 표(담당·PR 칸) | 🟨 역할·PR ✅ · 개인별 요약 [EE-24][i31] |
+| 4-7 1인 유의미한 커밋 10회 | `git shortlog -sne --no-merges origin/main` (아래 평가 전 확인) | ✅ 4명 모두 10개 이상 (2026-10-16: 90 · 44 · 35 · 34, [EE-24][i31]) |
+| 4-7 역할·개인별 작업 요약 (Git 이력과 일치) | 3장 팀 표(개인별 담당·커밋 수) · 기능 표(담당·PR 칸) · 개인별 [평가 대비](docs/team/eval/README.md) | ✅ [EE-24][i31] |
 
 ### 제출물 · 개발 환경 · 제약 사항 (원문 2·5·6장)
 
@@ -368,7 +485,7 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | GitHub 저장소 링크 | 공개 저장소, 주소는 5장 | ✅ |
 | 외부 접속 서비스 URL | 5장 배포 (휴대폰 와이파이·모바일 데이터 접속 확인) | ✅ [#50][p50] |
 | 문서: 프로젝트 개요 (문제 정의·대상 사용자·핵심 시나리오) | 1·3장 | ✅ |
-| 문서: 시스템 구조 (아키텍처·컴포넌트 역할) | 1·2장 | 🟨 구조도 보강 [EE-24][i31] |
+| 문서: 시스템 구조 (아키텍처·컴포넌트 역할) | 1장 [시스템 아키텍처](#시스템-아키텍처) 구조도·범례·채팅 처리 순서 · 2장 폴더 구조 | ✅ [EE-24][i31] |
 | 문서: API 명세 (요청·응답 예시) | [docs/spec/api.md](docs/spec/api.md) | ✅ |
 | 문서: DB 구조 (테이블·필드) | [docs/spec/db.md](docs/spec/db.md) | ✅ |
 | 문서: 배포·실행 방법, 환경 변수 이름·설정 방법 | 5장 (환경 변수 전체 목록, 배포) · [배포 문서 8장](docs/team/3-deploy-options.md#8-railway-설정-절차) | ✅ [#50][p50] |
@@ -377,16 +494,16 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 **`.env` 파일**에 둡니
 | Python & FastAPI, SQLite | 4장 기술 스택 | ✅ |
 | 평가자가 DB 에 연결·조회 가능 | 배포 서버의 DB 에 확인용 SQL 실행 (`railway ssh`), [7장](#7-db-확인백업복구) · 2026-10-11 리허설 | ✅ [#57][p57] |
 | AI 호출 타임아웃 설정, 실패 시 안내 | `AI_TIMEOUT_SECONDS` 30초 ([app/core/config.py](app/core/config.py)) · 시간 초과 시 504 `AI_TIMEOUT` 안내 | ✅ [#43][p43] [#44][p44] · 배포 검증 [EE-23][i30] |
-| 과제 목표: 각자 맡은 부분을 설명 | [평가 대비](docs/team/2-evaluation-example.md) | 🟨 [EE-24][i31] |
+| 과제 목표: 각자 맡은 부분을 설명 | [평가 대비](docs/team/2-evaluation-example.md) · 역할별 [L](docs/team/eval/L.md) [A](docs/team/eval/A.md) [B](docs/team/eval/B.md) [C](docs/team/eval/C.md) · 설명 리허설 | ✅ [EE-24][i31] |
 
 ### 평가 전 확인
 
 표의 근거를 **실제로 돌려 보는** 마지막 점검입니다.
-- [ ] 휴대폰 데이터(외부 네트워크)로 서비스 URL 접속 → 가입·로그인·질문·내 기록
-- [ ] 서버 재시작 후에도 대화 기록 유지
-- [ ] 1인당 의미 있는 커밋 10개 이상: `git shortlog -sne --no-merges origin/main`
-- [ ] 모든 기능이 PR 로 머지됨 (3장 기능 표의 PR 칸)
-- [ ] 각자 맡은 코드 설명 리허설 → [평가 대비](docs/team/2-evaluation-example.md)
+- [x] 휴대폰 데이터(외부 네트워크)로 서비스 URL 접속 → 가입·로그인·질문·내 기록
+- [x] 서버 재시작 후에도 대화 기록 유지 (재배포 전후 `GET /api/me/conversations` 비교, [L 평가 대비](docs/team/eval/L.md))
+- [x] 1인당 의미 있는 커밋 10개 이상: `git shortlog -sne --no-merges origin/main` → 2026-10-16 기준 90 · 44 · 35 · 34
+- [x] 모든 기능이 PR 로 머지됨 (3장 기능 표의 PR 칸, 전 기능 ✅)
+- [x] 각자 맡은 코드 설명 리허설 → [평가 대비](docs/team/2-evaluation-example.md)
 
 ## 7. DB 확인·백업·복구
 
@@ -401,7 +518,7 @@ from pathlib import Path
 
 db = sqlite3.connect("/app/data/easyexplain.db")
 sql = Path("/app/scripts/check_logs.sql").read_text(encoding="utf-8")
-rows = db.execute(sql, {"email": "평가용 계정 이메일"}).fetchall()
+rows = db.execute(sql, {"email": "test@test.com"}).fetchall()
 print(*rows, sep="\n")
 db.close()
 ```
@@ -413,21 +530,42 @@ db.close()
 
 ### 백업과 복구
 
+| 무엇을 | 언제 | 방법 | 저장 위치 |
+|---|---|---|---|
+| **운영 DB** (Railway) | 평가 전후, 배포 설정을 바꾸기 전 | 아래 [운영 DB 백업](#운영-db-백업) — SSH 로 서버에서 복사 → 내려받기 | 내 컴퓨터의 저장소 **밖** `~/EasyExplain-backups/` |
+| **로컬 개발 DB** | 로컬에서 테스트 데이터를 지우기 전 등 | 아래 [로컬 DB 백업](#로컬-db-백업) — `scripts/backup_db.py` | 저장소 안 `backups/` (Git 제외) |
+
+두 방법 모두 SQLite `backup()` 을 써서 서버를 멈추지 않아도 일관된 복사본이 만들어지고, 파일 이름에 `_YYYYMMDD_HHMMSS` 시각이 붙습니다.
+
+#### 운영 DB 백업
+
 Railway 대시보드의 Volume **Backups 는 새 백업을 만들려면 Pro 요금제가 필요**합니다(체험판은 기존 백업 조회·복구만 가능).
-그래서 **SQLite `backup()` 으로 파일 백업**을 만들어 내려받습니다. 서버를 멈추지 않아도 일관된 복사본이 만들어집니다.
+그래서 서버에서 복사본을 만들어 내 컴퓨터로 내려받습니다. 운영 DB 에는 사용자 이메일·대화가 들어 있어 **저장소 밖**에 보관합니다.
 
 ```bash
 # 0) 처음 한 번: Railway 가 SSH 접속 설정(Host easyexplain-railway)을 ~/.ssh/config 에 만들어 줌
 railway ssh config --alias easyexplain-railway -i ~/.ssh/<등록한 키>
+mkdir -p ~/EasyExplain-backups
 
-# 1) 컨테이너 안에서 복사본 만들기 (무결성 검사와 SHA-256 출력)
+# 1) 이번 백업의 시각 (2~3단계 파일 이름에 씀)
+TS=$(date +%Y%m%d_%H%M%S)
+# 2) 컨테이너 안에서 Volume 에 임시 복사본 만들기 (무결성 검사와 SHA-256 출력)
 ssh easyexplain-railway 'python -c "import sqlite3,hashlib; s=sqlite3.connect(\"/app/data/easyexplain.db\"); d=sqlite3.connect(\"/app/data/backup.db\"); s.backup(d); print(d.execute(\"pragma integrity_check\").fetchone()[0]); d.close(); print(hashlib.sha256(open(\"/app/data/backup.db\",\"rb\").read()).hexdigest())"'
-# 2) 내 컴퓨터의 저장소 밖 폴더로 내려받고, 위 SHA-256 과 같은지 확인 (사용자 이메일·대화가 들어 있음 — 저장소에 넣지 않음)
-ssh easyexplain-railway 'cat /app/data/backup.db' > ~/EasyExplain-backups/easyexplain-YYYYMMDD.db
-shasum -a 256 ~/EasyExplain-backups/easyexplain-YYYYMMDD.db
-# 3) Volume 의 복사본 지우기
+# 3) 내 컴퓨터로 내려받고, 위 SHA-256 과 같은지 확인
+ssh easyexplain-railway 'cat /app/data/backup.db' > ~/EasyExplain-backups/easyexplain_$TS.db
+shasum -a 256 ~/EasyExplain-backups/easyexplain_$TS.db
+# 4) Volume 의 임시 복사본 지우기 (빠뜨리면 사용자 데이터 사본이 서버에 남음)
 ssh easyexplain-railway 'rm /app/data/backup.db'
 ```
+
+#### 로컬 DB 백업
+
+```bash
+uv run python scripts/backup_db.py   # → backups/backup_YYYYMMDD_HHMMSS.db
+```
+`.env` 의 `DATABASE_URL` 이 가리키는 DB 를 백업합니다. 내 컴퓨터에서 실행하면 **로컬 개발 DB** 가 대상이고 운영 DB 가 아닙니다. `backups/` 는 `.gitignore` 에 있어 커밋되지 않습니다.
+
+#### 복구
 
 - **복구 확인:** 내려받은 파일로 로컬 서버를 띄워(`DATABASE_URL=sqlite:///<파일>`) `/health` 와 행 수를 확인합니다.
 - **운영 DB 를 실제로 되돌릴 때:** 그 사이 쌓인 기록이 사라지므로 먼저 현재 DB 를 한 번 더 백업하고, 백업 파일을 Volume 에 올려(`railway volume files upload`) 같은 `backup()` 방식으로 `/app/data/easyexplain.db` 에 덮어쓴 뒤 재배포해 `/health` 와 기록 조회로 확인합니다.

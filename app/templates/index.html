@@ -9,9 +9,16 @@
     <p class="eyebrow">AI 개념 설명 챗봇</p>
     <h1>어려운 개념,<br><span class="highlight">내 수준에 맞게 쉽게</span></h1>
     <p class="lead">같은 질문도 아주 쉽게, 입문자, 전공자 눈높이로 달리 설명해요. 이어서 물어보면 앞의 대화를 기억해요.</p>
+    {# logged_in(라우터가 OptionalUserDep 로 확인)이 참이면 가입·로그인 대신 채팅·내 기록으로 보낸다.
+       헤더 메뉴처럼 본문 버튼도 로그인 상태를 따라야, 로그인한 채 로그인 화면에 다시 들어가지 않는다 #}
     <div class="hero-actions">
+      {% if logged_in %}
+      <a class="btn btn-primary" href="/chat">채팅 시작하기</a>
+      <a class="btn btn-secondary" href="/history">내 기록</a>
+      {% else %}
       <a class="btn btn-primary" href="/signup">시작하기</a>
       <a class="btn btn-secondary" href="/login">로그인</a>
+      {% endif %}
     </div>
   </div>
 </section>

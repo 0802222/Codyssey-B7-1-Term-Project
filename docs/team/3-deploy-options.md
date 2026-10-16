@@ -130,7 +130,7 @@
      (Railpack 은 `main:app` 만 자동으로 찾아서, 우리 `app.main:app` 은 직접 적어요.
      `--proxy-headers --forwarded-allow-ips="*"` 는 넣지 않아요. 앱이 클라이언트 IP·URL 을 쓰지 않고, `*` 는 모든 전달 헤더를 믿게 돼요)
    - Healthcheck Path: `/health`
-   - Replicas: 1 (uvicorn worker 도 기본 1개 그대로). 처리 중 표시·질문 횟수 제한이 서버 메모리에 있어서 여러 개면 정확하지 않아요 (`app/chat/EE-16.md`)
+   - Replicas: 1 (uvicorn worker 도 기본 1개 그대로). 처리 중 표시·질문 횟수 제한이 서버 메모리에 있어서 여러 개면 정확하지 않아요 (`docs/team/chat/EE-16.md`)
    - Wait for CI: 켜기
 6. **도메인**: Settings → Networking → Generate Domain → `https://xxx.up.railway.app` (HTTPS 자동)
 7. **확인**
@@ -154,7 +154,116 @@
 ### 서비스 정리 주의
 
 - Railway **프로젝트나 Volume 을 삭제하면 DB 도 함께 삭제돼요.** 삭제·이전 전에 반드시 DB 파일을 백업해요
-  (백업 방법은 EE-20 #27 에서 정리)
+  (백업 방법은 아래 [DB 조회·백업 명령](#db-조회백업-명령))
+
+### DB 조회·백업 명령
+
+Railway 대시보드의 Volume Backups 는 새 백업을 만들려면 Pro 요금제가 필요해서, CLI 와 SSH 로 해요.
+`railway ...` 명령은 `railway link` 한 폴더(프로젝트 루트)에서, `ssh easyexplain-railway ...` 는 맥 어디서든 실행해요.
+컨테이너 안(`root@...:/app#`)에는 `ssh` 가 없어요.
+
+#### 0. 처음 한 번: 접속 준비 (맥, 프로젝트 루트)
+
+| 할 때 | 명령 |
+|---|---|
+| CLI 로그인 | `railway login` |
+| 이 폴더를 Railway 프로젝트에 연결 | `railway link` |
+| 내 SSH 공개 키 등록 | `railway ssh keys add` |
+| SSH 별칭 만들기 (`-i` 에는 키 지문이 아니라 **키 파일 경로**) | `railway ssh config --alias easyexplain-railway -i ~/.ssh/id_ed25519_railway` |
+
+#### 1. 운영 DB 실시간 조회 (컨테이너)
+
+| 할 때 | 어디서 | 명령 |
+|---|---|---|
+| 컨테이너 접속 | 맥, 프로젝트 루트 | `railway ssh` → 프롬프트가 `root@...:/app#` 로 바뀜 |
+| Python 켜기 | 컨테이너 | `python` → `>>>` |
+| 조회 | `>>>` | 아래 코드를 **한 줄씩** 입력 (여러 줄을 한꺼번에 붙여 넣으면 결과가 안 나올 수 있어요) |
+| 끝내기 | `>>>` → 컨테이너 | `db.close()` → `exit()` → `exit` |
+
+```python
+import sqlite3
+from pathlib import Path
+db = sqlite3.connect("file:/app/data/easyexplain.db?mode=ro", uri=True)   # 읽기 전용
+
+# ① 어떤 테이블이 있고 각각 몇 행인지
+for (t,) in db.execute("select name from sqlite_master where type='table' order by name").fetchall(): print(t, db.execute(f"select count(*) from {t}").fetchone()[0])
+                                # ← 빈 줄에서 엔터
+
+# ② 테이블의 필드 (chat_turns 대신 users·conversations·auth_sessions 도 가능)
+[c[1] for c in db.execute("pragma table_info(chat_turns)")]
+
+# ③ 특정 사용자의 최근 대화 5건 — 팀 확인용 SQL (JOIN·WHERE·ORDER BY·LIMIT 20) 실행 후 5건만, 답변은 앞 40자만
+sql = Path("/app/scripts/check_logs.sql").read_text(encoding="utf-8")
+rows = db.execute(sql, {"email": "test@test.com"}).fetchall()
+len(rows)                       # 조회된 행 수 (SQL 의 LIMIT 20)
+for r in rows[:5]: print(r[:6] + (r[6][:40],))
+                                # ← 빈 줄에서 엔터
+
+# ④ 처리 상태별 질문 수 (completed / failed / interrupted / pending)
+db.execute("select status, count(*) from chat_turns group by status order by count(*) desc").fetchall()
+
+# ⑤ 실패한 질문의 원인별 수 (AI_TIMEOUT, RATE_LIMITED 등)
+db.execute("select error_code, count(*) from chat_turns where status = 'failed' group by error_code").fetchall()
+
+# ⑥ 설명 수준별 질문 수
+db.execute("select level, count(*) from chat_turns group by level").fetchall()
+
+# ⑦ 사용자별 대화·질문 수 (이메일 대신 user_id, 대화가 없는 사용자도 0 으로)
+db.execute("select u.id, count(distinct c.id), count(t.id) from users u left join conversations c on c.user_id = u.id left join chat_turns t on t.conversation_id = c.id group by u.id order by u.id").fetchall()
+```
+
+③ 을 컨테이너에 들어가지 않고 맥에서 한 줄로 실행하려면:
+
+```bash
+ssh easyexplain-railway "python -c \"import sqlite3; from pathlib import Path; db=sqlite3.connect('file:/app/data/easyexplain.db?mode=ro',uri=True); sql=Path('/app/scripts/check_logs.sql').read_text(encoding='utf-8'); [print(r[:6] + (r[6][:40],)) for r in db.execute(sql, {'email':'test@test.com'}).fetchall()[:5]]\""
+```
+
+#### 2. 백업
+
+| 단계 | 어디서 | 명령 |
+|---|---|---|
+| ① 복사본 만들기 (`ok` + 해시 출력, **해시 메모**) | 컨테이너 (`root@...:/app#`) | 아래 코드 |
+| ② 컨테이너에서 나오기 | 컨테이너 | `exit` |
+| ③ 받을 폴더 만들기 | 맥 | `mkdir -p ~/EasyExplain-backups` |
+| ④ 내려받기 | 맥 | `ssh easyexplain-railway 'cat /app/data/backup.db' > ~/EasyExplain-backups/easyexplain-YYYYMMDD.db` |
+| ⑤ 해시 비교 (① 과 같아야 함) | 맥 | `shasum -a 256 ~/EasyExplain-backups/easyexplain-YYYYMMDD.db` |
+| ⑥ Volume 임시 복사본 삭제 | 맥 | `ssh easyexplain-railway 'rm /app/data/backup.db'` |
+
+① 에서 쓰는 코드 (SQLite `backup()` 이라 서버를 멈추지 않아도 일관된 복사본이 만들어져요):
+
+```bash
+python -c "import sqlite3,hashlib; s=sqlite3.connect('/app/data/easyexplain.db'); d=sqlite3.connect('/app/data/backup.db'); s.backup(d); print(d.execute('pragma integrity_check').fetchone()[0]); d.close(); print(hashlib.sha256(open('/app/data/backup.db','rb').read()).hexdigest())"
+```
+
+백업 파일에는 사용자 이메일·대화가 들어 있어요. 저장소 밖 폴더에 두고 커밋하지 않아요.
+
+#### 3. 백업 파일 확인 (맥)
+
+```bash
+sqlite3 -readonly ~/EasyExplain-backups/easyexplain-YYYYMMDD.db
+```
+
+```sql
+.tables
+PRAGMA integrity_check;
+SELECT 'users', count(*) FROM users
+UNION ALL SELECT 'conversations', count(*) FROM conversations
+UNION ALL SELECT 'chat_turns', count(*) FROM chat_turns
+UNION ALL SELECT 'auth_sessions', count(*) FROM auth_sessions;
+SELECT id, user_id, level, status, created_at FROM chat_turns ORDER BY id DESC LIMIT 10;
+.quit
+```
+
+- `PRAGMA integrity_check;` 에서 `ok` 가 나와야 해요
+- 행 수는 1-① 의 운영 결과와 비교해요. 백업 이후에 새로 들어온 질문만큼 운영 쪽이 클 수 있어요
+
+앱으로 열어 보는 복구 확인 (백업 원본은 건드리지 않고 사본으로):
+
+```bash
+cp ~/EasyExplain-backups/easyexplain-YYYYMMDD.db /tmp/restore-check.db
+DATABASE_URL=sqlite:////tmp/restore-check.db uv run uvicorn app.main:app --port 8001
+curl http://127.0.0.1:8001/health      # 다른 터미널에서. {"status":"ok","db":"ok"} 가 나와야 함
+```
 
 ### 1차 배포 기록 (2026-10-09)
 

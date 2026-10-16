@@ -54,8 +54,8 @@ uv run --locked python -m app.chat.quality_check \
 
 ## 실제 AI 검토 기록
 
-수집 원문: [1차 보완](samples/issue-54-2026-10-10-after.json),
-[최종 보완](samples/issue-54-2026-10-10-after-v2.json). JSON의
+수집 원문: [1차 보완](../../../app/chat/samples/issue-54-2026-10-10-after.json),
+[최종 보완](../../../app/chat/samples/issue-54-2026-10-10-after-v2.json). JSON의
 `quality_review: not_performed`는 도구가 자동으로 품질 판정을 하지 않았다는 뜻입니다.
 
 | 검증 | 시각 (2026-10-10, 한국 시간) | 실제 호출 | 사람이 확인한 결과 |

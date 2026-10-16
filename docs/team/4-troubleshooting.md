@@ -21,7 +21,7 @@
 - **원인 찾기:** 내 기록 화면에서 네 턴이 모두 같은 대화이고 앞 두 턴이 completed 인 것을 확인했다. 문맥 코드(`app/chat/context.py`)는 수준과 관계없이 같은 대화의 완료 턴을 보낸다. 즉 **문맥은 전달됐고, AI 가 판단을 잘못한 것**이다.
 - **원인:** 프롬프트의 "질문이 모호하면 확인 질문을 한다", "전달받지 않은 내용을 아는 척하지 않는다" 지침에 AI 가 과하게 반응해, 이미 설명한 질문을 "모호한 질문" 으로 보고 사실과 다른 말까지 했다.
 - **해결:** 지침 보완 — "이미 설명한 주제를 수준을 바꿔 다시 물어도 현재 수준으로 다시 설명한다", "질문이 짧거나 이전과 같다는 이유만으로 모호하다고 보지 않는다", "문맥을 받았으면 받지 못했다고 말하지 않는다" (`app/chat/prompts.py`)
-- **재발 방지:** `tests/chat/test_chat_api.py::test_repeated_short_question_keeps_context_when_switching_to_advanced` 가 같은 3턴의 문맥 전달(메시지 1 → 3 → 5개)과 전공자 지침을 확인한다. 실제 AI 결과는 [ISSUE-54](../../app/chat/ISSUE-54.md) 에 기록.
+- **재발 방지:** `tests/chat/test_chat_api.py::test_repeated_short_question_keeps_context_when_switching_to_advanced` 가 같은 3턴의 문맥 전달(메시지 1 → 3 → 5개)과 전공자 지침을 확인한다. 실제 AI 결과는 [ISSUE-54](chat/ISSUE-54.md) 에 기록.
 - **배운 점:** 자동 테스트는 가짜 AI 라 **"AI 가 실제로 어떻게 답하는지"는 잡지 못한다.** 실제 서비스를 직접 써 보는 확인이 따로 필요하다.
 
 ## 2. 대화 제목이 항상 "새 대화"
